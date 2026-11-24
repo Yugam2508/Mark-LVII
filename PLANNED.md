@@ -5,51 +5,16 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To build
 
-- [ ] **Spotify: choose the device.** "Play this on my phone" / "move it to the
-      laptop" — pick a Spotify Connect device by name instead of only the active one
-      or this PC. (`plugins/spotify_control.py`)
-- [ ] **Notion.** Read, search and add to Notion pages and databases by voice.
-- [ ] **Note-taking.** Quick voice notes ("note that…", "take notes on this meeting")
-      saved somewhere you can find on every device (Notion, Google Docs or the
-      knowledge folder), plus reading them back.
-- [ ] **Google Drive and Docs.** Find, read and create Drive files and Google Docs.
-      The APIs are already enabled in the JARVIS Google Cloud project; the sign-in
-      needs the Drive/Docs scopes added (`plugins/_google_auth.py`), which means
-      reconnecting Google once.
-- [ ] **A proper writing voice.** Emails, documents and notes written well and in
-      your style. Route writing to a stronger model than the voice model (e.g. Claude
-      through `core.gemini`'s provider setting), with a short style guide.
-- [ ] **Proactive assistant.** Jarvis speaks up without being asked:
-      - **New email:** checks Gmail every few minutes, tells you about mail that
-        matters (skips newsletters/promotions; learns who is important) and offers a
-        suggested reply you can send, edit or ignore. Sending still needs CONFIRM.
-      - **Calendar from email:** spots dates in emails (meetings, deadlines,
-        bookings) and offers to add them to the calendar.
-      - **Reminders:** a heads-up before calendar events (with travel time when
-        there's a location) and before to-do due dates.
-      - Respects quiet hours, doesn't repeat itself, and shows a notice on screen
-        when you're away from the PC.
-      Builds on the existing routine engine / proactive check-ins
-      (`core/routines`, `actions/proactive.py`) and `player.request_say`.
-- [ ] **Modes.** Switch by voice ("work mode", "gaming mode") or automatically, with
-      a different default mode per device. Each mode decides what Jarvis does and how
-      much it interrupts. First ideas:
-      - **Work:** proactive email/calendar on, concise replies, focus on to-dos.
-      - **Study:** notifications held back, knowledge folder and study coach ready,
-        optional pomodoro timer.
-      - **Music:** Spotify first, short replies, no chatter.
-      - **Watching something:** silent unless spoken to; notices only for urgent things.
-      - **Gaming:** quiet, no screen pop-ups over the game, hardware alerts only for
-        real problems; could switch on by itself when a game is running.
-      Per-device defaults, e.g. G14 → work/study, desktop → gaming/music. Ties in with
-      quiet hours and the proactive assistant above.
+- [ ] *(nothing queued — add ideas here)*
 
 ## To set up / test
 
 - [ ] **Voice test on the G14** — wake word, "what time is it", "open Notepad",
       microphone choice in ⚙ → audio. (Typed commands are being tested first.)
-- [ ] **Connect the add-ons on the G14** — Spotify connected (not yet tested);
-      device sync, knowledge folder next; Claude and Home Assistant optional.
+- [ ] **Try the new add-ons on the G14** — install Claude Code and log in (ADDONS.md
+      §11), set the writing voice (§12), check proactive alerts (§13) and modes (§14),
+      reconnect Google for Drive (§16), Notion (§17), notes (§18). Spotify connected but
+      not yet tested (device choice §15). Home Assistant only if there are smart devices.
 - [ ] **Tailscale for the OnePlus 13** — Tailscale on phone + PCs, then the phone
       dashboard over the Tailscale address (ADDONS.md §9).
 - [ ] **Install on the desktop** (Aftershock, 9800X3D + RTX 5070) — the PyQt6 pin is
@@ -65,6 +30,12 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-24 — Claude through your subscription (Claude Code, no API key), writing
+  voice, proactive alerts (email + suggested replies, calendar from email, reminders,
+  due to-dos), modes (work/study/music/watching/gaming, per-device default, automatic
+  gaming mode), Spotify device choice, Google Drive & Docs, Notion, notes.
+- 2026-11-24 — Device sync and knowledge folder set up on the G14.
 
 - 2026-11-24 — Google connected on the G14 (published consent screen, PRIVACY.md);
   calendar and email listing work against the real account.
