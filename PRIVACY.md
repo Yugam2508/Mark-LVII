@@ -12,18 +12,24 @@ When the owner connects Google, the app can read and act on that account's:
   (scope `gmail.modify`; it cannot permanently delete mail).
 - **Google Calendar** — to list, search, create and delete events (`calendar.events`).
 - **Google Tasks** — to manage the to-do list (`tasks`).
+- **Google Drive** — to find and read the owner's files (`drive.readonly`), and to
+  create Google Docs and add to the Docs it created itself (`drive.file`). It cannot
+  change or delete files it did not create.
 
-It does this only when the owner asks it to. Sending an email or deleting an event
-needs a confirmation the owner presses on screen.
+It does this when the owner asks, and — if the owner leaves "proactive alerts"
+switched on — it also checks every few minutes for new important email, upcoming
+events and to-dos that are due, so it can tell the owner about them. Sending an
+email or deleting an event always needs a confirmation the owner presses on screen.
 
 ## Where the data goes
 
 - Google sign-in tokens are stored only on the owner's computers, in
   `config/token_google.json`. Deleting that file, or removing access at
   <https://myaccount.google.com/permissions>, signs the app out.
-- To answer a request, the relevant text (for example an email being read out) is
-  sent to the AI model the owner has chosen — Google Gemini by default, or
-  Anthropic's Claude if configured — under that provider's own terms.
+- To answer a request, the relevant text (for example an email being read out, or
+  an email it is suggesting a reply to) is sent to the AI model the owner has
+  chosen — Google Gemini by default, or Anthropic's Claude (through the owner's own
+  Claude account or API key) if configured — under that provider's own terms.
 - Nothing is sold, shared with anyone else, or used for advertising.
 - Google user data is used only to provide these features to the owner, in line
   with the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),

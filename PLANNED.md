@@ -5,29 +5,16 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To build
 
-- [ ] **Spotify: choose the device.** "Play this on my phone" / "move it to the
-      laptop" — pick a Spotify Connect device by name instead of only the active one
-      or this PC. (`plugins/spotify_control.py`)
-- [ ] **Notion.** Read, search and add to Notion pages and databases by voice.
-- [ ] **Note-taking.** Quick voice notes ("note that…", "take notes on this meeting")
-      saved somewhere you can find on every device (Notion, Google Docs or the
-      knowledge folder), plus reading them back.
-- [ ] **Google Drive and Docs.** Find, read and create Drive files and Google Docs.
-      The APIs are already enabled in the JARVIS Google Cloud project; the sign-in
-      needs the Drive/Docs scopes added (`plugins/_google_auth.py`), which means
-      reconnecting Google once.
-- [ ] **A proper writing voice.** Emails, documents and notes written well and in
-      your style. Route writing to a stronger model than the voice model (e.g. Claude
-      through `core.gemini`'s provider setting), with a short style guide.
+- [ ] *(nothing queued — add ideas here)*
 
 ## To set up / test
 
 - [ ] **Voice test on the G14** — wake word, "what time is it", "open Notepad",
       microphone choice in ⚙ → audio. (Typed commands are being tested first.)
-- [ ] **Connect the add-ons on the G14** — Spotify (connected, not yet tested),
-      Google (Gmail, Calendar, Tasks: in progress — hit "An error occurred while
-      creating the OAuth configuration" on the consent-screen step), device sync,
-      knowledge folder; Claude and Home Assistant optional.
+- [ ] **Try the new add-ons on the G14** — install Claude Code and log in (ADDONS.md
+      §11), set the writing voice (§12), check proactive alerts (§13) and modes (§14),
+      reconnect Google for Drive (§16), Notion (§17), notes (§18). Spotify connected but
+      not yet tested (device choice §15). Home Assistant only if there are smart devices.
 - [ ] **Tailscale for the OnePlus 13** — Tailscale on phone + PCs, then the phone
       dashboard over the Tailscale address (ADDONS.md §9).
 - [ ] **Install on the desktop** (Aftershock, 9800X3D + RTX 5070) — the PyQt6 pin is
@@ -43,6 +30,15 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-24 — Claude through your subscription (Claude Code, no API key), writing
+  voice, proactive alerts (email + suggested replies, calendar from email, reminders,
+  due to-dos), modes (work/study/music/watching/gaming, per-device default, automatic
+  gaming mode), Spotify device choice, Google Drive & Docs, Notion, notes.
+- 2026-11-24 — Device sync and knowledge folder set up on the G14.
+
+- 2026-11-24 — Google connected on the G14 (published consent screen, PRIVACY.md);
+  calendar and email listing work against the real account.
 
 - 2026-11-24 — Gmail, Calendar, to-do (Google Tasks), Spotify, Claude provider,
   agents (daily digest, study coach, deal hunter), knowledge folder, voice

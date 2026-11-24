@@ -8,8 +8,15 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Gmail | "Any new emails?", "Read the first one", "Reply saying I'll be there" | `plugins/gmail_control.py` |
 | Google Calendar | "What's on tomorrow?", "Add gym Friday at 6pm" | `plugins/calendar_control.py` |
 | To-do list (Google Tasks) | "Add buy milk to my list", "Tick off the second one" | `plugins/todo_list.py` |
-| Spotify | "Play Blinding Lights", "Play my workout playlist", "Like this song" | `plugins/spotify_control.py` |
-| Claude | Claude as the brain, instead of or alongside Gemini | `providers/llm_anthropic.py` |
+| Spotify | "Play Blinding Lights", "Play my workout playlist on my phone", "Move it to the desktop" | `plugins/spotify_control.py` |
+| Google Drive & Docs | "Find my chemistry notes in Drive", "Make a Google Doc with…" | `plugins/google_drive.py` |
+| Claude (your subscription) | Claude writes and thinks, using your Claude account — no API key | `providers/llm_claude_code.py` |
+| Claude (API key) | Claude as the brain, billed per use | `providers/llm_anthropic.py` |
+| Writing voice | "Write my teacher an email asking for…", "Make this more polite" | `plugins/writer.py` |
+| Proactive alerts | Tells you about important email (with a suggested reply), events and due to-dos | `plugins/proactive_alerts.py` |
+| Modes | "Gaming mode", "I'm studying", "Back to normal" | `plugins/modes.py` |
+| Notes | "Note that…", "What did I note today?" | `plugins/notes.py` |
+| Notion | "Search Notion for…", "Add this to my Notion page" | `plugins/notion.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
 | Interrupt by voice | Talk over JARVIS to stop it | `plugins/voice_interrupt.py` + `main.py` |
@@ -96,6 +103,9 @@ JARVIS opens the desktop app.
 ---
 
 ## 4. Claude
+
+> **No API key?** Use your Claude subscription instead. See section 11. The rest
+> of this section is for a pay-per-use API key.
 
 Claude is billed per use, so you need an API key: <https://console.anthropic.com> →
 Settings → API Keys. Add a monthly spend limit there so there are no surprises.
@@ -209,7 +219,122 @@ out.
 
 ---
 
-## 10. Keeping up with Fatih's updates
+---
+
+## 11. Claude with your Claude subscription (no API key)
+
+Jarvis can use the Claude account you already pay for, through **Claude Code**. Your
+usage comes out of the same limits as your Claude chats.
+
+1. Install Claude Code. In PowerShell:
+   ```powershell
+   irm https://claude.ai/install.ps1 | iex
+   ```
+2. Run `claude` once, log in with your Claude account, then close it.
+3. In Jarvis: **⚙ → ENGINE & PROVIDERS** → pick **Claude (your subscription, via Claude
+   Code)** as the provider for background requests → **TEST**.
+
+Keep **Gemini Live** as the voice: Claude Code takes a second or more to start each
+answer, which is fine for writing and research but too slow to talk back and forth.
+Claude Code runs with all its tools switched off here, so it can only write text; it
+can't touch your files.
+
+## 12. Writing voice
+
+Anything longer than a sentence (emails, messages, documents, captions) is written by
+the best writer available: Claude through your subscription, then a Claude API key if
+you have one, then Gemini.
+
+**⚙ → PLUGIN SETTINGS → WRITING VOICE**:
+- **How you write:** a few words, e.g. `casual, short sentences, no emojis, British spelling`.
+- **Sign emails as:** your name.
+- **TRY IT** writes a test message.
+
+Say "write my teacher an email asking for an extension and put it in my drafts". The
+draft goes into Gmail **Drafts**; nothing is sent from the writer.
+
+## 13. Proactive alerts
+
+Once Google is connected, every few minutes Jarvis:
+- tells you about **important new email** (Gmail's important mark, or anyone on your VIP
+  list), puts a **suggested reply** on screen, and sends it only if you say so and press
+  CONFIRM;
+- offers to **add dates from emails** to your calendar;
+- **reminds you before events** (15 minutes by default), and once a day lists **to-dos
+  that are due**.
+
+Promotions and social mail are skipped, nothing is announced twice, and the first run
+doesn't read out your old mail. Settings are in **⚙ → PLUGIN SETTINGS → PROACTIVE
+ALERTS**: how often it checks, reminder time, VIP senders, and on/off switches. Say "check
+my mail now" any time.
+
+If both PCs are on, both will announce new mail. Turn proactive alerts off on the one you
+use less, or keep the laptop in study or gaming mode while the desktop is on.
+
+## 14. Modes
+
+Say **"work mode"**, **"study mode"**, **"music mode"**, **"I'm watching a movie"**,
+**"gaming mode"** or **"back to normal"**.
+
+| Mode | What changes |
+|---|---|
+| Normal / Work | All alerts on; work keeps replies short and practical |
+| Study | Only urgent alerts; routines stay quiet; the rest is summed up when you finish |
+| Music | Only urgent alerts; very short replies |
+| Watching | Silent unless spoken to; only urgent alerts |
+| Gaming | Silent, nothing pops up on screen; only urgent alerts |
+
+"Urgent" means mail from your VIP list and events about to start. When a quiet mode ends,
+Jarvis sums up what came in meanwhile.
+
+**Per device:** **⚙ → PLUGIN SETTINGS → MODES → Mode this computer starts in**. For
+example, set the G14 to *work* and the desktop to *normal*. **Gaming mode switches on by
+itself** when a game from Steam, Epic, Riot, Battle.net, EA or Ubisoft starts, and back
+off when you close it. Add other games by their `.exe` name in the same section.
+
+## 15. Spotify on a chosen device
+
+"Play Blinding Lights **on my phone**", "move it to the **desktop**", "what devices are
+there?". Spotify must be open on that device. Jarvis tells the laptop and desktop apart
+by itself. If your devices have unusual names, add nicknames in **⚙ → PLUGIN SETTINGS →
+SPOTIFY**, e.g. `desktop=DESKTOP-AB12, laptop=ROG-ZEPHYRUS`.
+
+## 16. Google Drive and Docs
+
+1. In Google Cloud, make sure **Google Drive API** and **Google Docs API** are enabled
+   (APIs & Services → Library).
+2. In Jarvis: **⚙ → PLUGIN SETTINGS → GOOGLE → CONNECT GOOGLE** once more, and allow the
+   new Drive permissions. Gmail, Calendar and Tasks keep working whether or not you do this.
+
+Then: "find my chemistry notes in Drive", "read the first one", "make a Google Doc with a
+packing list for my trip". Jarvis can read all your files but can only change Docs it
+created itself.
+
+## 17. Notion
+
+1. Go to <https://www.notion.so/profile/integrations> → **New integration** → name
+   `JARVIS`, type **Internal** → **Save** → copy the **Internal Integration Secret**.
+2. **⚙ → PLUGIN SETTINGS → NOTION**: paste it. Optionally paste the link of a page to
+   use as the **home page**, where new pages and notes go. Press **TEST**.
+3. In Notion, open each page Jarvis should see → **•••** → **Connections** → **JARVIS**.
+   Sharing a parent page shares everything inside it.
+
+Then: "search Notion for project ideas", "add 'buy a mic' to that page", "make a Notion
+page called Trip plan".
+
+## 18. Notes
+
+"Note that the router password is on the fridge", "take a note: …" (rough dictation is
+tidied into bullet points), "note down what we just talked about", "what did I note
+today?", "did I note anything about the dentist?".
+
+Notes go to **JARVIS Notes.md** in your knowledge folder by default, so they're on both PCs,
+in the OneDrive app on your phone, and searchable with your other documents. To keep them in
+Notion or a Google Doc instead: **⚙ → PLUGIN SETTINGS → NOTES**.
+
+---
+
+## 19. Keeping up with Fatih's updates
 
 Fatih releases new Marks as new repositories, so his updates don't arrive in this fork
 automatically. When a new Mark comes out, ask Claude Code to move these add-ons onto it:
