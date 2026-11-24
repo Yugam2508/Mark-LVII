@@ -24,10 +24,8 @@ bottom of their section; finished items move to **Done** with the date.
 
 - [ ] **Voice test on the G14** — wake word, "what time is it", "open Notepad",
       microphone choice in ⚙ → audio. (Typed commands are being tested first.)
-- [ ] **Connect the add-ons on the G14** — Spotify (connected, not yet tested),
-      Google (Gmail, Calendar, Tasks: in progress — hit "An error occurred while
-      creating the OAuth configuration" on the consent-screen step), device sync,
-      knowledge folder; Claude and Home Assistant optional.
+- [ ] **Connect the add-ons on the G14** — Spotify connected (not yet tested);
+      device sync, knowledge folder next; Claude and Home Assistant optional.
 - [ ] **Tailscale for the OnePlus 13** — Tailscale on phone + PCs, then the phone
       dashboard over the Tailscale address (ADDONS.md §9).
 - [ ] **Install on the desktop** (Aftershock, 9800X3D + RTX 5070) — the PyQt6 pin is
@@ -43,6 +41,9 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-24 — Google connected on the G14 (published consent screen, PRIVACY.md);
+  calendar and email listing work against the real account.
 
 - 2026-11-24 — Gmail, Calendar, to-do (Google Tasks), Spotify, Claude provider,
   agents (daily digest, study coach, deal hunter), knowledge folder, voice
