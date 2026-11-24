@@ -18,7 +18,7 @@ HOW SIGN-IN WORKS
     Both files are covered by .gitignore (`**/client_secret*.json`,
     `**/token*.json`), so a fork or a pull request cannot publish them.
 
-ONE APPROVAL FOR ALL THREE PLUGINS
+ONE APPROVAL FOR ALL THE GOOGLE PLUGINS
     The scopes below cover Calendar events, Gmail (read, label, draft and send) and
     Google Tasks (the to-do list), so connecting once enables gmail_control,
     calendar_control and todo_list. `gmail.modify` is the narrowest Gmail
@@ -43,7 +43,22 @@ SCOPES = [
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/tasks",   # todo_list — Google Tasks syncs to the phone
+    "https://www.googleapis.com/auth/drive.readonly",   # google_drive — find and read your files
+    "https://www.googleapis.com/auth/drive.file",       # google_drive — create Docs (only its own)
 ]
+
+# What each API needs, so a sign-in made before Drive was added keeps working for
+# Gmail/Calendar/Tasks and only Drive asks for a reconnect.
+NEEDS = {
+    "gmail": ["https://www.googleapis.com/auth/gmail.modify"],
+    "calendar": ["https://www.googleapis.com/auth/calendar.events"],
+    "tasks": ["https://www.googleapis.com/auth/tasks"],
+    "drive": ["https://www.googleapis.com/auth/drive.readonly",
+              "https://www.googleapis.com/auth/drive.file"],
+    "docs": ["https://www.googleapis.com/auth/drive.file"],
+}
+RECONNECT = ("Your Google sign-in is from before this feature was added. Open ⚙ → PLUGIN "
+             "SETTINGS → GOOGLE and press CONNECT GOOGLE once more to allow it.")
 
 SETUP_STEPS = (
     "Google is not connected. Open ⚙ → PLUGIN SETTINGS → GOOGLE and press "
@@ -82,7 +97,10 @@ def load_credentials():
 
     with _lock:
         try:
-            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+            # Without `scopes`: the token keeps exactly what was granted. Passing the
+            # full list would ask Google for scopes this sign-in never had on the next
+            # refresh, which fails and would log Gmail out too.
+            creds = Credentials.from_authorized_user_file(str(TOKEN_FILE))
         except (ValueError, OSError):
             return None
         if creds.valid:
@@ -95,6 +113,15 @@ def load_credentials():
             TOKEN_FILE.write_text(creds.to_json(), encoding="utf-8")
             return creds
     return None
+
+
+def has_access(api: str) -> bool:
+    """True when the saved sign-in includes what `api` needs."""
+    creds = load_credentials()
+    if creds is None:
+        return False
+    granted = set(creds.scopes or [])
+    return all(s in granted for s in NEEDS.get(api, []))
 
 
 def service(api: str, version: str):
@@ -155,7 +182,7 @@ def disconnect() -> None:
 
 PLUGIN_SETTINGS = {
     "namespace": NAMESPACE,
-    "title": "GOOGLE (GMAIL + CALENDAR + TASKS)",
+    "title": "GOOGLE (GMAIL, CALENDAR, TASKS, DRIVE)",
     "fields": [
         {
             "key": "client_secret_path",

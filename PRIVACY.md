@@ -12,6 +12,9 @@ When the owner connects Google, the app can read and act on that account's:
   (scope `gmail.modify`; it cannot permanently delete mail).
 - **Google Calendar** — to list, search, create and delete events (`calendar.events`).
 - **Google Tasks** — to manage the to-do list (`tasks`).
+- **Google Drive** — to find and read the owner's files (`drive.readonly`), and to
+  create Google Docs and add to the Docs it created itself (`drive.file`). It cannot
+  change or delete files it did not create.
 
 It does this only when the owner asks it to. Sending an email or deleting an event
 needs a confirmation the owner presses on screen.
