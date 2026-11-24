@@ -273,6 +273,14 @@ class RoutineEngine:
         return text
 
     def in_quiet(self, dt: datetime) -> bool:
+        # A mode that wants silence (watching, gaming, study) counts as quiet
+        # hours for routines that respect them. Empty on the cloud server.
+        try:
+            from core import addons
+            if addons.mode_policy().get("quiet_routines"):
+                return True
+        except Exception:
+            pass
         q = self.quiet_hours()
         if not q:
             return False

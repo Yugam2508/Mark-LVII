@@ -712,6 +712,10 @@ class JarvisLive:
         self.ui.get_plugins = self._plugin_registry.list_for_ui
         self.ui.get_plugin_settings = self._plugin_registry.settings_schemas  # ⚙ settings tab
         self.ui.request_say = self.plugin_say   # plugins: mid-task speech channel
+        # Background add-ons (proactive assistant, modes) have no tool call to
+        # receive `player` from, so they read it from core.addons.
+        from core import addons as _addons
+        _addons.bind(player=self.ui, say=self.plugin_say)
 
         # Tool access for plugins that ORCHESTRATE other tools rather than doing
         # a job themselves — screen_agent is the first, and the reason this
