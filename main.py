@@ -632,6 +632,12 @@ class JarvisLive:
         self._ptt                  = None    # core.hotkey.PushToTalk
         self._out_level            = 0.0     # level of the audio being played right now
         self._echo                 = EchoGuard()
+        # Interrupt by voice (opt-in, plugins/voice_interrupt.py holds the switch).
+        # Read off the audio thread every few seconds; see _barge_in_settings.
+        self._barge_enabled        = False
+        self._barge_extra          = 0       # extra blocks required on "careful"
+        self._barge_run            = 0       # consecutive blocks judged to be the user
+        self._barge_next_check     = 0.0
         # `stream.write()` returns when the buffer accepts the audio, not when the
         # speaker has finished with it, so sound is still in the room after the
         # speaking flag drops. Streaming the microphone during that gap is how an
@@ -1327,6 +1333,17 @@ class JarvisLive:
         except Exception:
             pass
 
+    def _barge_in_settings(self) -> None:
+        """Refresh the voice-interrupt switch. Runs on a short-lived thread so the
+        audio callback never waits on the config file."""
+        try:
+            from memory.config_manager import get_plugin_config
+            cfg = get_plugin_config("voice_interrupt")
+            self._barge_enabled = bool(cfg.get("enabled", False))
+            self._barge_extra = 4 if str(cfg.get("sensitivity", "")).lower() == "careful" else 0
+        except Exception:
+            self._barge_enabled = False
+
     def interrupt(self) -> None:
         """Stop JARVIS mid-speech: drain queued audio and open mic immediately."""
         self._interrupted = True
@@ -1824,13 +1841,31 @@ class JarvisLive:
             if jarvis_speaking:
                 # Nothing is streamed while JARVIS talks.
                 #
-                # Interrupting by voice used to live here: `EchoGuard` can pick a
-                # user out from under our own echo, and `core/echo.py` still does
-                # that for the tail below. Re-enabling is small — classify each
-                # block here and call interrupt() after `required_blocks` of
-                # agreement — but it depends on the listener's room, so it stays
-                # out until it can be tried on real hardware.
+                # Interrupting by voice: OFF unless switched on in ⚙ → PLUGIN
+                # SETTINGS → VOICE INTERRUPT, because how well it works depends on
+                # the room. `EchoGuard` judges each block against what we are
+                # playing; after `required_blocks` in a row (plus a margin on
+                # "careful") the answer is cut short. interrupt() runs on its own
+                # thread — never inside this audio callback.
+                now = time.monotonic()
+                if now >= self._barge_next_check:
+                    self._barge_next_check = now + 3.0
+                    threading.Thread(target=self._barge_in_settings, daemon=True).start()
+                if not self._barge_enabled:
+                    return
+                try:
+                    if self._echo.is_user_speech(indata, SEND_SAMPLE_RATE, _pcm_level(indata)):
+                        self._barge_run += 1
+                        if self._barge_run >= self._echo.required_blocks + self._barge_extra:
+                            self._barge_run = 0
+                            print("[JARVIS] 🗣 Voice interrupt")
+                            threading.Thread(target=self.interrupt, daemon=True).start()
+                    else:
+                        self._barge_run = 0
+                except Exception:
+                    self._barge_run = 0
                 return
+            self._barge_run = 0
 
             # ── Echo tail ────────────────────────────────────────────────────
             # The speaking flag has dropped but the speakers have not finished.
