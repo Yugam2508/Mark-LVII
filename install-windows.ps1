@@ -44,7 +44,12 @@ function Install-WithWinget($id, $name) {
     }
     Say "Installing $name"
     winget install --id $id -e --silent --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) { Fail "Installing $name failed (winget exit code $LASTEXITCODE)." }
+    # winget reports "already installed" (0x8A150061) and "no newer version" (0x8A15002B)
+    # as errors. Both mean the program is there, which is all this script needs.
+    $alreadyThere = @(-1978335135, -1978335189)
+    if ($LASTEXITCODE -ne 0 -and $alreadyThere -notcontains $LASTEXITCODE) {
+        Fail "Installing $name failed (winget exit code $LASTEXITCODE)."
+    }
     Refresh-Path
 }
 
