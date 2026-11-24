@@ -5,14 +5,21 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To build
 
-- [ ] *(nothing queued — add ideas here)*
+- [ ] **Edit before confirming.** The on-screen confirmation only offers CONFIRM or
+      CANCEL. Add an **EDIT** button that opens the text in an editable box — email
+      drafts and replies (To / Subject / body), suggested replies from proactive alerts,
+      notes, calendar events (title / time / place), Notion and Docs content — so you
+      can fix a word and then confirm, without asking Jarvis to redo it. Also make the
+      draft panels (DRAFT, NOTE SAVED, NEW EMAIL) clickable to edit, with SAVE / SEND.
+      Needs a small change to the HUD (`gui/`, `core/confirm.py` passing editable
+      fields through to the action).
 
 ## To set up / test
 
 - [ ] **Voice test on the G14** — wake word, "what time is it", "open Notepad",
       microphone choice in ⚙ → audio. (Typed commands are being tested first.)
-- [ ] **Try the new add-ons on the G14** — install Claude Code and log in (ADDONS.md
-      §11), set the writing voice (§12), check proactive alerts (§13) and modes (§14),
+- [ ] **Try the new add-ons on the G14** — Claude Code is installed and logged in; pick
+      it in ⚙ → ENGINE & PROVIDERS (ADDONS.md §11), set the writing voice (§12), check proactive alerts (§13) and modes (§14),
       reconnect Google for Drive (§16), Notion (§17), notes (§18). Spotify connected but
       not yet tested (device choice §15). Home Assistant only if there are smart devices.
 - [ ] **Tailscale for the OnePlus 13** — Tailscale on phone + PCs, then the phone
