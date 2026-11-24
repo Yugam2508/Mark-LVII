@@ -75,6 +75,7 @@ from gui.overlays import (
     AudioDeviceOverlay,
     ClipboardPanel,
     ConfirmBanner,
+    EditPanel,
     CustomizeOverlay,
     MemoryOverlay,
     PluginManagerOverlay,
@@ -113,6 +114,7 @@ class MainWindow(QMainWindow):
     _clipboard_sig  = pyqtSignal(str)        # clipboard text changed (thread-safe)
     _confirm_sig    = pyqtSignal(str, str)   # (title, detail) — irreversible-action gate
     _confirm_hide_sig = pyqtSignal()
+    _edit_sig       = pyqtSignal(object)   # spec dict — an editable draft panel
     _wake_dl_sig    = pyqtSignal(bool, str)  # wake-word install finished (ok, message)
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
@@ -401,6 +403,7 @@ class MainWindow(QMainWindow):
         self._camera_sig.connect(self._show_camera_frame)
         self._confirm_sig.connect(self._show_confirm_banner)
         self._confirm_hide_sig.connect(self._hide_confirm_banner)
+        self._edit_sig.connect(self._show_edit_panel)
         self._cam_stream_sig.connect(self._on_cam_stream)
         self._cam_frame_sig.connect(self._on_cam_frame)
         self._wake_btns_sig.connect(self._refresh_wake_btns)
@@ -2784,10 +2787,26 @@ class MainWindow(QMainWindow):
 
     def _show_confirm_banner(self, title: str, detail: str):
         self._hide_confirm_banner()
-        ov = ConfirmBanner(title, detail, parent=self.centralWidget())
+        try:
+            from core.confirm import pending_fields
+            fields = pending_fields()
+        except Exception:
+            fields = []
+        ov = ConfirmBanner(title, detail, parent=self.centralWidget(), fields=fields)
         ov.answered.connect(self._on_confirm_answered)
         self._centre_overlay(ov)
         self._confirm_overlay = ov
+
+    # ── Editable drafts ──────────────────────────────────────────────────────
+
+    def _show_edit_panel(self, spec):
+        old = getattr(self, "_edit_overlay", None)
+        if old is not None:
+            old.close()
+            old.deleteLater()
+        ov = EditPanel(spec if isinstance(spec, dict) else {}, parent=self.centralWidget())
+        self._centre_overlay(ov)
+        self._edit_overlay = ov
 
     def _hide_confirm_banner(self):
         ov = getattr(self, "_confirm_overlay", None)
@@ -2796,14 +2815,14 @@ class MainWindow(QMainWindow):
             ov.deleteLater()
             self._confirm_overlay = None
 
-    def _on_confirm_answered(self, accepted: bool):
+    def _on_confirm_answered(self, accepted: bool, values=None):
         # Tear the banner down first: core.confirm.resolve() may be about to
         # shut the machine down, and a live widget mid-callback is not where you
         # want to be when that happens.
         self._hide_confirm_banner()
         try:
             from core.confirm import resolve
-            resolve(bool(accepted))
+            resolve(bool(accepted), values if isinstance(values, dict) else None)
         except Exception as e:
             self._log.append_log(f"ERR: Confirmation failed — {e}")
 

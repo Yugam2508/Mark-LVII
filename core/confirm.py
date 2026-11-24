@@ -53,6 +53,14 @@ class _Pending:
     detail:  str
     run:     Callable[[], str]
     at:      float
+    # Optional EDIT support. `fields` is a list of
+    #   {"key": str, "label": str, "value": str, "multiline": bool}
+    # and `run_edited(values)` performs the action with what the person typed.
+    # The values come from the person's own keyboard on the HUD — never from the
+    # model — so editing does not weaken the gate.
+    fields:     Optional[list] = None
+    run_edited: Optional[Callable[[dict], str]] = None
+    editing:    bool = False
 
 
 _pending: Optional[_Pending] = None
@@ -79,8 +87,14 @@ def _log(msg: str) -> None:
             pass
 
 
-def request(key: str, title: str, detail: str, run: Callable[[], str]) -> str:
+def request(key: str, title: str, detail: str, run: Callable[[], str],
+            fields: Optional[list] = None,
+            run_edited: Optional[Callable[[dict], str]] = None) -> str:
     """Park an irreversible action behind the on-screen gate.
+
+    With `fields` and `run_edited`, the banner also offers EDIT: the person can
+    change those fields (an email's recipient, subject and text, say) before
+    pressing CONFIRM, and `run_edited(values)` is called with what they typed.
 
     Returns the sentence the tool should hand back to the model — phrased as an
     instruction so the assistant asks the user out loud in their own language,
@@ -93,9 +107,11 @@ def request(key: str, title: str, detail: str, run: Callable[[], str]) -> str:
         return (f"I cannot confirm '{title}' right now because the interface is "
                 f"not available, so I have not done it.")
 
+    editable = [dict(f) for f in fields] if (fields and run_edited) else None
     with _lock:
         _pending = _Pending(key=key, title=title, detail=detail,
-                            run=run, at=time.monotonic())
+                            run=run, at=time.monotonic(),
+                            fields=editable, run_edited=run_edited if editable else None)
 
     try:
         _show_cb(title, detail)
@@ -112,8 +128,27 @@ def request(key: str, title: str, detail: str, run: Callable[[], str]) -> str:
     )
 
 
-def resolve(accepted: bool) -> None:
-    """Called by the UI when the user presses CONFIRM or CANCEL.
+def pending_fields() -> list:
+    """The editable fields of the waiting confirmation, or [] — read by the HUD
+    when it builds the banner, so the (title, detail) signal stays unchanged."""
+    with _lock:
+        if _pending is None or not _pending.fields:
+            return []
+        return [dict(f) for f in _pending.fields]
+
+
+def begin_edit() -> None:
+    """The person pressed EDIT. Typing takes longer than reading, so the
+    confirmation stops counting down while they edit."""
+    with _lock:
+        if _pending is not None:
+            _pending.editing = True
+            _pending.at = time.monotonic()
+
+
+def resolve(accepted: bool, values: Optional[dict] = None) -> None:
+    """Called by the UI when the user presses CONFIRM or CANCEL. `values` holds
+    the edited fields when the person used EDIT.
 
     Runs the stored callable on a worker thread — this is invoked from the Qt
     thread, and shutting the machine down from inside a button handler would
@@ -132,7 +167,7 @@ def resolve(accepted: bool) -> None:
     if p is None:
         return
 
-    if time.monotonic() - p.at > TIMEOUT_SECONDS:
+    if not p.editing and time.monotonic() - p.at > TIMEOUT_SECONDS:
         _log(f"SYS: Confirmation expired — {p.title}")
         return
 
@@ -140,9 +175,16 @@ def resolve(accepted: bool) -> None:
         _log(f"SYS: Cancelled — {p.title}")
         return
 
+    edited = None
+    if values and p.run_edited and p.fields:
+        originals = {f["key"]: str(f.get("value", "")) for f in p.fields}
+        cleaned = {k: str(values.get(k, originals[k])) for k in originals}
+        if cleaned != originals:
+            edited = cleaned
+
     def _worker():
         try:
-            result = p.run() or "Done."
+            result = (p.run_edited(edited) if edited is not None else p.run()) or "Done."
             _log(f"SYS: Confirmed — {p.title}. {result}")
         except Exception as e:
             _log(f"ERR: {p.title} failed — {e}")

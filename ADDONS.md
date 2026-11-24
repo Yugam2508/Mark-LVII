@@ -17,6 +17,7 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Modes | "Gaming mode", "I'm studying", "Back to normal" | `plugins/modes.py` |
 | Notes | "Note that…", "What did I note today?" | `plugins/notes.py` |
 | Notion | "Search Notion for…", "Add this to my Notion page" | `plugins/notion.py` |
+| Edit before it happens | EDIT on confirmations; drafts, replies, notes and events open editable | `gui/overlays.py`, `core/confirm.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
 | Interrupt by voice | Talk over JARVIS to stop it | `plugins/voice_interrupt.py` + `main.py` |
@@ -334,7 +335,30 @@ Notion or a Google Doc instead: **⚙ → PLUGIN SETTINGS → NOTES**.
 
 ---
 
-## 19. Keeping up with Fatih's updates
+## 19. Editing before anything happens
+
+You never have to ask Jarvis to redo a draft to change a word.
+
+- **Confirmations have EDIT.** When Jarvis asks you to confirm sending an email or a reply,
+  press **✎ EDIT** and the To, Subject and message become text boxes. Fix anything, then
+  press **CONFIRM** and your version is sent. The confirmation doesn't time out while you're
+  editing.
+- **Drafts open editable.** Anything the writing voice writes appears in a panel you can
+  type in:
+  - emails: **SAVE TO DRAFTS** / **UPDATE DRAFT**, **SEND**, **COPY**;
+  - other text: **SAVE AS NOTE**, **MAKE GOOGLE DOC**, **COPY**.
+- **Suggested replies** (proactive alerts) open the same way: change the reply, then
+  **SEND REPLY** or **SAVE AS DRAFT**.
+- **Notes** open after saving. Fix a typo and press **SAVE CHANGES**.
+- **Calendar events** Jarvis adds open with their title, time, length, place and notes.
+  Change any of them and press **SAVE CHANGES**.
+
+Pressing **SEND** in a panel is your own click, so it sends straight away without a second
+confirmation. Anything Jarvis wants to send on its own still waits for CONFIRM.
+
+---
+
+## 20. Keeping up with Fatih's updates
 
 Fatih releases new Marks as new repositories, so his updates don't arrive in this fork
 automatically. When a new Mark comes out, ask Claude Code to move these add-ons onto it:

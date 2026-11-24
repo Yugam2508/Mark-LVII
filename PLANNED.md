@@ -5,14 +5,7 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To build
 
-- [ ] **Edit before confirming.** The on-screen confirmation only offers CONFIRM or
-      CANCEL. Add an **EDIT** button that opens the text in an editable box — email
-      drafts and replies (To / Subject / body), suggested replies from proactive alerts,
-      notes, calendar events (title / time / place), Notion and Docs content — so you
-      can fix a word and then confirm, without asking Jarvis to redo it. Also make the
-      draft panels (DRAFT, NOTE SAVED, NEW EMAIL) clickable to edit, with SAVE / SEND.
-      Needs a small change to the HUD (`gui/`, `core/confirm.py` passing editable
-      fields through to the action).
+- [ ] *(nothing queued — add ideas here)*
 
 ## To set up / test
 
@@ -37,6 +30,11 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-24 — Edit before it happens: EDIT on the confirmation banner (email To /
+  Subject / message, timeout paused while editing), and an editable panel for writer
+  drafts (SAVE/UPDATE DRAFT, SEND, COPY, SAVE AS NOTE, MAKE GOOGLE DOC), suggested replies
+  (SEND REPLY, SAVE AS DRAFT), notes (SAVE CHANGES) and new calendar events (SAVE CHANGES).
 
 - 2026-11-24 — Claude through your subscription (Claude Code, no API key), writing
   voice, proactive alerts (email + suggested replies, calendar from email, reminders,

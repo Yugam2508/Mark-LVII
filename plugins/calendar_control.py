@@ -233,9 +233,63 @@ def _create(svc, p, player) -> str:
         return outcome.unverified("calendar_create", "Google did not return the new event",
                                   title=title)
     _remember([ev])
-    _show(player, "CALENDAR — ADDED", _describe([ev]))
+    _open_editor(ev, body, player)
     return outcome.done("calendar_create", title=title, when=_event_when(ev),
-                        undo="say 'delete it' to remove it")
+                        undo="say 'delete it' to remove it",
+                        note="it is on screen where the user can edit it")
+
+
+def _open_editor(ev: dict, body: dict, player) -> None:
+    """The new event, editable on screen: fix the title, time, length or place and
+    SAVE CHANGES. Falls back to the plain panel on a HUD without editing."""
+    from core import addons
+    all_day = "date" in body["start"]
+    if all_day:
+        start_text, minutes = body["start"]["date"], ""
+    else:
+        t0 = dt.datetime.fromisoformat(body["start"]["dateTime"])
+        t1 = dt.datetime.fromisoformat(body["end"]["dateTime"])
+        start_text = t0.strftime("%Y-%m-%d %H:%M")
+        minutes = str(int((t1 - t0).total_seconds() // 60))
+    fields = [{"key": "title", "label": "Title", "value": ev.get("summary", "")},
+              {"key": "start", "label": "Starts (YYYY-MM-DD HH:MM, or a date for all day)",
+               "value": start_text},
+              {"key": "minutes", "label": "Length in minutes (empty for all day)", "value": minutes},
+              {"key": "location", "label": "Place", "value": ev.get("location", "")},
+              {"key": "description", "label": "Notes", "value": ev.get("description", ""),
+               "multiline": True}]
+
+    def save(v: dict):
+        parsed = _parse_start(v.get("start", ""))
+        if parsed is None:
+            return False, "Start must look like 2026-11-27 18:00 (or just a date)."
+        when, whole_day = parsed
+        patch: dict = {"summary": v.get("title", "").strip() or "(no title)",
+                       "location": v.get("location", "").strip(),
+                       "description": v.get("description", "")}
+        if whole_day:
+            patch["start"] = {"date": when.isoformat(), "dateTime": None}
+            patch["end"] = {"date": (when + dt.timedelta(days=1)).isoformat(), "dateTime": None}
+        else:
+            try:
+                mins = max(5, int(v.get("minutes") or 60))
+            except ValueError:
+                return False, "Length must be a number of minutes."
+            patch["start"] = {"dateTime": when.isoformat(), "date": None}
+            patch["end"] = {"dateTime": (when + dt.timedelta(minutes=mins)).isoformat(), "date": None}
+        svc = gauth.service("calendar", "v3")
+        if svc is None:
+            return False, "Google is not connected."
+        new = svc.events().patch(calendarId="primary", eventId=ev["id"], body=patch).execute()
+        _remember([new])
+        return True, f"Saved ✓ — {_event_when(new)}"
+
+    if not addons.edit("CALENDAR — ADDED", fields,
+                       [{"label": "SAVE CHANGES", "run": save, "primary": True, "close": False,
+                         "busy": "Saving…"}],
+                       note="Added to your calendar. Change anything and press SAVE CHANGES.",
+                       player=player):
+        _show(player, "CALENDAR — ADDED", _describe([ev]))
 
 
 def _delete(svc, p, player) -> str:

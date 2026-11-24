@@ -633,6 +633,84 @@ class _HudOverlay(QWidget):
         super().closeEvent(e)
 
 
+class _FieldForm(QWidget):
+    """Labelled text boxes for a list of editable fields:
+    {"key", "label", "value", "multiline"}. Shared by the confirmation banner and
+    the edit panel. Plain data in, plain data out — no plugin code runs here."""
+
+    def __init__(self, fields: list, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("background: transparent;")
+        self._inputs: dict = {}
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+        box = (f"background: #000d12; color: {C.TEXT}; border: 1px solid {C.BORDER}; "
+               f"border-radius: 3px; padding: 4px 6px;")
+        for f in fields:
+            lbl = QLabel(str(f.get("label") or f.get("key", "")).upper())
+            lbl.setFont(hud_font(7))
+            lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+            lay.addWidget(lbl)
+            value = str(f.get("value", ""))
+            if f.get("multiline"):
+                w = QTextEdit()
+                w.setAcceptRichText(False)
+                w.setPlainText(value)
+                w.setFont(hud_font(9))
+                w.setMinimumHeight(140)
+                w.setStyleSheet(f"QTextEdit {{ {box} }} QTextEdit:focus {{ border-color: {C.PRI}; }}")
+            else:
+                w = QLineEdit(value)
+                w.setFont(hud_font(9))
+                w.setFixedHeight(28)
+                w.setStyleSheet(f"QLineEdit {{ {box} }} QLineEdit:focus {{ border-color: {C.PRI}; }}")
+            self._inputs[f["key"]] = w
+            lay.addWidget(w)
+
+    def values(self) -> dict:
+        out = {}
+        for key, w in self._inputs.items():
+            out[key] = w.toPlainText() if isinstance(w, QTextEdit) else w.text()
+        return out
+
+    def focus_first(self) -> None:
+        if self._inputs:
+            w = list(self._inputs.values())[-1]   # the body, usually what needs fixing
+            w.setFocus()
+
+
+def _hud_button(text: str, primary: bool = False, colour: str | None = None) -> QPushButton:
+    b = QPushButton(text)
+    b.setFixedHeight(32)
+    b.setFont(hud_font(9, QFont.Weight.Bold if primary else QFont.Weight.Normal))
+    b.setCursor(Qt.CursorShape.PointingHandCursor)
+    col = colour or (C.PRI if primary else C.TEXT_MED)
+    border = col if primary else C.BORDER
+    b.setStyleSheet(f"""
+        QPushButton {{ background: transparent; color: {col};
+            border: 1px solid {border}; border-radius: 3px; padding: 0 10px; }}
+        QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
+        QPushButton:disabled {{ color: {C.TEXT_DIM}; border-color: {C.BORDER}; }}
+    """)
+    return b
+
+
+def _recentre(w: QWidget) -> None:
+    """Resize to fit and stay centred over the HUD after the content changed.
+
+    The layout has to be activated first: a widget that was just added has no
+    size hint yet, and adjustSize() alone keeps the old, smaller height."""
+    lay = w.layout()
+    if lay is not None:
+        lay.activate()
+    hint = w.sizeHint()
+    w.resize(max(w.width(), hint.width()), hint.height())
+    p = w.parentWidget()
+    if p is not None:
+        w.move(max(0, (p.width() - w.width()) // 2), max(0, (p.height() - w.height()) // 2))
+
+
 class ConfirmBanner(_HudOverlay):
     """The gate in front of an action that cannot be taken back.
 
@@ -641,12 +719,17 @@ class ConfirmBanner(_HudOverlay):
     and the answer travels from a human finger to core/confirm.py without the
     model in the loop. Nothing blocks while it is up: the assistant keeps
     talking, so this costs no latency — unlike the old gate, which spent two
-    tool round trips on every power command."""
+    tool round trips on every power command.
 
-    answered = pyqtSignal(bool)
+    EDIT (when the action offers editable fields, e.g. an email): the detail turns
+    into text boxes; CONFIRM then carries what was typed. Those values come from
+    the person's keyboard, so the model is still not in the loop."""
+
+    answered = pyqtSignal(bool, object)    # accepted, edited values or None
     _OW = 430
+    _OW_EDIT = 560
 
-    def __init__(self, title: str, detail: str, parent=None):
+    def __init__(self, title: str, detail: str, parent=None, fields: list | None = None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
@@ -657,10 +740,13 @@ class ConfirmBanner(_HudOverlay):
             }}
         """)
         self.setFixedWidth(self._OW)
+        self._fields = fields or []
+        self._form: _FieldForm | None = None
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(8)
+        self._lay = lay
 
         hdr = QLabel("⚠  CONFIRM")
         hdr.setFont(hud_font(11, QFont.Weight.Bold))
@@ -673,12 +759,14 @@ class ConfirmBanner(_HudOverlay):
         ttl.setStyleSheet(f"color: {C.TEXT}; background: transparent;")
         lay.addWidget(ttl)
 
+        self._detail = None
         if detail:
             dtl = QLabel(detail)
             dtl.setWordWrap(True)
             dtl.setFont(hud_font(8))
             dtl.setStyleSheet(f"color: {C.TEXT_MED}; background: transparent;")
             lay.addWidget(dtl)
+            self._detail = dtl
 
         row = QHBoxLayout(); row.setSpacing(8)
 
@@ -691,8 +779,13 @@ class ConfirmBanner(_HudOverlay):
                 border: 1px solid {C.ACC}; border-radius: 3px; }}
             QPushButton:hover {{ background: rgba(255,107,0,40); }}
         """)
-        yes.clicked.connect(lambda: self.answered.emit(True))
+        yes.clicked.connect(self._confirm)
         row.addWidget(yes)
+
+        if self._fields:
+            self._edit_btn = _hud_button("✎  EDIT")
+            self._edit_btn.clicked.connect(self._start_edit)
+            row.addWidget(self._edit_btn)
 
         no = QPushButton("CANCEL")
         no.setFixedHeight(32)
@@ -703,14 +796,140 @@ class ConfirmBanner(_HudOverlay):
                 border: 1px solid {C.BORDER}; border-radius: 3px; }}
             QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
         """)
-        no.clicked.connect(lambda: self.answered.emit(False))
+        no.clicked.connect(lambda: self.answered.emit(False, None))
         row.addWidget(no)
         lay.addLayout(row)
+        self._row = row
 
         # Default focus on CANCEL: if someone hits Enter without reading, the
         # safe answer wins.
         no.setDefault(True)
         no.setFocus()
+
+    def _start_edit(self):
+        if self._form is not None:
+            return
+        try:
+            from core.confirm import begin_edit
+            begin_edit()                    # no countdown while typing
+        except Exception:
+            pass
+        if self._detail is not None:
+            self._detail.hide()
+        self._form = _FieldForm(self._fields, self)
+        self._lay.insertWidget(self._lay.indexOf(self._detail) + 1 if self._detail else 2,
+                               self._form)
+        self._form.show()                   # a child added after show() starts hidden
+        self._edit_btn.setEnabled(False)
+        self.setFixedWidth(self._OW_EDIT)
+        _recentre(self)
+        self._form.focus_first()
+
+    def _confirm(self):
+        self.answered.emit(True, self._form.values() if self._form is not None else None)
+
+
+class EditPanel(_HudOverlay):
+    """A draft you can change before anything happens to it.
+
+    Plugins describe it as plain data (core/addons.edit): a title, editable
+    fields and action buttons such as SAVE TO DRAFTS or SEND. A button's callback
+    runs on a worker thread with the edited values — never on the Qt thread — and
+    its one-line result comes back here through a signal. Anything irreversible
+    (sending an email) still goes through core/confirm.py's banner, so this panel
+    never sends on its own."""
+
+    _done = pyqtSignal(str, bool, bool)    # message, ok, close afterwards
+    _OW = 560
+
+    def __init__(self, spec: dict, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(f"""
+            EditPanel {{
+                background: rgba(0, 6, 10, 248);
+                border: 1px solid {C.PRI};
+                border-radius: 6px;
+            }}
+        """)
+        self.setFixedWidth(self._OW)
+        self._spec = spec
+        self._buttons: list[QPushButton] = []
+        self._done.connect(self._on_done)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(20, 16, 20, 16)
+        lay.setSpacing(8)
+
+        hdr = QLabel("✎  " + str(spec.get("title") or "EDIT").upper())
+        hdr.setFont(hud_font(11, QFont.Weight.Bold))
+        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
+        lay.addWidget(hdr)
+        if spec.get("note"):
+            note = QLabel(str(spec["note"]))
+            note.setWordWrap(True)
+            note.setFont(hud_font(8))
+            note.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+            lay.addWidget(note)
+
+        self._form = _FieldForm(spec.get("fields") or [], self)
+        lay.addWidget(self._form)
+
+        self._status = QLabel("")
+        self._status.setWordWrap(True)
+        self._status.setFont(hud_font(8))
+        self._status.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(self._status)
+
+        row = QHBoxLayout(); row.setSpacing(8)
+        for i, action in enumerate(spec.get("actions") or []):
+            b = _hud_button(str(action.get("label") or "OK"), primary=bool(action.get("primary")))
+            b.clicked.connect(lambda _=False, a=action: self._run(a))
+            row.addWidget(b)
+            self._buttons.append(b)
+        copy_key = spec.get("copy")
+        if copy_key:
+            c = _hud_button("COPY")
+            c.clicked.connect(lambda _=False, k=copy_key: self._copy(k))
+            row.addWidget(c)
+        close = _hud_button("CLOSE")
+        close.clicked.connect(self.close)
+        row.addWidget(close)
+        lay.addLayout(row)
+
+    def _copy(self, key: str):
+        text = self._form.values().get(key, "")
+        QApplication.clipboard().setText(text)
+        self._status.setText("Copied ✓")
+
+    def _run(self, action: dict):
+        fn = action.get("run")
+        if not callable(fn):
+            return
+        values = self._form.values()
+        for b in self._buttons:
+            b.setEnabled(False)
+        self._status.setText(str(action.get("busy") or "Working…"))
+        self._status.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        close_after = bool(action.get("close", True))
+
+        def worker():
+            try:
+                res = fn(values)
+                ok, msg = (bool(res[0]), str(res[1])) if isinstance(res, tuple) else (True, str(res or "Done ✓"))
+            except Exception as e:
+                ok, msg = False, f"Failed: {e}"
+            self._done.emit(msg, ok, close_after and ok)
+
+        threading.Thread(target=worker, daemon=True, name="edit-panel").start()
+
+    def _on_done(self, msg: str, ok: bool, close: bool):
+        self._status.setText(msg)
+        self._status.setStyleSheet(f"color: {C.PRI if ok else '#ff6b6b'}; background: transparent;")
+        for b in self._buttons:
+            b.setEnabled(True)
+        if close:
+            QTimer.singleShot(1500, self.close)
 
 
 class AudioDeviceOverlay(_HudOverlay):

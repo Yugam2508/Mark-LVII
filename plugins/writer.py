@@ -82,11 +82,67 @@ def _prompt(p: dict) -> str | None:
     return "\n".join(parts)
 
 
-def _save_gmail_draft(to: str, text: str) -> str:
+def _ok(result: str) -> bool:
+    return result.startswith("status=done")
+
+
+def _short(result: str) -> str:
+    return result.split(" -- ")[0].replace("status=", "").replace("action=", "")[:140]
+
+
+def _email_editor(to: str, text: str, state: dict) -> tuple[list, list, str]:
+    """Fields and buttons for an email draft. SAVE TO DRAFTS creates the draft
+    or updates the one already saved; SEND sends that draft (or a new message)."""
     from plugins import gmail_control
     subject, body = _writing.split_subject(text)
-    return gmail_control.run({"action": "draft", "to": to, "subject": subject or "(no subject)",
-                              "body": body})
+    fields = [{"key": "to", "label": "To", "value": to},
+              {"key": "subject", "label": "Subject", "value": subject},
+              {"key": "body", "label": "Message", "value": body, "multiline": True}]
+
+    def save(v: dict):
+        if "@" not in v.get("to", ""):
+            return False, "Add an email address in To first."
+        ok, msg, did = gmail_control.save_draft(v["to"], v["subject"], v["body"], state.get("draft_id"))
+        if ok:
+            state["draft_id"] = did
+        return ok, msg
+
+    def send(v: dict):
+        if "@" not in v.get("to", ""):
+            return False, "Add an email address in To first."
+        if state.get("draft_id"):
+            ok, msg, _ = gmail_control.save_draft(v["to"], v["subject"], v["body"], state["draft_id"])
+            if not ok:
+                return False, msg
+            res = gmail_control.send_draft(state["draft_id"])
+        else:
+            res = gmail_control.send_message(v["to"], v["subject"], v["body"])
+        return (_ok(res), "Sent ✓" if _ok(res) else _short(res))
+
+    actions = [{"label": "UPDATE DRAFT" if state.get("draft_id") else "SAVE TO DRAFTS",
+                "run": save, "primary": True, "close": False, "busy": "Saving…"},
+               {"label": "SEND", "run": send, "close": True, "busy": "Sending…"}]
+    return fields, actions, "body"
+
+
+def _text_editor(text: str) -> tuple[list, list, str]:
+    """Fields and buttons for anything that is not an email."""
+    fields = [{"key": "text", "label": "Text", "value": text, "multiline": True}]
+
+    def as_note(v: dict):
+        from plugins import notes
+        res = notes.run({"action": "add", "text": v["text"]}, player=None)
+        return _ok(res), "Saved as a note ✓" if _ok(res) else _short(res)
+
+    def as_doc(v: dict):
+        from plugins import google_drive
+        title = (v["text"].strip().splitlines() or ["Untitled"])[0][:60]
+        res = google_drive.run({"action": "create_doc", "title": title, "content": v["text"]})
+        return _ok(res), "Google Doc created and opened ✓" if _ok(res) else _short(res)
+
+    actions = [{"label": "SAVE AS NOTE", "run": as_note, "primary": True, "busy": "Saving…"},
+               {"label": "MAKE GOOGLE DOC", "run": as_doc, "busy": "Creating…"}]
+    return fields, actions, "text"
 
 
 def run(parameters: dict, player=None, session_memory=None) -> str:
@@ -100,21 +156,33 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
     except RuntimeError as e:
         return outcome.failed(f"writer_{action}", str(e)[:200])
 
-    if player:
-        try:
-            player.show_content(f"DRAFT ({engine})", text)
-        except Exception:
-            pass
-
-    saved = None
+    to = (parameters.get("email_to") or "").strip()
+    is_email = parameters.get("kind") == "email" or bool(to) or \
+        text.lower().startswith("subject:")
+    saved, state = None, {}
     if parameters.get("save_as") == "gmail_draft":
-        to = (parameters.get("email_to") or "").strip()
         if "@" in to:
-            res = _save_gmail_draft(to, text)
-            saved = "gmail_drafts" if res.startswith("status=done") else f"not saved: {res[:120]}"
+            from plugins import gmail_control
+            subject, body = _writing.split_subject(text)
+            ok, msg, did = gmail_control.save_draft(to, subject, body)
+            state["draft_id"] = did if ok else None
+            saved = "gmail_drafts" if ok else f"not saved: {msg}"
         else:
             saved = "not saved: no email address was given"
 
+    # On screen as an editable draft: fix a word, then SAVE / SEND / COPY.
+    fields, actions, copy = _email_editor(to, text, state) if is_email else _text_editor(text)
+    from core import addons
+    who = {"claude_code": "Claude", "anthropic": "Claude", "gemini": "Gemini"}.get(engine, engine)
+    if not addons.edit(f"DRAFT — written by {who}", fields, actions, copy=copy,
+                       note="Edit anything, then choose what to do with it.", player=player):
+        if player:
+            try:
+                player.show_content(f"DRAFT ({engine})", text)
+            except Exception:
+                pass
+
     return outcome.done(f"writer_{action}", written_by=engine, saved=saved,
-                        note="the text is on screen; summarise it in a sentence, do not "
+                        note="the draft is on screen where the user can edit, save or "
+                             "send it with buttons; summarise it in a sentence, do not "
                              "read all of it unless asked") + "\nTEXT:\n" + text

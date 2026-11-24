@@ -58,6 +58,24 @@ def show(title: str, text: str) -> None:
             pass
 
 
+def edit(title: str, fields: list, actions: list, note: str = "", copy: str = "",
+         player: Any = None) -> bool:
+    """Open an editable draft panel (see JarvisUI.show_editable). Falls back to
+    the plain content panel on a HUD without it. False when there is no HUD.
+    `player` is the one a tool call received, when there is one."""
+    p = player or _player
+    if p is None:
+        return False
+    try:
+        if hasattr(p, "show_editable"):
+            p.show_editable(title, fields, actions, note=note, copy=copy)
+        else:
+            p.show_content(title, "\n\n".join(str(f.get("value", "")) for f in fields))
+        return True
+    except Exception:
+        return False
+
+
 def log(text: str) -> None:
     p = _player
     if p is not None:
