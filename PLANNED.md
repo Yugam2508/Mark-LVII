@@ -31,6 +31,18 @@ bottom of their section; finished items move to **Done** with the date.
         when you're away from the PC.
       Builds on the existing routine engine / proactive check-ins
       (`core/routines`, `actions/proactive.py`) and `player.request_say`.
+- [ ] **Modes.** Switch by voice ("work mode", "gaming mode") or automatically, with
+      a different default mode per device. Each mode decides what Jarvis does and how
+      much it interrupts. First ideas:
+      - **Work:** proactive email/calendar on, concise replies, focus on to-dos.
+      - **Study:** notifications held back, knowledge folder and study coach ready,
+        optional pomodoro timer.
+      - **Music:** Spotify first, short replies, no chatter.
+      - **Watching something:** silent unless spoken to; notices only for urgent things.
+      - **Gaming:** quiet, no screen pop-ups over the game, hardware alerts only for
+        real problems; could switch on by itself when a game is running.
+      Per-device defaults, e.g. G14 → work/study, desktop → gaming/music. Ties in with
+      quiet hours and the proactive assistant above.
 
 ## To set up / test
 
