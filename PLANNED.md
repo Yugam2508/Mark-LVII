@@ -19,6 +19,18 @@ bottom of their section; finished items move to **Done** with the date.
 - [ ] **A proper writing voice.** Emails, documents and notes written well and in
       your style. Route writing to a stronger model than the voice model (e.g. Claude
       through `core.gemini`'s provider setting), with a short style guide.
+- [ ] **Proactive assistant.** Jarvis speaks up without being asked:
+      - **New email:** checks Gmail every few minutes, tells you about mail that
+        matters (skips newsletters/promotions; learns who is important) and offers a
+        suggested reply you can send, edit or ignore. Sending still needs CONFIRM.
+      - **Calendar from email:** spots dates in emails (meetings, deadlines,
+        bookings) and offers to add them to the calendar.
+      - **Reminders:** a heads-up before calendar events (with travel time when
+        there's a location) and before to-do due dates.
+      - Respects quiet hours, doesn't repeat itself, and shows a notice on screen
+        when you're away from the PC.
+      Builds on the existing routine engine / proactive check-ins
+      (`core/routines`, `actions/proactive.py`) and `player.request_say`.
 
 ## To set up / test
 
