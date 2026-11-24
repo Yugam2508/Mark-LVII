@@ -229,8 +229,78 @@ def _ensure_device(player) -> str | None:
     return (active or computer or devs)[0]["id"]
 
 
-def _playback(method: str, path: str, player, params=None, body=None):
+class DeviceNotFound(Exception):
+    def __init__(self, question: str):
+        super().__init__(question)
+        self.question = question
+
+
+def _aliases() -> dict[str, str]:
+    """Nicknames from settings: "desktop=DESKTOP-AB12, laptop=ROG-G14"."""
+    raw = str(get_plugin_setting(NAMESPACE, "device_aliases", "") or "")
+    out = {}
+    for pair in raw.split(","):
+        k, sep, v = pair.partition("=")
+        if sep and k.strip() and v.strip():
+            out[k.strip().lower()] = v.strip().lower()
+    return out
+
+
+def resolve_device(spec: str, player=None) -> dict:
+    """The Spotify Connect device a spoken name means. Raises DeviceNotFound with a
+    question to ask when it is not clear."""
+    import platform
+    want = (spec or "").strip().lower()
+    want = _aliases().get(want, want)
+    devs = _devices()
+    here = platform.node().lower()
+    if want in ("here", "this computer", "this pc", "this laptop", "computer here") or (
+            want and want in here):
+        mine = [d for d in devs if d.get("name", "").lower() == here]
+        if not mine:
+            # The app on this computer is closed: open it and wait for it to appear.
+            _ensure_device(player)
+            devs = _devices()
+            mine = [d for d in devs if d.get("name", "").lower() == here] or \
+                [d for d in devs if d.get("type") == "Computer"]
+        if mine:
+            return mine[0]
+    exact = [d for d in devs if d.get("name", "").lower() == want]
+    if exact:
+        return exact[0]
+    named = [d for d in devs if want and want in d.get("name", "").lower()]
+    if len(named) == 1:
+        return named[0]
+    kinds = {"phone": "Smartphone", "mobile": "Smartphone", "oneplus": "Smartphone",
+             "tablet": "Tablet", "tv": "TV", "speaker": "Speaker", "laptop": "Computer",
+             "desktop": "Computer", "pc": "Computer", "computer": "Computer"}
+    kind = next((t for w, t in kinds.items() if w in want), None)
+    typed = [d for d in devs if kind and d.get("type") == kind]
+    if len(typed) == 1:
+        return typed[0]
+    if kind == "Computer" and len(typed) > 1 and ("laptop" in want or "desktop" in want):
+        # Two computers and no nickname: this one has a battery if it is the laptop.
+        try:
+            import psutil
+            on_laptop = psutil.sensors_battery() is not None
+        except Exception:
+            on_laptop = None
+        if on_laptop is not None:
+            this_one = ("laptop" in want) == on_laptop
+            pick = [d for d in typed if (d.get("name", "").lower() == here) == this_one]
+            if len(pick) == 1:
+                return pick[0]
+    names = ", ".join(d.get("name", "?") for d in (typed or named or devs)) or "none"
+    if not devs:
+        raise DeviceNotFound("No Spotify app is open on any device. Open Spotify on the "
+                             "device you want, then ask again.")
+    raise DeviceNotFound(f"Which device? Spotify can see: {names}.")
+
+
+def _playback(method: str, path: str, player, params=None, body=None, device_id=None):
     """A player command, retried once on a device when none was active."""
+    if device_id:
+        return _api(method, path, params={**(params or {}), "device_id": device_id}, body=body)
     try:
         return _api(method, path, params=params, body=body)
     except SpotifyError as e:
@@ -286,18 +356,25 @@ def _show(player, text: str) -> None:
 def _play(p, player) -> str:
     query = (p.get("query") or "").strip()
     kind = (p.get("kind") or "track").lower()
+    dev = resolve_device(p["device"], player) if p.get("device") else None
+    did = dev["id"] if dev else None
+    where = dev.get("name") if dev else None
     if not query:
-        _playback("PUT", "/me/player/play", player)
-        return outcome.done("spotify_resume")
+        if dev:
+            _api("PUT", "/me/player", body={"device_ids": [did], "play": True})
+        else:
+            _playback("PUT", "/me/player/play", player)
+        return outcome.done("spotify_resume", device=where)
 
     if kind == "my_playlist":
         pl = _find_my_playlist(query)
         if pl is None:
             return outcome.failed("spotify_play", "none of your playlists has that name",
                                   query=query)
-        _playback("PUT", "/me/player/play", player, body={"context_uri": pl["uri"]})
-        _show(player, f"▶ Playlist: {pl['name']}")
-        return outcome.done("spotify_play", kind="your playlist") + "\n" + \
+        _playback("PUT", "/me/player/play", player, body={"context_uri": pl["uri"]},
+                  device_id=did)
+        _show(player, f"▶ Playlist: {pl['name']}" + (f"  ·  on {where}" if where else ""))
+        return outcome.done("spotify_play", kind="your playlist", device=where) + "\n" + \
             outcome.untrusted("spotify", f"Playlist: {pl['name']}")
 
     if kind not in ("track", "artist", "album", "playlist"):
@@ -309,10 +386,10 @@ def _play(p, player) -> str:
         return outcome.failed("spotify_play", f"Spotify found no {kind} for that", query=query)
     item = items[0]
     body = {"uris": [item["uri"]]} if kind == "track" else {"context_uri": item["uri"]}
-    _playback("PUT", "/me/player/play", player, body=body)
+    _playback("PUT", "/me/player/play", player, body=body, device_id=did)
     label = _describe(item) if kind in ("track", "album") else item.get("name", "?")
-    _show(player, f"▶ {kind.title()}: {label}")
-    return outcome.done("spotify_play", kind=kind) + "\n" + \
+    _show(player, f"▶ {kind.title()}: {label}" + (f"  ·  on {where}" if where else ""))
+    return outcome.done("spotify_play", kind=kind, device=where) + "\n" + \
         outcome.untrusted("spotify", f"Now playing {kind}: {label}")
 
 
@@ -386,6 +463,27 @@ def _queue(p, player) -> str:
         outcome.untrusted("spotify", f"Queued: {_describe(items[0])}")
 
 
+def _devices_action(p, player) -> str:
+    devs = _devices()
+    if not devs:
+        return outcome.done("spotify_devices", count=0,
+                            note="no Spotify app is open on any device")
+    lines = [f"{d.get('name')} ({d.get('type')}){' — playing now' if d.get('is_active') else ''}"
+             for d in devs]
+    _show(player, "Devices:\n" + "\n".join(lines))
+    return outcome.done("spotify_devices", count=len(devs)) + "\n" + \
+        outcome.untrusted("spotify", "\n".join(lines))
+
+
+def _transfer(p, player) -> str:
+    if not p.get("device"):
+        return outcome.ask("spotify_transfer", "Which device should I move the music to?")
+    dev = resolve_device(p["device"], player)
+    _api("PUT", "/me/player", body={"device_ids": [dev["id"]], "play": True})
+    _show(player, f"▶ Moved to {dev.get('name')}")
+    return outcome.done("spotify_transfer", device=dev.get("name"))
+
+
 _ACTIONS = {
     "play": _play,
     "pause": _simple("/me/player/pause", "PUT", "spotify_pause"),
@@ -398,13 +496,17 @@ _ACTIONS = {
     "like": _like,
     "add_to_playlist": _add_to_playlist,
     "queue": _queue,
+    "devices": _devices_action,
+    "transfer": _transfer,
 }
 
 PLUGIN = {
     "name": "spotify_control",
     "description": (
         "Controls Spotify: play a specific song, artist, album, public playlist or one "
-        "of the user's own playlists; pause, resume, skip, previous; what is playing; "
+        "of the user's own playlists, on a chosen device (phone, laptop, desktop) if "
+        "asked; move playback to another device; list devices; pause, resume, skip, "
+        "previous; what is playing; "
         "Spotify volume; shuffle; like the current song; add it to a playlist; queue a "
         "song. Use whenever the user mentions Spotify or asks to play music by name and "
         "has not asked for YouTube. For system volume use computer_settings instead."
@@ -426,6 +528,10 @@ PLUGIN = {
             "volume": {"type": "INTEGER", "description": "For volume: 0-100"},
             "on": {"type": "BOOLEAN", "description": "For shuffle: true or false"},
             "playlist": {"type": "STRING", "description": "For add_to_playlist: playlist name"},
+            "device": {"type": "STRING",
+                       "description": "For play/transfer: where to play — 'phone', 'laptop', "
+                                      "'desktop', 'here', or a device name. Leave empty to "
+                                      "keep playing where it is."},
         },
         "required": ["action"],
     },
@@ -439,6 +545,8 @@ PLUGIN_SETTINGS = {
     "fields": [
         {"key": "client_id", "label": "Client ID from developer.spotify.com/dashboard",
          "type": "text", "placeholder": "32 letters and numbers"},
+        {"key": "device_aliases", "label": "Device nicknames (optional)", "type": "text",
+         "placeholder": "desktop=DESKTOP-AB12, laptop=ROG-ZEPHYRUS"},
     ],
     "action": {"label": "CONNECT SPOTIFY", "run": connect},
 }
@@ -451,6 +559,8 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         return outcome.failed("spotify", f"unknown action {action}")
     try:
         return handler(parameters, player)
+    except DeviceNotFound as e:
+        return outcome.ask(f"spotify_{action}", e.question)
     except SpotifyError as e:
         if e.reason == "NOT_CONNECTED":
             return outcome.failed(f"spotify_{action}", NOT_CONNECTED)
