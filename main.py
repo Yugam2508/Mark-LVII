@@ -1227,7 +1227,8 @@ class JarvisLive:
         # The bind error travels with the URL because the UI has no reference to
         # this object — it only ever sees what this callback returns.
         return (url, key, f"{url}/auto-login?key={key}", manual,
-                getattr(self._dashboard, "_bind_error", "") or "")
+                getattr(self._dashboard, "_bind_error", "")
+                or getattr(self._dashboard, "_tailscale_note", "") or "")
 
     def _on_text_command(self, text: str):
         if not self._loop or not self.session:

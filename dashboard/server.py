@@ -576,6 +576,46 @@ def _local_ip() -> str:
     return "127.0.0.1"
 
 
+def _tailscale_ip() -> str:
+    try:
+        from core import tailnet
+        return tailnet.address()
+    except Exception:
+        return ""
+
+
+def _cert_covers(crt_p: Path, ip: str) -> bool:
+    """Does the existing certificate list `ip`? True when there is nothing to check."""
+    if not ip:
+        return True
+    try:
+        import ipaddress
+        from cryptography import x509
+        cert = x509.load_pem_x509_certificate(crt_p.read_bytes())
+        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        return ipaddress.IPv4Address(ip) in san.get_values_for_type(x509.IPAddress)
+    except Exception:
+        return True       # unreadable: leave it alone rather than churn the key
+
+
+def phone_link_setting() -> str:
+    """'auto' | 'tailscale' | 'home wi-fi' — ⚙ → PLUGIN SETTINGS → PHONE & DEVICES."""
+    try:
+        from memory.config_manager import get_plugin_setting
+        v = str(get_plugin_setting("device_link", "phone_link", "auto") or "auto").lower()
+        return v if v in ("auto", "tailscale", "home wi-fi") else "auto"
+    except Exception:
+        return "auto"
+
+
+def tailscale_https_wanted() -> bool:
+    try:
+        from memory.config_manager import get_plugin_setting
+        return bool(get_plugin_setting("device_link", "tailscale_https", False))
+    except Exception:
+        return False
+
+
 def _ensure_certs() -> bool:
     """
     Make sure config/certs holds a TLS key pair, generating a self-signed one the
@@ -592,7 +632,7 @@ def _ensure_certs() -> bool:
     certs = BASE_DIR / "config" / "certs"
     key_p = certs / "jarvis.key"
     crt_p = certs / "jarvis.crt"
-    if key_p.exists() and crt_p.exists():
+    if key_p.exists() and crt_p.exists() and _cert_covers(crt_p, _tailscale_ip()):
         return True
 
     try:
@@ -626,6 +666,9 @@ def _ensure_certs() -> bool:
                 alt.append(x509.IPAddress(ipaddress.IPv4Address(lan)))
         except Exception:
             pass          # no LAN address resolvable — localhost entries still work
+        ts = _tailscale_ip()
+        if ts and all(getattr(a, "value", None) != ipaddress.IPv4Address(ts) for a in alt):
+            alt.append(x509.IPAddress(ipaddress.IPv4Address(ts)))
 
         # Timezone-aware UTC: datetime.utcnow() is deprecated from Python 3.12 on,
         # and the builder normalises aware values to UTC itself.
@@ -789,12 +832,48 @@ class DashboardServer:
         certs = BASE_DIR / "config" / "certs"
         return (certs / "jarvis.key").exists() and (certs / "jarvis.crt").exists()
 
+    def _addresses(self) -> tuple[str, str]:
+        """(address for the QR code, home Wi-Fi address).
+
+        The home/office Wi-Fi address only works while the phone is on that same
+        Wi-Fi. A Tailscale address (100.x) works from anywhere the phone has
+        Tailscale switched on — including at home — so it goes in the QR code
+        whenever this PC is on Tailscale, unless settings say otherwise."""
+        self._ip = _local_ip()          # the Wi-Fi can change while JARVIS runs
+        ts = _tailscale_ip()
+        choice = phone_link_setting()
+        if ts and choice in ("auto", "tailscale"):
+            return ts, self._ip
+        return self._ip, self._ip
+
+    def _tailscale_https(self) -> str:
+        """https://<pc>.<tailnet>.ts.net when that is switched on and working."""
+        if not tailscale_https_wanted() or phone_link_setting() == "home wi-fi":
+            return ""
+        try:
+            from core import tailnet
+            if self._ssl_enabled():
+                ok, url = tailnet.enable_https(SECURE_PORT, backend_tls=True)
+            else:
+                ok, url = tailnet.enable_https(PORT)
+            if ok:
+                return url
+            self._tailscale_note = url
+        except Exception as e:
+            self._tailscale_note = str(e)[:160]
+        return ""
+
     def get_url(self) -> str:
         """The full URL the QR code carries — always with its scheme, so a
         scanner never has to guess."""
+        self._tailscale_note = ""
+        secure = self._tailscale_https()
+        if secure:
+            return secure
+        addr, _home = self._addresses()
         if self._ssl_enabled():
-            return f"https://{self._ip}:{SECURE_PORT}"
-        return f"http://{self._ip}:{PORT}"
+            return f"https://{addr}:{SECURE_PORT}"
+        return f"http://{addr}:{PORT}"
 
     def get_manual_url(self) -> str:
         """What to type into a phone browser by hand.
@@ -804,7 +883,10 @@ class DashboardServer:
         looks exactly like the server being switched off. The redirector speaks
         HTTP, so it answers, and sends the browser on to the secure page.
         """
-        return f"{self._ip}:{PORT}"
+        addr, home = self._addresses()
+        if addr != home:
+            return f"Anywhere (Tailscale):  {addr}:{PORT}\nSame Wi-Fi only:  {home}:{PORT}"
+        return f"{addr}:{PORT}"
 
     def _aes_key(self, session_key: str) -> bytes:
         if session_key not in self._aes_cache:
@@ -866,8 +948,15 @@ class DashboardServer:
                           .removeprefix("Bearer ").strip())
 
         def _who(req: Request) -> str:
-            """The client address a throttle counts against."""
-            return (getattr(getattr(req, "client", None), "host", "") or "unknown")
+            """The client address a throttle counts against. Through `tailscale
+            serve` every request arrives from 127.0.0.1; the phone's own tailnet
+            address is in X-Forwarded-For (only trusted from loopback)."""
+            host = getattr(getattr(req, "client", None), "host", "") or "unknown"
+            if host in ("127.0.0.1", "::1"):
+                fwd = req.headers.get("x-forwarded-for", "").split(",")[0].strip()
+                if fwd:
+                    return fwd
+            return host
 
         @app.get("/login", response_class=HTMLResponse)
         async def login_page():

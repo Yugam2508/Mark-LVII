@@ -217,10 +217,38 @@ Not synced, on purpose:
 
 1. Install **Tailscale** from the Play Store and sign in with the same account you used on
    the PCs. This lets the phone reach your PCs securely from anywhere, not just on home Wi-Fi.
-2. On the PC, open the **phone dashboard** in JARVIS and scan the QR code with the phone.
-   Away from home, replace the address in the link with the PC's Tailscale address
-   (`100.x.x.x`, shown in the Tailscale app), keeping the port number after the colon.
-3. Add it to your home screen from the browser menu so it opens like an app.
+2. Make sure Tailscale is **connected** on both (the phone shows a key icon in the status
+   bar; the PC shows the Tailscale icon in the tray as connected).
+3. On the PC, open the **phone dashboard** in JARVIS and scan the QR code with the phone.
+   When the PC is on Tailscale, the QR code now uses its Tailscale address (`100.x.x.x`),
+   so it works at home, at work and on mobile data. Under the code you'll see both
+   addresses: **Anywhere (Tailscale)** and **Same Wi-Fi only**.
+4. Add it to your home screen from the browser menu so it opens like an app.
+
+**If the page doesn't load on the phone:**
+
+- Is Tailscale on on the phone? Without it, only the "Same Wi-Fi only" address works.
+- Is JARVIS running on that PC, and did you accept the Windows firewall prompt the first
+  time you opened the QR code? If you said no, open the QR code again and accept it.
+- Still nothing: in the Tailscale app on the phone, tap the PC and check it shows as
+  connected. Then type `http://100.x.x.x:8000` (the PC's address from that screen) in Chrome.
+- Work Wi-Fi often blocks phone-to-laptop traffic; Tailscale gets round that, the
+  "Same Wi-Fi" address won't.
+
+**To talk to JARVIS from the phone's microphone** the browser needs a secure (https) page.
+Tailscale can give you one for free:
+
+1. Go to **login.tailscale.com/admin/dns**, make sure **MagicDNS** is on, and press
+   **Enable HTTPS** (once, for your whole account).
+2. In JARVIS: ⚙ → PLUGIN SETTINGS → PHONE & DEVICES → switch on **Secure phone link
+   through Tailscale** → SAVE.
+3. Open the QR code again. It now points to `https://<pc-name>.<something>.ts.net` with a
+   real certificate, so there's no warning and the phone's microphone works. If Tailscale
+   says it needs permission, run `tailscale serve --bg 8000` once in a terminal opened
+   as administrator.
+
+Settings in the same place: **Phone dashboard QR code uses** = auto (Tailscale when it's
+on), tailscale, or home wi-fi.
 
 Your calendar, email and to-do list are already on the phone through Google's own apps,
 and documents through OneDrive.
