@@ -10,10 +10,27 @@ When you add features, bump VERSION and put a new entry at the top of CHANGELOG.
 """
 from __future__ import annotations
 
-VERSION = "1.4"
-DATE = "2026-11-26"
+VERSION = "1.5"
+DATE = "2026-11-27"
 
 CHANGELOG = [
+    {"version": "1.5", "date": "2026-11-27", "items": [
+        "Holographic HUD: rings that turn with what Jarvis is doing, a live voice spectrum, "
+        "and satellites for each tool, panel and alert (HUD button cycles holo / face / core)",
+        "Knows when you're talking to someone else and stays quiet; \"I'm talking to "
+        "someone\" / \"I'm back\" pause and resume, with a summary of what you missed",
+        "Busy or away? Alerts become cards that stay on screen (and a phone ping when you're "
+        "away); when you're free it just tells you, and suggests what to do next",
+        "Confirm or cancel by voice: say \"confirm\" or \"cancel\" instead of clicking",
+        "Claude Code control: \"ask Claude Code to …\" in your projects — plan first, "
+        "\"go ahead\", follow-ups, status, stop, open a window",
+        "Voice personas: British butler, Irish co-pilot, mission control, Australian coach, "
+        "deep mentor, Indian English, or your own; eight voices in Customize",
+        "Audio follows your devices: headphones or Bluetooth connecting or disconnecting "
+        "switches over by itself",
+        "Phone dashboard works over Tailscale (QR code uses the 100.x address), with an "
+        "optional secure link so the phone microphone works",
+    ]},
     {"version": "1.4", "date": "2026-11-26", "items": [
         "Life profile: Jarvis remembers who you are and everything you tell it about your "
         "studies, work, music lessons, comedy and writing, travel goals and training — with "

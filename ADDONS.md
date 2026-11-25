@@ -28,7 +28,13 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Money | "I spent 12 on lunch", budgets | `plugins/money_tracker.py` |
 | Reading & watch list | "Save this for later", "pick something to watch" | `plugins/reading_list.py` |
 | Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
-| Version & what's new | "YOUR NAME EDITION · v1.4" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Version & what's new | "YOUR NAME EDITION · v1.5" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Holographic HUD | Rings, live spectrum and satellites showing what Jarvis is doing (§34) | `gui/holo.py` |
+| Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
+| Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
+| Claude Code control | "Ask Claude Code to…", "go ahead", "stop Claude Code" (§36) | `plugins/claude_code.py` |
+| Voice personas | "Switch to the Irish persona", "use a British accent" (§37) | `core/personas.py`, `plugins/persona.py` |
+| Audio follows devices | Headphones / Bluetooth on or off → switches by itself (§38) | `core/audio_watch.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
 | Interrupt by voice | Talk over JARVIS to stop it | `plugins/voice_interrupt.py` + `main.py` |
@@ -570,8 +576,8 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVII · YUGAM EDITION · v1.4** (your name, from first launch) and
-the status bar says **EDITION · v1.4**. After each update a **What's new** panel opens
+The header reads **MARK LVII · YUGAM EDITION · v1.5** (your name, from first launch) and
+the status bar says **EDITION · v1.5**. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.
 
@@ -583,6 +589,103 @@ Fatih releases new Marks as new repositories, so his updates don't arrive in thi
 automatically. When a new Mark comes out, ask Claude Code to move these add-ons onto it:
 the plugins and agents are separate files, so it's mostly copying, plus the small change
 in `main.py` for voice interrupt.
+
+## 34. The holographic HUD
+
+The centre of the window is now a holographic display (the **HUD** button in CONTROLS
+cycles holographic → animated face → reactor core). What moves means something:
+
+- the rings turn faster while Jarvis is thinking, and a radar sweep works the problem;
+- the colour is the state: green listening, gold thinking, accent colour speaking;
+- the ring of bars around the core is the real sound: your voice while it listens, its
+  voice while it speaks;
+- **satellites**: every tool it uses (SPOTIFY, GMAIL, CLAUDE CODE…), every panel it opens
+  and every card it leaves flies out of the core as a labelled node, pulses while it's
+  fresh, orbits, and fades after a few minutes. A glance tells you what it's been doing.
+
+---
+
+## 35. Talking to someone else, and being away
+
+Jarvis works out whether you're **free**, **busy** or **away**:
+
+| You are | Because | What Jarvis does with news |
+|---|---|---|
+| free | at the PC, not busy | says it, and after finishing something suggests a next step |
+| busy | you said so; you just spoke but not to it; another app (Discord, Zoom, Teams) is using the mic; gaming or watching mode | a **card that stays** on screen, top right, until you ✕ it |
+| away | no keyboard or mouse for 10 minutes | the card **and** a phone notification |
+
+Say **"I'm talking to someone"**, **"I'm on a call"** or **"give me ten minutes"** and it goes
+quiet (with the wake word on it sleeps until "Hey Jarvis"). **"I'm back"** — or just being
+free again — and it sums up what came in. If you start talking to someone without
+saying so, it should notice from what you say and stay silent.
+
+Settings: ⚙ → PLUGIN SETTINGS → **CONVERSATION & PRESENCE** (how long a pause lasts, when
+you count as away, the welcome-back summary, voice confirm, following audio devices).
+
+**Confirm by voice:** when a confirmation is on screen, say **"confirm"** / **"yes, send it"**
+or **"cancel"** / **"no"**. Only your microphone counts; a command from the phone can't
+confirm anything.
+
+---
+
+## 36. Claude Code from Jarvis
+
+Jarvis can hand coding jobs to the Claude Code that's signed in on the PC (your Claude
+subscription, no API key) and tell you when they're done.
+
+- **"Ask Claude Code to add dark mode to my portfolio"** — starts a job in that project.
+  By default it **plans first** and changes nothing; Jarvis reads you the gist.
+- **"Go ahead"** — carries out the plan with file edits allowed (you confirm by voice or
+  on screen first).
+- **"Tell Claude to also update the README"** — a follow-up in the same Claude session.
+- **"What's Claude Code doing?"**, **"stop Claude Code"**, **"open Claude Code in my
+  thesis folder"** (an interactive window), **"which projects do you know?"**
+
+Projects: folders directly inside `~/Projects`, `~/Code`, `~/source/repos` or
+`~/Documents/GitHub` are found by name. Add others in ⚙ → PLUGIN SETTINGS → **CLAUDE CODE
+CONTROL** (`site=C:\Code\portfolio; jarvis=C:\Users\you\Mark-LVII`), or say "add my
+portfolio project at …".
+
+Permissions: **plan** (read only), **edits** (edit files; shell commands only from the
+list you allow, e.g. `git status, npm test, pytest`), **full** (anything — off unless you
+switch it on, and always confirmed). Progress shows in the log and as a CLAUDE CODE
+satellite; the result arrives the presence-aware way (spoken, card, or phone).
+
+---
+
+## 37. Voices and accents
+
+Say **"switch to the Irish persona"**, **"use a British accent"**, **"what voices do you
+have?"** — or ⚙ → PLUGIN SETTINGS → **VOICE PERSONA** → APPLY NOW.
+
+| Persona | Sounds like |
+|---|---|
+| classic | British butler — formal, dry wit (the closest to the films' JARVIS feel) |
+| irish | soft Irish co-pilot — warm, quick, teasing |
+| tactical | crisp mission control, neutral American |
+| coach | lively Australian, pushes you a bit — good for training days |
+| mentor | deep, slow and calm |
+| desi | warm Indian English, the odd Hindi word |
+| custom | any of 30 Gemini voices + your own description ("Scottish, dry, calls me boss") |
+
+These are original characters: Gemini can't copy an actor's or celebrity's real voice,
+and Jarvis won't impersonate one. The switch reconnects the voice, so the last few
+sentences of conversation aren't carried over (memory is). You can also rename the
+assistant in ⚙ → Customize.
+
+---
+
+## 38. Audio that follows your devices
+
+Turn your headphones on and Jarvis moves to them; turn them off and it goes back to the
+speakers — no restart. It notices when Windows adds or removes an audio device, and when
+the microphone stops sending sound or the speakers stop taking it, then reopens audio
+on whatever is there (your chosen mic/speakers in ⚙ → audio when they're connected, the
+Windows default otherwise). The log says "SYS: Audio connected: … — switching devices".
+Switch it off in CONVERSATION & PRESENCE if you'd rather it didn't.
+
+---
 
 ## Credits and licence
 
