@@ -932,6 +932,80 @@ class EditPanel(_HudOverlay):
             QTimer.singleShot(1500, self.close)
 
 
+class WhatsNewOverlay(_HudOverlay):
+    """WHAT'S NEW — the changelog from core/edition.py. Opens once by itself after
+    each update, and whenever the version label in the header is clicked."""
+
+    _OW = 560
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        from core import edition
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet(f"""
+            WhatsNewOverlay {{
+                background: rgba(0, 6, 10, 248);
+                border: 1px solid {C.PRI};
+                border-radius: 6px;
+            }}
+        """)
+        self.setFixedWidth(self._OW)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(22, 16, 22, 16)
+        lay.setSpacing(8)
+
+        hdr = QLabel(f"✦  WHAT'S NEW  ·  v{edition.VERSION}")
+        hdr.setFont(hud_font(12, QFont.Weight.Bold))
+        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
+        lay.addWidget(hdr)
+        sub = QLabel(f"{edition.edition_name()}  ·  updated {edition.DATE}")
+        sub.setFont(hud_font(8))
+        sub.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(sub)
+
+        body = QWidget()
+        body.setStyleSheet("background: transparent;")
+        bl = QVBoxLayout(body)
+        bl.setContentsMargins(0, 4, 6, 4)
+        bl.setSpacing(4)
+        for i, entry in enumerate(edition.CHANGELOG):
+            head = QLabel(f"v{entry['version']}  —  {entry['date']}" + ("   (this version)" if i == 0 else ""))
+            head.setFont(hud_font(9, QFont.Weight.Bold))
+            head.setStyleSheet(f"color: {C.PRI if i == 0 else C.TEXT_MED}; background: transparent;"
+                               "margin-top: 6px;")
+            bl.addWidget(head)
+            for item in entry["items"]:
+                row = QLabel("•  " + item)
+                row.setWordWrap(True)
+                row.setFont(hud_font(9 if i == 0 else 8))
+                row.setStyleSheet(f"color: {C.TEXT if i == 0 else C.TEXT_DIM}; background: transparent;")
+                bl.addWidget(row)
+        bl.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet(
+            "QScrollArea { background: transparent; }"
+            f"QScrollBar:vertical {{ background: transparent; width: 6px; margin: 0; }}"
+            f"QScrollBar::handle:vertical {{ background: {C.PRI_DIM}; border-radius: 3px; min-height: 30px; }}"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+            "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }")
+        scroll.setWidget(body)
+        scroll.setMinimumHeight(330)
+        lay.addWidget(scroll, 1)
+
+        tip = QLabel('Say "what\'s new?" any time, or click the version in the header.')
+        tip.setFont(hud_font(8))
+        tip.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(tip)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        close = _hud_button("CLOSE", primary=True)
+        close.clicked.connect(self.close)
+        row.addWidget(close)
+        lay.addLayout(row)
+
+
 class AudioDeviceOverlay(_HudOverlay):
     """Choose which microphone JARVIS listens to and which speakers it uses.
 

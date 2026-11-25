@@ -34,6 +34,8 @@ email or deleting an event always needs a confirmation the owner presses on scre
 - If the owner sets up phone alerts, short notifications (for example "Email from
   Sarah: Project meeting?") and the replies to phone commands pass through the ntfy
   server the owner chose (ntfy.sh by default, or their own), on private topics.
+- What the owner tells it about their life (the life profile) is kept in files in the
+  owner's own OneDrive knowledge folder and in Jarvis's memory on their computers.
 - Nothing is sold, shared with anyone else, or used for advertising.
 - Google user data is used only to provide these features to the owner, in line
   with the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy),

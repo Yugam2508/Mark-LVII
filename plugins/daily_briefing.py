@@ -117,6 +117,12 @@ def todos_due() -> list[str]:
 
 def _extras() -> list[str]:
     out = []
+    try:  # life goals with a date coming up (life_profile)
+        from plugins import life_profile
+        for days, area, goal in life_profile.next_goals(60)[:2]:
+            out.append(f"{goal} ({area}) — {'today' if days == 0 else f'in {days} days'}")
+    except Exception:
+        pass
     try:
         from plugins import agent_watch
         for w in agent_watch._load().get("prices", []):

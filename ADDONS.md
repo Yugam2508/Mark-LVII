@@ -27,6 +27,8 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Screen helper | "Summarise this page", "explain this error" | `plugins/screen_helper.py` |
 | Money | "I spent 12 on lunch", budgets | `plugins/money_tracker.py` |
 | Reading & watch list | "Save this for later", "pick something to watch" | `plugins/reading_list.py` |
+| Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
+| Version & what's new | "YOUR NAME EDITION · v1.4" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
 | Interrupt by voice | Talk over JARVIS to stop it | `plugins/voice_interrupt.py` + `main.py` |
@@ -520,7 +522,34 @@ Watching** in Google Tasks, so it's on your phone too.
 
 ---
 
-## 31. Keeping up with Fatih's updates
+## 31. Life profile: Jarvis remembers your life
+
+Say **"set up my profile"** (or "get to know me") and Jarvis interviews you, one area
+at a time: studies, work, music lessons, comedy and writing, travel, training. Skip
+anything that doesn't apply and add your own areas. After that you don't need to say
+"remember": when you mention your life ("had my guitar lesson, finally got the F barre
+chord", "swam 2 km today", "I want to see Japan in spring") it's saved to the right area.
+
+Each area keeps an **About**, **Goals** (with dates if you give one) and a dated **Log**.
+Ask "what do you know about my IRONMAN training?", "what do you know about me?", or
+"I did the Japan trip!" to tick off a goal. Goals with a date show up in the morning
+briefing as a countdown.
+
+Everything is in your OneDrive knowledge folder under **JARVIS Life** (one readable file
+per area), so both PCs and your phone see it, and you can edit it yourself. A one-line
+summary of each area is also in Jarvis's own memory, so it knows the basics from the
+first word of every conversation.
+
+## 32. Knowing it updated
+
+The header reads **MARK LVII · YUGAM EDITION · v1.4** (your name, from first launch) and
+the status bar says **EDITION · v1.4**. After each update a **What's new** panel opens
+once; click the version in the header to see it again. Ask "what's new?" or "what can you
+do?" and Jarvis answers from the same list.
+
+---
+
+## 33. Keeping up with Fatih's updates
 
 Fatih releases new Marks as new repositories, so his updates don't arrive in this fork
 automatically. When a new Mark comes out, ask Claude Code to move these add-ons onto it:
