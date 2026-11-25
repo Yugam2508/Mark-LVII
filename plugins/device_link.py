@@ -475,6 +475,10 @@ PLUGIN_SETTINGS = {
     "fields": [
         {"key": "device_name", "label": "This computer's name (desktop / laptop / anything)",
          "type": "text", "placeholder": "desktop"},
+        {"key": "phone_link", "label": "Phone dashboard QR code uses (auto = Tailscale when it's on)",
+         "type": "choice", "options": ["auto", "tailscale", "home wi-fi"], "default": "auto"},
+        {"key": "tailscale_https", "label": "Secure phone link through Tailscale (HTTPS, lets the phone mic work)",
+         "type": "toggle", "default": False},
         {"key": "accept_remote", "label": "Accept commands from my phone and other PCs",
          "type": "toggle", "default": True},
         {"key": "handle_untargeted", "label": "Answer phone commands that don't name a PC",

@@ -89,21 +89,28 @@ def _notify(event: str, task: dict | None, text: str) -> None:
             body += f"\n\n— Full report: {report}"
         _call("show_content", "BACKGROUND TASK", body[:4000])
         if deliver == "voice":
-            from core import outcome
-            _call("request_say",
-                  "[BACKGROUND TASK FINISHED] A task the user gave you earlier is done: "
-                  f"'{(task.get('task') or '')[:200]}'. Tell the user in one or two sentences "
-                  "what came of it — the headline, not the whole result — and that the full "
-                  "result is on the screen and saved as a report. Speak in the user's language. "
-                  "Do not call any tool for this.\n"
-                  + outcome.untrusted("task-result", (task.get("result") or "")[:3000]))
+            from core import addons, outcome
+            instruction = (
+                "[BACKGROUND TASK FINISHED] A task the user gave you earlier is done: "
+                f"'{(task.get('task') or '')[:200]}'. Tell the user in one or two sentences "
+                "what came of it — the headline, not the whole result — that the full result "
+                "is on the screen and saved as a report, then suggest one useful next step "
+                "or ask what they'd like to do next. Speak in the user's language. Do not "
+                "call any tool for this.\n"
+                + outcome.untrusted("task-result", (task.get("result") or "")[:3000]))
+            # Said out loud when the user is free; a card that stays (and the
+            # phone, when away) when they are busy or away — core/presence.py.
+            addons.notify(f"Done: {title[:60]}", (task.get("result") or "").strip()[:600],
+                          instruction, kind="task")
     elif event == "failed":
         _call("write_log", f"ERR: Background task failed — {title}: {(task.get('error') or '')[:160]}")
         if deliver != "silent":
-            _call("request_say",
-                  f"[BACKGROUND TASK FAILED] The background task '{title[:120]}' could not finish: "
-                  f"{(task.get('error') or 'unknown reason')[:200]}. Tell the user in one short "
-                  f"sentence, in their language. Do not call any tool for this.")
+            from core import addons
+            addons.notify(f"Failed: {title[:60]}", (task.get("error") or "unknown reason")[:300],
+                          f"[BACKGROUND TASK FAILED] The background task '{title[:120]}' could not "
+                          f"finish: {(task.get('error') or 'unknown reason')[:200]}. Tell the user in "
+                          f"one short sentence, in their language, and offer to try again. Do not "
+                          f"call any tool for this.", kind="error")
     elif event == "waiting":
         _call("write_log", f"SYS: Background task waiting for a model (quota) — {title}")
     elif event == "cancelled":

@@ -9,6 +9,11 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To set up / test
 
+- [ ] **Go through TESTING.md for v1.5** — holo HUD, talking to someone else, voice
+      confirm, Claude Code control, personas, audio device switching, phone over Tailscale.
+- [ ] **Phone over Tailscale** — QR code now uses the 100.x address; for the phone mic,
+      enable HTTPS in the Tailscale admin and switch on the secure link (ADDONS.md §9).
+
 - [ ] **Voice test on the G14** — wake word, "what time is it", "open Notepad",
       microphone choice in ⚙ → audio. (Typed commands are being tested first.)
 - [ ] **Try the new add-ons on the G14** — Claude Code is installed and logged in; pick
@@ -31,6 +36,12 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-27 — v1.5: holographic HUD with satellites; presence (free / busy / away),
+  cards that stay, welcome-back summary, silence when you talk to someone else; confirm
+  by voice; Claude Code control (plan / go ahead / follow up / stop / open); voice
+  personas; audio follows headphones and Bluetooth; phone QR over Tailscale with an
+  optional HTTPS link. Suggestions for what's next are at the end of TESTING.md.
 
 - 2026-11-26 — v1.4: life profile (areas with about/goals/log in OneDrive, summaries in
   Jarvis's memory, interview set-up, goal countdowns in the briefing); version label,

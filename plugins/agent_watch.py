@@ -70,14 +70,8 @@ def _start_agent(task: str, agent: str) -> str:
 
 
 def _alert(title: str, text: str, instruction: str, urgent: bool = False) -> None:
-    addons.show(title, text)
-    addons.say(instruction)
-    try:
-        from plugins import phone_alerts
-        if phone_alerts.should_push(urgent):
-            phone_alerts.push("agent", title, text, urgent=urgent)
-    except Exception:
-        pass
+    """Said when the user is free; a card that stays (+ phone when away) otherwise."""
+    addons.notify(title, text, instruction, urgent=urgent, kind="agent")
 
 
 # ── price watches ─────────────────────────────────────────────────────────────

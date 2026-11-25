@@ -117,6 +117,15 @@ PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
 # It is reassigned on every connect, so a model that runs out of quota is
 # stepped over and the assistant keeps talking instead of failing to start.
 LIVE_MODEL          = "models/gemini-3.1-flash-live-preview"
+
+
+def _live_voice() -> str:
+    """The voice to connect with: the persona's, when one is on (core/personas.py)."""
+    try:
+        from core import personas
+        return personas.voice(get_voice())
+    except Exception:
+        return get_voice()
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000 
 RECEIVE_SAMPLE_RATE = 24000
@@ -715,7 +724,7 @@ class JarvisLive:
         # Background add-ons (proactive assistant, modes) have no tool call to
         # receive `player` from, so they read it from core.addons.
         from core import addons as _addons
-        _addons.bind(player=self.ui, say=self.plugin_say)
+        _addons.bind(player=self.ui, say=self.plugin_say, assistant=self)
 
         # Tool access for plugins that ORCHESTRATE other tools rather than doing
         # a job themselves — screen_agent is the first, and the reason this
@@ -1227,7 +1236,8 @@ class JarvisLive:
         # The bind error travels with the URL because the UI has no reference to
         # this object — it only ever sees what this callback returns.
         return (url, key, f"{url}/auto-login?key={key}", manual,
-                getattr(self._dashboard, "_bind_error", "") or "")
+                getattr(self._dashboard, "_bind_error", "")
+                or getattr(self._dashboard, "_tailscale_note", "") or "")
 
     def _on_text_command(self, text: str):
         if not self._loop or not self.session:
@@ -1487,6 +1497,13 @@ class JarvisLive:
         if mem_str:
             parts.append(mem_str)
         parts.append(sys_prompt)
+        try:
+            from core import personas as _personas
+            _pb = _personas.prompt_block()
+            if _pb:
+                parts.append(_pb)
+        except Exception as e:
+            print(f"[Persona] skipped: {e}")
 
         cfg = dict(
             response_modalities=["AUDIO"],
@@ -1519,7 +1536,7 @@ class JarvisLive:
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=get_voice()
+                        voice_name=_live_voice()
                     )
                 )
             ),
@@ -1599,6 +1616,10 @@ class JarvisLive:
         print(f"[JARVIS] 🔧 {name}  {args}")
         _t_tool = time.monotonic()
         self.ui.set_state("THINKING")
+        try:
+            self.ui.push_context(name, "tool")
+        except Exception:
+            pass
 
 
         if name == "save_memory":
@@ -1818,6 +1839,7 @@ class JarvisLive:
         loop = asyncio.get_event_loop()
 
         def callback(indata, frames, time_info, status):
+            self._mic_last_cb = time.monotonic()     # core/audio_watch: mic alive
             # ── Wake-word gate ───────────────────────────────────────────────
             # While asleep, the mic audio NEVER goes to Gemini (nothing is
             # streamed, so JARVIS can't respond to speech not addressed to it and
@@ -1945,8 +1967,12 @@ class JarvisLive:
 
             with _mic_stream:
                 print("[JARVIS] 🎤 Mic stream open")
-                while True:
-                    await asyncio.sleep(0.1)
+                self._mic_open_at = time.monotonic()
+                try:
+                    while True:
+                        await asyncio.sleep(0.1)
+                finally:
+                    self._mic_open_at = 0.0
         except Exception as e:
             print(f"[JARVIS] ❌ Mic: {e}")
             raise
@@ -2058,6 +2084,12 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                # A spoken "confirm" / "cancel" answers an on-screen
+                                # confirmation. From the microphone transcript only.
+                                try:
+                                    confirm_gate.hear(txt)
+                                except Exception:
+                                    pass
 
                         if sc.turn_complete:
                             if self._turn_done_event:
@@ -2086,6 +2118,17 @@ class JarvisLive:
                             in_buf = []
 
                             full_out = " ".join(out_buf).strip()
+                            # The user spoke, and the model chose not to answer or
+                            # act (proactive audio): it judged the speech was meant
+                            # for someone else. Stay quiet for a while — anything
+                            # proactive goes on screen as a card instead (core/presence).
+                            if full_in and not full_out and not getattr(self, "_turn_tool", False):
+                                try:
+                                    from core import presence as _presence
+                                    _presence.note_not_addressed()
+                                except Exception:
+                                    pass
+                            self._turn_tool = False
                             # Second line of defence: even if a repeat slips
                             # into a *fresh* buffer after a flush, never log the
                             # same answer (or a tail of it) twice in a row.
@@ -2114,6 +2157,7 @@ class JarvisLive:
                                 self._keep_task(asyncio.create_task(_cam_close()))
 
                     if response.tool_call:
+                        self._turn_tool = True
                         fn_responses = []
                         for fc in response.tool_call.function_calls:
                             print(f"[JARVIS] 📞 {fc.name}")
@@ -2251,10 +2295,13 @@ class JarvisLive:
                 except Exception:
                     pass
 
+                self._spk_write_started = time.monotonic()   # core/audio_watch
                 try:
                     await asyncio.to_thread(stream.write, bytes(batch))
                 except (RuntimeError, asyncio.CancelledError):
                     break   # executor shutting down — exit cleanly
+                finally:
+                    self._spk_write_started = 0.0
         except Exception as e:
             print(f"[JARVIS] ❌ Play: {e}")
             raise
@@ -2783,6 +2830,11 @@ class JarvisLive:
         # Enumerate audio devices off-thread. The settings drawer must never pay
         # for host-API enumeration on the Qt thread.
         audio_devices.prefetch()
+        try:
+            from core import audio_watch
+            audio_watch.start()
+        except Exception as e:
+            print(f"[Audio] device watch not started: {e}")
 
         # Start dashboard (optional — needs: pip install fastapi "uvicorn[standard]" cryptography)
         try:
@@ -2799,6 +2851,13 @@ class JarvisLive:
         while True:
             try:
                 self._ensure_executor()
+                # A headset came or went since the last session: refresh the
+                # audio library's device list now, while no stream is open.
+                try:
+                    from core import audio_watch
+                    audio_watch.reinit_if_needed()
+                except Exception as _e:
+                    print(f"[Audio] refresh skipped: {_e}")
                 print("[JARVIS] Connecting...")
                 self.ui.set_state("THINKING")
                 # Pick the rung to open the conversation on. A model resting
