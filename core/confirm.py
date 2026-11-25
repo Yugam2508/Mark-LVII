@@ -35,6 +35,7 @@ WHAT BELONGS HERE AND WHAT DOES NOT
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -65,6 +66,18 @@ class _Pending:
 
 _pending: Optional[_Pending] = None
 _lock = threading.Lock()
+
+# ── Answering by voice ────────────────────────────────────────────────────────
+# The answer comes from the person's own speech as the microphone transcribed
+# it (main.py passes every piece of the user's input transcript to hear()), never
+# from a model tool call — so an email that says "confirm" in its text cannot
+# confirm anything. Only speech that arrives after the banner went up counts.
+_YES = re.compile(r"\b(confirm(?:ed)?|yes,? (?:send|do|go|confirm|please)|send it|go ahead|do it|"
+                  r"approved?|that'?s fine|ship it)\b", re.I)
+_NO = re.compile(r"\b(cancel|don'?t|do not|no,? (?:don'?t|stop|cancel|wait)|stop|abort|never ?mind)\b", re.I)
+_SHORT_YES = re.compile(r"^\W*(yes|yeah|yep|yup|sure|ok(?:ay)?)\W*(?:please\W*)?$", re.I)
+_SHORT_NO = re.compile(r"^\W*(no|nope|nah)\W*$", re.I)
+_heard: list = []
 
 # Set once at startup by main.py. Signature: (title, detail) -> None for show,
 # and () -> None for hide. Both are marshalled onto the Qt thread by the UI.
@@ -108,6 +121,7 @@ def request(key: str, title: str, detail: str, run: Callable[[], str],
                 f"not available, so I have not done it.")
 
     editable = [dict(f) for f in fields] if (fields and run_edited) else None
+    _heard.clear()
     with _lock:
         _pending = _Pending(key=key, title=title, detail=detail,
                             run=run, at=time.monotonic(),
@@ -121,11 +135,54 @@ def request(key: str, title: str, detail: str, run: Callable[[], str],
         return f"Could not ask for confirmation: {e}. Nothing was done."
 
     _log(f"SYS: Awaiting confirmation — {title}")
+    how = ("on the HUD, or by saying 'confirm' or 'cancel'" if voice_enabled()
+           else "on the HUD")
     return (
         f"[CONFIRMATION_PENDING] I have put a confirmation on screen for: {title}. "
         f"Say ONE short sentence in the user's own language telling them you need "
-        f"them to confirm it on the HUD before you do it. Do not claim it is done."
+        f"them to confirm it {how} before you do it. Do not claim it is done, and do "
+        f"not answer for them."
     )
+
+
+def voice_enabled() -> bool:
+    try:
+        from memory.config_manager import get_plugin_setting
+        return bool(get_plugin_setting("conversation", "voice_confirm", True))
+    except Exception:
+        return True
+
+
+def verdict(text: str) -> Optional[bool]:
+    """True = confirm, False = cancel, None = not an answer. 'No' wins ties."""
+    t = (text or "").strip()
+    if not t:
+        return None
+    if _NO.search(t) or _SHORT_NO.match(t):
+        return False
+    if _YES.search(t) or _SHORT_YES.match(t):
+        return True
+    return None
+
+
+def hear(piece: str) -> Optional[bool]:
+    """A piece of the USER's transcribed speech. Resolves the waiting confirmation
+    when it is a clear yes or no; returns the verdict, or None."""
+    if not piece or not voice_enabled():
+        return None
+    with _lock:
+        p = _pending
+        if p is None or p.editing or time.monotonic() - p.at < 0.6:
+            return None
+        if time.monotonic() - p.at > TIMEOUT_SECONDS:
+            return None
+    _heard.append(piece)
+    answer = verdict(" ".join(_heard[-12:]))
+    if answer is not None:
+        _log(f"SYS: Heard '{' '.join(_heard[-12:]).strip()}' — {'confirming' if answer else 'cancelling'}.")
+        _heard.clear()
+        resolve(answer)
+    return answer
 
 
 def pending_fields() -> list:

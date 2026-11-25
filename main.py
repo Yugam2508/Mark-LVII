@@ -2058,6 +2058,12 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                # A spoken "confirm" / "cancel" answers an on-screen
+                                # confirmation. From the microphone transcript only.
+                                try:
+                                    confirm_gate.hear(txt)
+                                except Exception:
+                                    pass
 
                         if sc.turn_complete:
                             if self._turn_done_event:
