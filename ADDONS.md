@@ -169,10 +169,10 @@ reads to answer.
 
 ## 7. Interrupt by voice
 
-**⚙ → PLUGIN SETTINGS → VOICE INTERRUPT → ON**, or just say "let me interrupt you".
-Then talk over JARVIS and it stops.
+It's **on**: just start talking while Jarvis is speaking and it stops. Turn it off or make
+it *careful* in **⚙ → PLUGIN SETTINGS → VOICE INTERRUPT**, or by voice.
 
-It's off by default because it depends on your speakers. With headphones it's reliable.
+How well it works depends on your speakers. With headphones it's reliable.
 On loud desk speakers, if JARVIS stops itself now and then, set it to **careful**. The
 first fraction of a second of your interruption is used to detect you, so start with
 "stop" or "wait".
