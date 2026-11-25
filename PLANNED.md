@@ -32,6 +32,10 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## Done
 
+- 2026-11-26 — v1.4: life profile (areas with about/goals/log in OneDrive, summaries in
+  Jarvis's memory, interview set-up, goal countdowns in the briefing); version label,
+  What's new panel and "what's new?" answered from the changelog.
+
 - 2026-11-25 — Voice interrupt fixed: the echo detector failed on the microphone's
   2-D audio block (frames × channels) and silently answered "not the user", so talking
   over Jarvis never worked. Now flattened first; interrupt is on by default.
