@@ -100,6 +100,13 @@ def band_energies(pcm, sr: int) -> np.ndarray:
     another, and a projection needs real magnitudes.
     """
     x = np.asarray(pcm, dtype=np.float32)
+    # The microphone callback hands over a 2-D block (frames × channels). Left as
+    # it was, the window below broadcast it into a square matrix and the band
+    # mask then raised IndexError — which is_user_speech() swallowed as "not the
+    # user", so interrupting by voice never fired and the echo tail dropped every
+    # block. Flatten to one channel first (averaging if there are several).
+    if x.ndim > 1:
+        x = x.mean(axis=1) if x.shape[1] > 1 else x.reshape(-1)
     if x.size < 64:
         return np.zeros(len(_BAND_EDGES) - 1, dtype=np.float32)
     x = x - x.mean()

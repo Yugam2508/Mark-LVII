@@ -32,6 +32,10 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## Done
 
+- 2026-11-25 — Voice interrupt fixed: the echo detector failed on the microphone's
+  2-D audio block (frames × channels) and silently answered "not the user", so talking
+  over Jarvis never worked. Now flattened first; interrupt is on by default.
+
 - 2026-11-25 — Update yourself; phone link via ntfy (phone alerts when away, commands
   from the phone, PC-to-PC control, Wake-on-LAN or smart-plug wake, queued commands for
   a PC that is off, per-PC permissions); proactive agents (price watches, exam/interview

@@ -1343,7 +1343,7 @@ class JarvisLive:
         try:
             from memory.config_manager import get_plugin_config
             cfg = get_plugin_config("voice_interrupt")
-            self._barge_enabled = bool(cfg.get("enabled", False))
+            self._barge_enabled = bool(cfg.get("enabled", True))
             self._barge_extra = 4 if str(cfg.get("sensitivity", "")).lower() == "careful" else 0
         except Exception:
             self._barge_enabled = False
@@ -1845,9 +1845,9 @@ class JarvisLive:
             if jarvis_speaking:
                 # Nothing is streamed while JARVIS talks.
                 #
-                # Interrupting by voice: OFF unless switched on in ⚙ → PLUGIN
-                # SETTINGS → VOICE INTERRUPT, because how well it works depends on
-                # the room. `EchoGuard` judges each block against what we are
+                # Interrupting by voice: ON by default in this fork; switch it off or
+                # to 'careful' in ⚙ → PLUGIN SETTINGS → VOICE INTERRUPT if loud
+                # speakers make it stop itself. `EchoGuard` judges each block against what we are
                 # playing; after `required_blocks` in a row (plus a margin on
                 # "careful") the answer is cut short. interrupt() runs on its own
                 # thread — never inside this audio callback.
