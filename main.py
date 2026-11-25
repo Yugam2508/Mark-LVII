@@ -2298,6 +2298,18 @@ class JarvisLive:
         news_future = (loop.run_in_executor(None, _fetch_news_sync, topic)
                        if want_news else None)
 
+        # The user's day (calendar, important mail, to-dos, weather) is gathered
+        # at the same time as the news; plugins/daily_briefing.py. Optional: a
+        # missing plugin or an unconnected account just leaves it out.
+        def _compose_day():
+            try:
+                from plugins import daily_briefing
+                return daily_briefing.compose()
+            except Exception as e:
+                print(f"[Briefing] day: {e!r}")
+                return {}
+        day_future = loop.run_in_executor(None, _compose_day)
+
         await asyncio.sleep(0.3)
         if not self.session:
             return
@@ -2339,8 +2351,7 @@ class JarvisLive:
             turn_complete=True,
         )
         print("[JARVIS] Briefing phase 1 (greeting) sent.")
-        if not want_news and not extra:
-            return
+        # (Phase 2 also runs with no news and no extra, for the user's day.)
 
         # ── Phase 2: fire as soon as Phase 1 audio is done ───────────────────
         async def _deliver_news():
@@ -2380,6 +2391,16 @@ class JarvisLive:
                 if not self.session:
                     return
 
+                day_clause = ""
+                try:
+                    day = await asyncio.wait_for(asyncio.wrap_future(day_future), timeout=10.0)
+                    if day and day.get("data"):
+                        from plugins import daily_briefing
+                        self.ui.show_content("YOUR DAY", day["screen"])
+                        day_clause = daily_briefing.briefing_prompt(day)
+                except Exception as e:
+                    self.ui.write_log(f"SYS: Day summary unavailable: {e!r}")
+
                 extra_clause = (f"\n\nThen also do this, which the user asked to be part of "
                                 f"their briefing: {extra} — you may use tools for it."
                                 if extra else "")
@@ -2388,7 +2409,12 @@ class JarvisLive:
                 failed = (not news_text) or news_text.startswith(
                     ("No news found", "Search failed", "Please provide")
                 )
-                if not want_news:
+                if not want_news and not extra:
+                    if not day_clause:
+                        return
+                    p2 = f"[BRIEFING]{day_clause} Do not call any tools.{lang_str}"
+                    day_clause = ""
+                elif not want_news:
                     p2 = (f"[BRIEFING] The user asked for this to be part of their briefing: "
                           f"{extra} — do it now, using tools if it needs them.{lang_str}")
                 elif not failed:
@@ -2411,6 +2437,8 @@ class JarvisLive:
                         f"Let the user know briefly.{extra_clause}{lang_str}"
                     )
 
+                if day_clause:
+                    p2 = "[BRIEFING]" + day_clause + "\n\n" + p2
                 await self.session.send_client_content(
                     turns={"role": "user", "parts": [{"text": p2}]},
                     turn_complete=True,
