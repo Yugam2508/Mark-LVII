@@ -1839,6 +1839,7 @@ class JarvisLive:
         loop = asyncio.get_event_loop()
 
         def callback(indata, frames, time_info, status):
+            self._mic_last_cb = time.monotonic()     # core/audio_watch: mic alive
             # ── Wake-word gate ───────────────────────────────────────────────
             # While asleep, the mic audio NEVER goes to Gemini (nothing is
             # streamed, so JARVIS can't respond to speech not addressed to it and
@@ -1966,8 +1967,12 @@ class JarvisLive:
 
             with _mic_stream:
                 print("[JARVIS] 🎤 Mic stream open")
-                while True:
-                    await asyncio.sleep(0.1)
+                self._mic_open_at = time.monotonic()
+                try:
+                    while True:
+                        await asyncio.sleep(0.1)
+                finally:
+                    self._mic_open_at = 0.0
         except Exception as e:
             print(f"[JARVIS] ❌ Mic: {e}")
             raise
@@ -2290,10 +2295,13 @@ class JarvisLive:
                 except Exception:
                     pass
 
+                self._spk_write_started = time.monotonic()   # core/audio_watch
                 try:
                     await asyncio.to_thread(stream.write, bytes(batch))
                 except (RuntimeError, asyncio.CancelledError):
                     break   # executor shutting down — exit cleanly
+                finally:
+                    self._spk_write_started = 0.0
         except Exception as e:
             print(f"[JARVIS] ❌ Play: {e}")
             raise
@@ -2822,6 +2830,11 @@ class JarvisLive:
         # Enumerate audio devices off-thread. The settings drawer must never pay
         # for host-API enumeration on the Qt thread.
         audio_devices.prefetch()
+        try:
+            from core import audio_watch
+            audio_watch.start()
+        except Exception as e:
+            print(f"[Audio] device watch not started: {e}")
 
         # Start dashboard (optional — needs: pip install fastapi "uvicorn[standard]" cryptography)
         try:
@@ -2838,6 +2851,13 @@ class JarvisLive:
         while True:
             try:
                 self._ensure_executor()
+                # A headset came or went since the last session: refresh the
+                # audio library's device list now, while no stream is open.
+                try:
+                    from core import audio_watch
+                    audio_watch.reinit_if_needed()
+                except Exception as _e:
+                    print(f"[Audio] refresh skipped: {_e}")
                 print("[JARVIS] Connecting...")
                 self.ui.set_state("THINKING")
                 # Pick the rung to open the conversation on. A model resting

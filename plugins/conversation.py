@@ -125,6 +125,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["20", "45", "120"], "default": "45"},
         {"key": "welcome_back", "label": "When I'm back, tell me what I missed", "type": "toggle",
          "default": True},
+        {"key": "follow_audio", "label": "Follow audio devices: switch when headphones or Bluetooth "
+         "connect or disconnect", "type": "toggle", "default": True},
     ],
 }
 
