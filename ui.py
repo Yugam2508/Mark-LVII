@@ -168,6 +168,11 @@ class JarvisUI:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
 
+    def request_quit(self) -> None:
+        """Thread-safe: close the window, which ends the app the normal way
+        (session summary saved, engines stopped). Used by the updater."""
+        self._win._quit_sig.emit()
+
     def show_editable(self, title: str, fields: list, actions: list,
                       note: str = "", copy: str = "") -> None:
         """Thread-safe: a draft the person can edit, with action buttons.
