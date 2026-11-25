@@ -76,6 +76,7 @@ from gui.overlays import (
     ClipboardPanel,
     ConfirmBanner,
     EditPanel,
+    WhatsNewOverlay,
     CustomizeOverlay,
     MemoryOverlay,
     PluginManagerOverlay,
@@ -93,6 +94,14 @@ from gui.style import DISPLAY_CSS, btn_css, hud_font, px_font, scroll_css
 from gui.widgets import (ArcLogo, CommandFrame, DataRow, HeaderBar, HoloPanel, IconButton,
                          PanelText, RingGauge, RoutineRow, Sparkline, StateChip, StatusStrip,
                          TaskRow)
+
+
+def _edition_version() -> str:
+    try:
+        from core import edition
+        return edition.VERSION
+    except Exception:
+        return "?"
 
 
 class MainWindow(QMainWindow):
@@ -406,6 +415,7 @@ class MainWindow(QMainWindow):
         self._confirm_hide_sig.connect(self._hide_confirm_banner)
         self._edit_sig.connect(self._show_edit_panel)
         self._quit_sig.connect(self.close)
+        QTimer.singleShot(3500, self._maybe_show_whats_new)   # once per update
         self._cam_stream_sig.connect(self._on_cam_stream)
         self._cam_frame_sig.connect(self._on_cam_frame)
         self._wake_btns_sig.connect(self._refresh_wake_btns)
@@ -1235,9 +1245,15 @@ class MainWindow(QMainWindow):
         self._title_lbl.setStyleSheet(f"color: {C.WHITE}; background: transparent;")
         self._title_lbl.setToolTip(self._subtitle(display))
         name_col.addWidget(self._title_lbl)
-        self._sub_lbl = QLabel(f"{APP_VERSION}  ·  PERSONAL AI SYSTEM")
+        from core import edition as _edition
+        self._sub_lbl = QLabel(f"{APP_VERSION}  ·  {_edition.label()}")
         self._sub_lbl.setFont(px_font(9, QFont.Weight.DemiBold, spacing=2.2))
         self._sub_lbl.setStyleSheet(f"color: {C.PRI_DIM}; background: transparent;")
+        # Click the version to see what changed (the panel also opens once by
+        # itself after every update — see _maybe_show_whats_new).
+        self._sub_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._sub_lbl.setToolTip("What's new in this version")
+        self._sub_lbl.mousePressEvent = lambda _e: self._open_whats_new()
         name_col.addWidget(self._sub_lbl)
         lay.addLayout(name_col)
         lay.addSpacing(8)
@@ -1328,6 +1344,7 @@ class MainWindow(QMainWindow):
             (f"ENGINE · {getattr(self, '_engine_label', 'GEMINI LIVE')}", "GREEN"),
             mic,
             (f"PROTOCOL · {APP_PROTOCOL}", "PRI"),
+            (f"EDITION · v{_edition_version()}", "PRI"),
         ])
 
     def _build_left_panel(self) -> QWidget:
@@ -2705,6 +2722,11 @@ class MainWindow(QMainWindow):
             if ui_color:
                 fields["ui_color"] = ui_color.strip().lower()
             update_config(**fields)
+            try:  # "YUGAM EDITION" follows the name you give yourself
+                from core import edition
+                self._sub_lbl.setText(f"{APP_VERSION}  ·  {edition.label()}")
+            except Exception:
+                pass
             self._log.append_log(f"SYS: Identity updated — {display}")
             if color_changed:
                 self._log.append_log(f"SYS: UI colour applied — {ui_color}")
@@ -2798,6 +2820,29 @@ class MainWindow(QMainWindow):
         ov.answered.connect(self._on_confirm_answered)
         self._centre_overlay(ov)
         self._confirm_overlay = ov
+
+    # ── What's new ───────────────────────────────────────────────────────────
+
+    def _open_whats_new(self):
+        old = getattr(self, "_whats_new_overlay", None)
+        if old is not None:
+            old.close()
+        ov = WhatsNewOverlay(parent=self.centralWidget())
+        self._centre_overlay(ov)
+        self._whats_new_overlay = ov
+        try:
+            from core import edition
+            edition.mark_seen()
+        except Exception:
+            pass
+
+    def _maybe_show_whats_new(self):
+        try:
+            from core import edition
+            if edition.unseen():
+                self._open_whats_new()
+        except Exception:
+            pass
 
     # ── Editable drafts ──────────────────────────────────────────────────────
 
