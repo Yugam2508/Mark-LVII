@@ -136,10 +136,11 @@ def _daily() -> None:
             if get_plugin_setting(NAMESPACE, "check_daily", True):
                 behind, summary = check()
                 if behind:
-                    addons.show("UPDATE READY", f"{behind} change(s): {summary}\n\nSay "
-                                "\"update yourself\" or press UPDATE NOW in plugin settings.")
-                    addons.say("[SYSTEM] An update for you is ready. In one short sentence, "
-                               "tell the user and that they can say 'update yourself'.")
+                    addons.notify("Update ready", f"{behind} change(s): {summary}\nSay \"update "
+                                  "yourself\" or press UPDATE NOW in plugin settings.",
+                                  "[SYSTEM] An update for you is ready. In one short sentence, "
+                                  "tell the user and that they can say 'update yourself'.",
+                                  phone=False)
         except Exception as e:
             print(f"[Updater] check skipped: {e}")
         time.sleep(24 * 3600)

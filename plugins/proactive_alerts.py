@@ -151,9 +151,19 @@ def _deliver(title: str, screen: str, instruction: str, *, urgent: bool, summary
         return "held"
     if pol.get("popups", True):
         put_on_screen()
-    if addons.say(instruction):
+    try:
+        from core import presence
+        where, _why = presence.state()
+    except Exception:
+        where = "free"
+    if where == "free" and addons.say(instruction):
         return "said"
-    return "shown"
+    # Busy (talking to someone, on a call) or away: a card that stays until dismissed.
+    addons.notice(title, screen, kind="email" if title == "NEW EMAIL" else
+                  "event" if title == "COMING UP" else "todo")
+    with addons._lock:
+        addons._missed.append(f"{title}: {screen.splitlines()[0][:120]}")
+    return "card"
 
 
 # ── email ─────────────────────────────────────────────────────────────────────

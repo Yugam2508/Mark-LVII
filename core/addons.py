@@ -18,6 +18,8 @@ from typing import Any, Callable, Optional
 _lock = threading.Lock()
 _player: Any = None
 _say: Optional[Callable[[str], None]] = None
+_assistant: Any = None
+_missed: list = []          # notices delivered as cards while busy/away
 
 # Set by plugins/modes.py; read by core/routines/engine.py and the proactive
 # plugin. A function rather than a value so the routines engine never imports
@@ -25,11 +27,19 @@ _say: Optional[Callable[[str], None]] = None
 _mode_policy: Optional[Callable[[], dict]] = None
 
 
-def bind(player: Any = None, say: Optional[Callable[[str], None]] = None) -> None:
+def bind(player: Any = None, say: Optional[Callable[[str], None]] = None,
+         assistant: Any = None) -> None:
     """Called once by main.py when the HUD exists."""
-    global _player, _say
+    global _player, _say, _assistant
     with _lock:
         _player, _say = player, say
+        if assistant is not None:
+            _assistant = assistant
+
+
+def assistant() -> Any:
+    """The running JarvisLive (sleep/wake, mute). None in tests and on the server."""
+    return _assistant
 
 
 def player() -> Any:
@@ -83,6 +93,60 @@ def log(text: str) -> None:
             p.write_log(text)
         except Exception:
             pass
+
+
+def notice(title: str, text: str, kind: str = "info") -> bool:
+    """A card on the HUD that stays until dismissed (falls back to the content panel)."""
+    p = _player
+    if p is None:
+        return False
+    try:
+        if hasattr(p, "show_notice"):
+            p.show_notice(title, text, kind)
+        else:
+            p.show_content(title, text)
+        return True
+    except Exception:
+        return False
+
+
+def notify(title: str, text: str, instruction: str, *, urgent: bool = False,
+           kind: str = "info", phone: bool = True) -> str:
+    """Tell the user something JARVIS decided to bring up on its own.
+
+        free  -> said out loud (instruction goes to the model) + shown briefly
+        busy  -> a card that stays on screen; no speech
+        away  -> the card, and a phone notification
+    Returns 'said', 'card' or 'card+phone'. `instruction` should already wrap any
+    outside text with core.outcome.untrusted()."""
+    try:
+        from core import presence
+        where, why = presence.state()
+    except Exception:
+        where, why = "free", ""
+    if where == "free" and say(instruction):
+        show(title, text)
+        return "said"
+    notice(title, text, kind)
+    with _lock:
+        _missed.append(title if not text else f"{title}: {text.splitlines()[0][:120]}")
+        del _missed[:-20]
+    if where == "away" and phone:
+        try:
+            from plugins import phone_alerts
+            if phone_alerts.should_push(urgent):
+                phone_alerts.push(kind, title, text[:500], urgent=urgent)
+                return "card+phone"
+        except Exception:
+            pass
+    return "card"
+
+
+def take_missed() -> list:
+    """What was carded while busy/away — once, for the 'welcome back' summary."""
+    with _lock:
+        out, _missed[:] = list(_missed), []
+    return out
 
 
 def set_mode_policy(fn: Callable[[], dict]) -> None:

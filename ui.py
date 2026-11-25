@@ -168,6 +168,11 @@ class JarvisUI:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
 
+    def show_notice(self, title: str, text: str, kind: str = "info") -> None:
+        """Thread-safe: a card that stays on the HUD until dismissed — used when the
+        user is busy or away (core.addons.notify)."""
+        self._win._notice_sig.emit(str(title)[:120], str(text)[:2000], str(kind or "info"))
+
     def request_quit(self) -> None:
         """Thread-safe: close the window, which ends the app the normal way
         (session summary saved, engines stopped). Used by the updater."""

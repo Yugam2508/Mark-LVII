@@ -715,7 +715,7 @@ class JarvisLive:
         # Background add-ons (proactive assistant, modes) have no tool call to
         # receive `player` from, so they read it from core.addons.
         from core import addons as _addons
-        _addons.bind(player=self.ui, say=self.plugin_say)
+        _addons.bind(player=self.ui, say=self.plugin_say, assistant=self)
 
         # Tool access for plugins that ORCHESTRATE other tools rather than doing
         # a job themselves — screen_agent is the first, and the reason this
@@ -2092,6 +2092,17 @@ class JarvisLive:
                             in_buf = []
 
                             full_out = " ".join(out_buf).strip()
+                            # The user spoke, and the model chose not to answer or
+                            # act (proactive audio): it judged the speech was meant
+                            # for someone else. Stay quiet for a while — anything
+                            # proactive goes on screen as a card instead (core/presence).
+                            if full_in and not full_out and not getattr(self, "_turn_tool", False):
+                                try:
+                                    from core import presence as _presence
+                                    _presence.note_not_addressed()
+                                except Exception:
+                                    pass
+                            self._turn_tool = False
                             # Second line of defence: even if a repeat slips
                             # into a *fresh* buffer after a flush, never log the
                             # same answer (or a tail of it) twice in a row.
@@ -2120,6 +2131,7 @@ class JarvisLive:
                                 self._keep_task(asyncio.create_task(_cam_close()))
 
                     if response.tool_call:
+                        self._turn_tool = True
                         fn_responses = []
                         for fc in response.tool_call.function_calls:
                             print(f"[JARVIS] 📞 {fc.name}")

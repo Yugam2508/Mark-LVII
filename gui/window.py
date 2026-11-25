@@ -76,6 +76,7 @@ from gui.overlays import (
     ClipboardPanel,
     ConfirmBanner,
     EditPanel,
+    NoticeStack,
     WhatsNewOverlay,
     CustomizeOverlay,
     MemoryOverlay,
@@ -125,6 +126,7 @@ class MainWindow(QMainWindow):
     _confirm_hide_sig = pyqtSignal()
     _edit_sig       = pyqtSignal(object)   # spec dict — an editable draft panel
     _quit_sig       = pyqtSignal()         # close the app from another thread (updater)
+    _notice_sig     = pyqtSignal(str, str, str)   # title, text, kind — cards that stay
     _wake_dl_sig    = pyqtSignal(bool, str)  # wake-word install finished (ok, message)
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
@@ -415,6 +417,7 @@ class MainWindow(QMainWindow):
         self._confirm_hide_sig.connect(self._hide_confirm_banner)
         self._edit_sig.connect(self._show_edit_panel)
         self._quit_sig.connect(self.close)
+        self._notice_sig.connect(self._add_notice)
         QTimer.singleShot(3500, self._maybe_show_whats_new)   # once per update
         self._cam_stream_sig.connect(self._on_cam_stream)
         self._cam_frame_sig.connect(self._on_cam_frame)
@@ -1149,6 +1152,9 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._fit_side_columns()
+        stack = getattr(self, "_notice_stack", None)
+        if stack is not None and stack.isVisible():
+            stack.place()
         cw = self.centralWidget()
         if self._overlay and self._overlay.isVisible():
             ow, oh = 460, 390
@@ -2820,6 +2826,15 @@ class MainWindow(QMainWindow):
         ov.answered.connect(self._on_confirm_answered)
         self._centre_overlay(ov)
         self._confirm_overlay = ov
+
+    # ── Notices that stay ────────────────────────────────────────────────────
+
+    def _add_notice(self, title: str, text: str, kind: str):
+        stack = getattr(self, "_notice_stack", None)
+        if stack is None:
+            stack = NoticeStack(parent=self.centralWidget())
+            self._notice_stack = stack
+        stack.add(title, text, kind)
 
     # ── What's new ───────────────────────────────────────────────────────────
 

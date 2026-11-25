@@ -1006,6 +1006,126 @@ class WhatsNewOverlay(_HudOverlay):
         lay.addLayout(row)
 
 
+class NoticeStack(QWidget):
+    """Cards that stay until dismissed — how JARVIS tells you things while you are
+    busy (talking to someone, on a call, gaming) or away. Anchored top-right, under
+    the header; newest on top; at most four shown with a '+N more' line."""
+
+    _W = 340
+    _MAX_SHOWN = 4
+    KIND_COLOUR = {"email": "ACC", "event": "GREEN", "todo": "PRI", "agent": "ACC2",
+                   "task": "ACC2", "error": "MUTED_C", "info": "PRI"}
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("background: transparent;")
+        self.setFixedWidth(self._W)
+        self._items: list[dict] = []
+        self._lay = QVBoxLayout(self)
+        self._lay.setContentsMargins(0, 0, 0, 0)
+        self._lay.setSpacing(6)
+        self.hide()
+
+    def add(self, title: str, text: str, kind: str = "info") -> None:
+        self._items.insert(0, {"title": title, "text": text, "kind": kind,
+                               "at": time.strftime("%H:%M")})
+        del self._items[30:]
+        self._rebuild()
+
+    def _dismiss(self, item: dict) -> None:
+        if item in self._items:
+            self._items.remove(item)
+        self._rebuild()
+
+    def clear(self) -> None:
+        self._items.clear()
+        self._rebuild()
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def _card(self, item: dict) -> QWidget:
+        col = getattr(C, self.KIND_COLOUR.get(item["kind"], "PRI"), C.PRI)
+        card = QFrame()
+        card.setStyleSheet(f"QFrame {{ background: rgba(0, 8, 14, 238); border: 1px solid {C.BORDER_B};"
+                           f" border-left: 3px solid {col}; border-radius: 4px; }}")
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(10, 7, 8, 8)
+        lay.setSpacing(2)
+        top = QHBoxLayout()
+        t = QLabel(item["title"].upper()[:48])
+        t.setFont(hud_font(8, QFont.Weight.Bold))
+        t.setStyleSheet(f"color: {col}; background: transparent; border: none;")
+        top.addWidget(t, 1)
+        when = QLabel(item["at"])
+        when.setFont(hud_font(7))
+        when.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent; border: none;")
+        top.addWidget(when)
+        x = QPushButton("✕")
+        x.setFixedSize(20, 20)
+        x.setCursor(Qt.CursorShape.PointingHandCursor)
+        x.setToolTip("Dismiss")
+        x.setStyleSheet(f"QPushButton {{ color: {C.TEXT_MED}; background: transparent; border: none; }}"
+                        f"QPushButton:hover {{ color: {C.TEXT}; }}")
+        x.clicked.connect(lambda _=False, it=item: self._dismiss(it))
+        top.addWidget(x)
+        lay.addLayout(top)
+        body_text = item["text"].strip()
+        if body_text:
+            lines = body_text.splitlines()
+            short = "\n".join(lines[:4])[:280] + ("…" if len(lines) > 4 or len(body_text) > 280 else "")
+            b = QLabel(short)
+            b.setWordWrap(True)
+            b.setFont(hud_font(8))
+            b.setToolTip(body_text[:1500])
+            b.setStyleSheet(f"color: {C.TEXT}; background: transparent; border: none;")
+            lay.addWidget(b)
+        return card
+
+    def _rebuild(self) -> None:
+        while self._lay.count():
+            w = self._lay.takeAt(0).widget()
+            if w is not None:
+                w.hide()
+                w.deleteLater()
+        if not self._items:
+            self.hide()
+            return
+        for item in self._items[:self._MAX_SHOWN]:
+            card = self._card(item)
+            self._lay.addWidget(card)
+            card.show()   # else the size hint below ignores it until the next event loop
+        if len(self._items) > 1:
+            row = QHBoxLayout()
+            more = len(self._items) - self._MAX_SHOWN
+            lbl = QLabel(f"+{more} more" if more > 0 else "")
+            lbl.setFont(hud_font(7))
+            lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+            row.addWidget(lbl, 1)
+            clr = _hud_button("CLEAR ALL")
+            clr.setFixedHeight(24)
+            clr.clicked.connect(self.clear)
+            row.addWidget(clr)
+            holder = QWidget()
+            holder.setStyleSheet("background: transparent;")
+            holder.setLayout(row)
+            self._lay.addWidget(holder)
+            holder.show()
+        self.show()
+        self.place()
+        QTimer.singleShot(0, self.place)
+
+    def place(self) -> None:
+        p = self.parentWidget()
+        if p is None:
+            return
+        self._lay.activate()
+        self.resize(self._W, self.sizeHint().height())
+        self.move(max(0, p.width() - self._W - 16), 64)   # below the header bar
+        self.raise_()
+
+
 class AudioDeviceOverlay(_HudOverlay):
     """Choose which microphone JARVIS listens to and which speakers it uses.
 
