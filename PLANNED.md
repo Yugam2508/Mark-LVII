@@ -15,8 +15,9 @@ bottom of their section; finished items move to **Done** with the date.
       it in ⚙ → ENGINE & PROVIDERS (ADDONS.md §11), set the writing voice (§12), check proactive alerts (§13) and modes (§14),
       reconnect Google for Drive (§16), Notion (§17), notes (§18). Spotify connected but
       not yet tested (device choice §15). Home Assistant only if there are smart devices.
-- [ ] **Tailscale for the OnePlus 13** — Tailscale on phone + PCs, then the phone
-      dashboard over the Tailscale address (ADDONS.md §9).
+- [ ] **Phone link** — ntfy app on the OnePlus, subscribe to both topics (ADDONS.md §21);
+      Wake-on-LAN on the desktop and "sleep instead of shut down" (§22). Tailscale is now
+      only needed for the full phone dashboard (§9).
 - [ ] **Install on the desktop** (Aftershock, 9800X3D + RTX 5070) — the PyQt6 pin is
       on `main` now; set Whisper to GPU if using the pipeline engine.
 - [ ] **Interrupt by voice** — try with headphones and with speakers; pick normal or
@@ -30,6 +31,12 @@ bottom of their section; finished items move to **Done** with the date.
   below 6.10. Worth retrying newer versions later.
 
 ## Done
+
+- 2026-11-25 — Update yourself; phone link via ntfy (phone alerts when away, commands
+  from the phone, PC-to-PC control, Wake-on-LAN or smart-plug wake, queued commands for
+  a PC that is off, per-PC permissions); proactive agents (price watches, exam/interview
+  prep, daily digest); games launcher; the day in the morning briefing; study timer;
+  screen helper; money tracker; reading & watch list.
 
 - 2026-11-24 — Edit before it happens: EDIT on the confirmation banner (email To /
   Subject / message, timeout paused while editing), and an editable panel for writer
