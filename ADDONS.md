@@ -17,12 +17,22 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Modes | "Gaming mode", "I'm studying", "Back to normal" | `plugins/modes.py` |
 | Notes | "Note that…", "What did I note today?" | `plugins/notes.py` |
 | Notion | "Search Notion for…", "Add this to my Notion page" | `plugins/notion.py` |
+| Edit before it happens | EDIT on confirmations; drafts, replies, notes and events open editable | `gui/overlays.py`, `core/confirm.py` |
+| Update yourself | "Update yourself": no more reinstalling | `plugins/updater.py` |
+| Phone link | Alerts on your phone; commands from your phone; PC-to-PC control; Wake-on-LAN | `plugins/device_link.py`, `phone_alerts.py` |
+| Proactive agents | Price-drop alerts, automatic exam/interview prep, daily digest | `plugins/agent_watch.py` |
+| Games | "Launch Valorant", "what did I play recently?" | `plugins/games.py` |
+| Morning briefing | Your day (calendar, email, to-dos, weather) before the news | `plugins/daily_briefing.py` |
+| Study timer | "Start a 25-minute study session on chemistry" | `plugins/study_timer.py` |
+| Screen helper | "Summarise this page", "explain this error" | `plugins/screen_helper.py` |
+| Money | "I spent 12 on lunch", budgets | `plugins/money_tracker.py` |
+| Reading & watch list | "Save this for later", "pick something to watch" | `plugins/reading_list.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
 | Interrupt by voice | Talk over JARVIS to stop it | `plugins/voice_interrupt.py` + `main.py` |
 | Smart home | "Turn off the bedroom light", "Movie mode" | `plugins/home_assistant.py` |
 | Device sync | Both PCs share one memory | `plugins/device_sync.py` |
-| Windows installer | One script for every PC | `install-windows.ps1` |
+| Windows installer | One script for every PC (only needed once now) | `install-windows.ps1` |
 
 Settings for all of these are in **⚙ → PLUGIN SETTINGS**, one section each.
 
@@ -334,7 +344,183 @@ Notion or a Google Doc instead: **⚙ → PLUGIN SETTINGS → NOTES**.
 
 ---
 
-## 19. Keeping up with Fatih's updates
+## 19. Editing before anything happens
+
+You never have to ask Jarvis to redo a draft to change a word.
+
+- **Confirmations have EDIT.** When Jarvis asks you to confirm sending an email or a reply,
+  press **✎ EDIT** and the To, Subject and message become text boxes. Fix anything, then
+  press **CONFIRM** and your version is sent. The confirmation doesn't time out while you're
+  editing.
+- **Drafts open editable.** Anything the writing voice writes appears in a panel you can
+  type in:
+  - emails: **SAVE TO DRAFTS** / **UPDATE DRAFT**, **SEND**, **COPY**;
+  - other text: **SAVE AS NOTE**, **MAKE GOOGLE DOC**, **COPY**.
+- **Suggested replies** (proactive alerts) open the same way: change the reply, then
+  **SEND REPLY** or **SAVE AS DRAFT**.
+- **Notes** open after saving. Fix a typo and press **SAVE CHANGES**.
+- **Calendar events** Jarvis adds open with their title, time, length, place and notes.
+  Change any of them and press **SAVE CHANGES**.
+
+Pressing **SEND** in a panel is your own click, so it sends straight away without a second
+confirmation. Anything Jarvis wants to send on its own still waits for CONFIRM.
+
+---
+
+## 20. Update yourself (no more reinstalling)
+
+Say **"update yourself"** or press **⚙ → PLUGIN SETTINGS → UPDATES → UPDATE NOW**. Jarvis
+downloads the latest version from your fork, installs any new packages, closes and
+reopens itself. Your settings, keys and memory are untouched. Once a day it tells you when
+an update is waiting; it can also install updates by itself at start-up.
+
+If you ever edit Jarvis's files by hand, the update stops rather than overwriting them.
+
+## 21. Your phone: alerts and commands (ntfy)
+
+1. On the OnePlus, install **ntfy** from the Play Store.
+2. On one PC: **⚙ → PLUGIN SETTINGS → PHONE & DEVICES → SEND TEST + SHOW TOPICS**. A test
+   notification is sent, and the panel shows two names: the **alerts topic** and the
+   **commands topic**.
+3. In the ntfy app, tap **+** and subscribe to both, using exactly those names.
+4. With **device sync** on, the other PC picks up the same names by itself. Otherwise
+   copy them into the same fields there.
+
+The topic names work like passwords; keep them to yourself. To use your own ntfy server
+instead of the public one, fill in the server and token fields.
+
+**Phone alerts** (⚙ → PHONE ALERTS): important email, "event in 15 minutes" and due
+to-dos are pushed to the phone when you've been away from the PC for 10 minutes (or
+always, or never). You can choose to show just "New important email" without sender
+or subject. "Send this to my phone" works any time.
+
+## 22. Control your PCs from your phone, and each other
+
+In the ntfy app, open the **commands** topic and type or dictate a message (the
+keyboard's microphone works):
+
+| Message | What happens |
+|---|---|
+| `desktop: turn on and launch spotify and valorant` | The desktop is woken, then opens Spotify and starts VALORANT once it's up |
+| `launch spotify and valorant` | Goes to the PC that answers untargeted commands (the desktop by default) |
+| `desktop: play lofi beats on spotify` | Plays on the desktop |
+| `laptop: lock` / `desktop: sleep` | Locks or sleeps that PC |
+| `all: status` | Each PC replies: on, mode, game running, battery |
+
+Replies arrive on your alerts topic. If a PC is off, its commands wait and run when it
+starts (up to 3 hours old by default), and it tells your phone "Desktop is on". By
+voice, PC to PC: "wake the desktop", "on the desktop launch Valorant", "what's my
+desktop doing?".
+
+**Getting "turn on the desktop" to work.** Wake-on-LAN, once, on the desktop:
+
+1. In the BIOS, enable **Wake on LAN** (sometimes called "Power On By PCI-E").
+2. Windows → **Device Manager** → your network adapter → **Properties**:
+   - **Power Management**: tick *Allow this device to wake the computer* and *Only allow a
+     magic packet*.
+   - **Advanced**: set *Wake on Magic Packet* to **Enabled**.
+3. Open Jarvis on the desktop once while the laptop is on, so the laptop learns its address.
+
+A wake signal only travels inside your home network, so it has to come from a device
+that's at home and awake. How to make "turn on" work when you're out:
+
+- **Best: put the desktop to Sleep instead of shutting it down.** Jarvis stays running,
+  so commands from your phone are picked up the moment it wakes. Set *Settings → Accounts →
+  Sign-in options → If you've been away, when should Windows require you to sign in
+  again* to **Never** if you want apps to open without typing your PIN.
+- **A smart plug plus the BIOS setting "Restore on AC power loss: Power On":** with the
+  plug's Home Assistant entity in *Wake the desktop with this smart plug*, any Jarvis can
+  switch it.
+- **Your router's remote Wake-on-LAN,** if it has one (many ASUS and TP-Link routers do).
+
+After a full shutdown Windows waits at the sign-in screen, and Jarvis only starts once
+you sign in. Automatic sign-in (Microsoft's free *Autologon* tool) avoids that, but then
+anyone who can switch the desktop on can use it. Sleep is the safer choice.
+
+## 23. Permissions: what Jarvis may do on its own
+
+| Setting | Where | Default |
+|---|---|---|
+| Accept commands from the phone / other PC | PHONE & DEVICES | On |
+| Open apps and games remotely | PHONE & DEVICES | On |
+| Spotify remotely | PHONE & DEVICES | On |
+| Lock / sleep remotely | PHONE & DEVICES | On |
+| Shut down / restart remotely (60-second warning, cancellable) | PHONE & DEVICES | **Off** |
+| Free-form remote requests handed to Jarvis | PHONE & DEVICES | **Off** |
+| Ignore remote commands older than | PHONE & DEVICES | 3 hours |
+| Proactive agents run on this PC | PROACTIVE AGENTS | Desktop only |
+| Start prep for exams/interviews by itself | PROACTIVE AGENTS | Asks first |
+| Ask before sending any email | GOOGLE | On |
+| Proactive alerts / phone alerts | PROACTIVE ALERTS / PHONE ALERTS | On / when away |
+| Install updates by itself | UPDATES | Off |
+
+Remote commands can never press an on-screen CONFIRM, so sending email always needs you at
+the PC.
+
+## 24. Proactive agents
+
+- **Price watches:** "tell me when the RTX 5080 drops below 800 pounds". It's checked
+  every 12 hours; at your price you get an alert on screen and phone, and an offer of a
+  full deal-hunter report. "What prices are you watching?", "stop watching number 1".
+- **Exam and deadline prep:** each half hour Jarvis looks a few days ahead in your calendar
+  for exams, tests, deadlines, interviews and presentations. It **asks** ("want me to make
+  a study pack?") or, if you choose *auto*, just starts the study coach or a prep brief.
+  "Prepare me for my upcoming exams" runs it now.
+- **Daily digest:** set a time and the digest agent writes it every morning.
+
+Only one PC runs these (⚙ → PROACTIVE AGENTS → *Run proactive agents on this PC*), so
+nothing is done twice.
+
+## 25. Games
+
+"Launch Valorant", "start CS", "play Rocket League", "what games do I have?", "what did I
+play recently?". Steam (every library drive), Epic, Riot and Battle.net games are found
+by themselves. Starting a game switches on gaming mode. Discord messages work through the
+built-in messaging: "message Sam on Discord: on in 5".
+
+## 26. Morning briefing
+
+The opening briefing now covers **your day first**: what's on your calendar today,
+important unread email, to-dos due, the weather if it matters (set your city in ⚙ →
+BRIEFING), price drops, and on weekends a pick from your reading list. The news comes
+after. In gaming, watching or music mode it's one sentence. "What's my day like?" works
+any time.
+
+## 27. Study timer
+
+"Start a 25-minute study session on chemistry", "study maths for 50 minutes, one round",
+"how long's left?", "stop studying", "how much did I study this week?". Study mode is on
+during the session. In breaks you get three quick questions from your own notes on that
+subject (knowledge folder) if you want them.
+
+## 28. Screen helper
+
+- **"Summarise this page":** the page open in Chrome, Edge, Firefox, Brave or Opera.
+- **"Explain this":** select text first, or copy it; good for error messages and code.
+- **"Save this page for later":** adds it to your reading list.
+
+It borrows the address bar for a moment and puts your clipboard back afterwards. Pages
+behind a login can't be fetched; select the text and say "explain this" instead.
+
+## 29. Money
+
+"I spent 12 on lunch", "paid 9.99 for Spotify", "how much did I spend this month?",
+"set my food budget to 150", "how am I doing on budgets?", "undo that". Everything goes
+into a Google Sheet called **JARVIS Money** that you can open on your phone. Set your
+currency and budgets in ⚙ → MONEY.
+
+Enable the **Google Sheets API** in Google Cloud (APIs & Services → Library). If you haven't
+pressed CONNECT GOOGLE since Drive was added, do that once as well.
+
+## 30. Reading & watch list
+
+"Add Dune to my watch list", "save this link to read later", "what's on my watch list?",
+"pick something for tonight", "I've watched Dune". It's a list called **Reading &
+Watching** in Google Tasks, so it's on your phone too.
+
+---
+
+## 31. Keeping up with Fatih's updates
 
 Fatih releases new Marks as new repositories, so his updates don't arrive in this fork
 automatically. When a new Mark comes out, ask Claude Code to move these add-ons onto it:

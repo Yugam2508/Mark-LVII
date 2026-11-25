@@ -168,6 +168,24 @@ class JarvisUI:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
 
+    def request_quit(self) -> None:
+        """Thread-safe: close the window, which ends the app the normal way
+        (session summary saved, engines stopped). Used by the updater."""
+        self._win._quit_sig.emit()
+
+    def show_editable(self, title: str, fields: list, actions: list,
+                      note: str = "", copy: str = "") -> None:
+        """Thread-safe: a draft the person can edit, with action buttons.
+
+        fields:  [{"key", "label", "value", "multiline": bool}]
+        actions: [{"label", "run": callable(values) -> str | (ok, str),
+                   "primary": bool, "close": bool, "busy": str}]
+        `run` is called on a worker thread with the edited values. `copy` names
+        the field a COPY button copies."""
+        self._win._edit_sig.emit({"title": str(title)[:80], "fields": list(fields or []),
+                                  "actions": list(actions or []), "note": str(note or ""),
+                                  "copy": copy})
+
     @property
     def get_plugins(self):
         return self._win.get_plugins

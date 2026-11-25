@@ -56,6 +56,7 @@ NEEDS = {
     "drive": ["https://www.googleapis.com/auth/drive.readonly",
               "https://www.googleapis.com/auth/drive.file"],
     "docs": ["https://www.googleapis.com/auth/drive.file"],
+    "sheets": ["https://www.googleapis.com/auth/drive.file"],   # money_tracker's own sheet
 }
 RECONNECT = ("Your Google sign-in is from before this feature was added. Open ⚙ → PLUGIN "
              "SETTINGS → GOOGLE and press CONNECT GOOGLE once more to allow it.")

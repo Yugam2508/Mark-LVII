@@ -65,6 +65,18 @@ def _local_add(entry: str) -> str:
     return str(path)
 
 
+def _local_replace(old_entry: str, new_entry: str) -> bool:
+    """Swap one saved note for its edited version. False if it is no longer there
+    (edited by hand meanwhile), so nothing else in the file is ever touched."""
+    path = _local_path()
+    with _lock:
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if old_entry not in text:
+            return False
+        path.write_text(text.replace(old_entry, new_entry, 1), encoding="utf-8")
+    return True
+
+
 def _local_text() -> str:
     path = _local_path()
     return path.read_text(encoding="utf-8") if path.exists() else ""
@@ -133,6 +145,34 @@ def _entries(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip().startswith("## ")]
 
 
+def _open_editor(backend: str, header: str, entry: str, text: str, player) -> None:
+    """Show the saved note so it can be corrected with a click."""
+    from core import addons
+    fields = [{"key": "text", "label": "Note", "value": text, "multiline": True}]
+    actions, note = [], "Saved. Edit it and press SAVE CHANGES to fix it."
+    if backend == "knowledge":
+        current = {"entry": entry}
+
+        def save(v: dict):
+            new_entry = header + "\n" + v["text"].strip()
+            if not _local_replace(current["entry"], new_entry):
+                return False, "That note changed in the file meanwhile; edit JARVIS Notes.md directly."
+            current["entry"] = new_entry
+            return True, "Note updated ✓"
+
+        actions = [{"label": "SAVE CHANGES", "run": save, "primary": True, "close": False,
+                    "busy": "Saving…"}]
+    else:
+        note = (f"Saved to {'Notion' if backend == 'notion' else 'the JARVIS Notes Google Doc'}. "
+                "To change it, edit it there.")
+    if not addons.edit("NOTE SAVED", fields, actions, note=note, copy="text", player=player):
+        if player:
+            try:
+                player.show_content("NOTE SAVED", text)
+            except Exception:
+                pass
+
+
 # ── plugin ────────────────────────────────────────────────────────────────────
 
 PLUGIN = {
@@ -187,13 +227,10 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                         timeout=60)
                 except RuntimeError:
                     pass  # save the original rather than nothing
-            entry = _stamp(str(parameters.get("title") or "").strip()) + "\n" + text
-            where = _ADD[backend](entry)
-            if player:
-                try:
-                    player.show_content("NOTE SAVED", text)
-                except Exception:
-                    pass
+            header = _stamp(str(parameters.get("title") or "").strip())
+            entry = header + "\n" + text
+            _ADD[backend](entry)
+            _open_editor(backend, header, entry, text, player)
             return outcome.done("notes_add", saved_in=backend if backend != "knowledge"
                                 else "JARVIS Notes.md in the knowledge folder")
 

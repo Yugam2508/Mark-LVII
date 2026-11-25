@@ -163,14 +163,76 @@ def _send_now(raw: str, thread_id: str | None, label: str) -> str:
     return outcome.done("gmail_send", to=label)
 
 
+def build(to: str, subject: str, body: str, reply_to: EmailMessage | None = None) -> EmailMessage:
+    """A plain-text email; `reply_to` copies the threading headers of a reply."""
+    msg = EmailMessage()
+    msg["To"] = to.strip()
+    msg["Subject"] = (subject or "").strip() or "(no subject)"
+    if reply_to is not None:
+        for h in ("In-Reply-To", "References"):
+            if reply_to.get(h):
+                msg[h] = reply_to[h]
+    msg.set_content(body or "")
+    return msg
+
+
+def send_message(to: str, subject: str, body: str, thread_id: str | None = None,
+                 reply_to: EmailMessage | None = None) -> str:
+    """Send straight away — only for a send the person pressed a button for."""
+    if "@" not in (to or ""):
+        return outcome.failed("gmail_send", "that is not an email address", to=to)
+    return _send_now(_raw(build(to, subject, body, reply_to)), thread_id, to.strip())
+
+
+def save_draft(to: str, subject: str, body: str, draft_id: str | None = None,
+               thread_id: str | None = None) -> tuple[bool, str, str | None]:
+    """Create a draft, or replace an existing one. (ok, message, draft id)."""
+    svc = gauth.service("gmail", "v1")
+    if svc is None:
+        return False, "Google is not connected", None
+    message = {"raw": _raw(build(to, subject, body))}
+    if thread_id:
+        message["threadId"] = thread_id
+    drafts = svc.users().drafts()
+    d = (drafts.update(userId="me", id=draft_id, body={"id": draft_id, "message": message})
+         if draft_id else drafts.create(userId="me", body={"message": message})).execute()
+    if not d.get("id"):
+        return False, "Gmail did not confirm the draft", None
+    return True, "Updated in Gmail Drafts ✓" if draft_id else "Saved to Gmail Drafts ✓", d["id"]
+
+
+def send_draft(draft_id: str) -> str:
+    """Send a saved draft (it leaves Drafts and appears in Sent)."""
+    svc = gauth.service("gmail", "v1")
+    if svc is None:
+        return outcome.failed("gmail_send", gauth.SETUP_STEPS)
+    sent = svc.users().drafts().send(userId="me", body={"id": draft_id}).execute()
+    if not sent.get("id"):
+        return outcome.unverified("gmail_send", "Gmail did not return a message id")
+    return outcome.done("gmail_send")
+
+
 def _send_or_confirm(msg: EmailMessage, thread_id: str | None, title: str, player) -> str:
     raw = _raw(msg)
-    detail = f"To: {msg['To']}\nSubject: {msg['Subject']}\n\n{msg.get_content()[:600]}"
+    body_text = msg.get_content()
+    detail = f"To: {msg['To']}\nSubject: {msg['Subject']}\n\n{body_text[:600]}"
     _show(player, "EMAIL — READY TO SEND", detail)
     if not _needs_confirm():
         return _send_now(raw, thread_id, msg["To"])
+
+    # EDIT on the banner: the person can fix the recipient, subject or text and
+    # CONFIRM sends what they typed (keeping the reply's thread).
+    fields = [{"key": "to", "label": "To", "value": str(msg["To"])},
+              {"key": "subject", "label": "Subject", "value": str(msg["Subject"])},
+              {"key": "body", "label": "Message", "value": body_text, "multiline": True}]
+
+    def run_edited(values: dict) -> str:
+        return send_message(values.get("to", ""), values.get("subject", ""),
+                            values.get("body", ""), thread_id, reply_to=msg)
+
     return confirm.request(key=f"gmail_send:{msg['To']}:{msg['Subject']}", title=title,
-                           detail=detail, run=lambda: _send_now(raw, thread_id, msg["To"]))
+                           detail=detail, run=lambda: _send_now(raw, thread_id, msg["To"]),
+                           fields=fields, run_edited=run_edited)
 
 
 # ── actions ───────────────────────────────────────────────────────────────────
