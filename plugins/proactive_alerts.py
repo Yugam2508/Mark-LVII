@@ -114,14 +114,29 @@ def _hold(text: str) -> None:
         pass
 
 
+def _push_to_phone(phone: tuple | None, urgent: bool, quiet: bool) -> None:
+    """Also send it to the phone when the user is away (plugins/phone_alerts.py).
+    Quiet hours mean asleep: only urgent things get through then."""
+    if not phone or (quiet and not urgent):
+        return
+    try:
+        from plugins import phone_alerts
+        if phone_alerts.should_push(urgent):
+            kind, title, detail = phone
+            phone_alerts.push(kind, title, detail, urgent=urgent)
+    except Exception as e:
+        print(f"[Proactive] phone push skipped: {e}")
+
+
 def _deliver(title: str, screen: str, instruction: str, *, urgent: bool, summary: str,
-             editor: dict | None = None) -> str:
+             editor: dict | None = None, phone: tuple | None = None) -> str:
     """Show and/or say an alert according to mode and quiet hours. With `editor`
     ({"fields", "actions", "note", "copy"}) it is shown as an editable panel.
     Returns what happened: 'said', 'shown', or 'held'."""
     pol = _policy()
     quiet = _quiet_hours()
     allowed = urgent or pol.get("email_alerts") == "important" or pol.get("reminders") is True
+    _push_to_phone(phone, urgent, quiet)
 
     def put_on_screen():
         if editor and addons.edit(title, editor["fields"], editor["actions"],
@@ -289,7 +304,8 @@ def check_email(state: dict, cfg: dict) -> list[str]:
             + outcome.untrusted("email", data))
         editor = _reply_editor(m, h, reply) if reply else None
         how = _deliver("NEW EMAIL", screen, instruction, urgent=urgent,
-                       summary=f"Email from {who}: {subject}", editor=editor)
+                       summary=f"Email from {who}: {subject}", editor=editor,
+                       phone=("email", f"Email from {who}", subject))
         done.append(f"{how}: {subject}")
     return done
 
@@ -326,7 +342,8 @@ def check_calendar(state: dict, cfg: dict) -> list[str]:
                        f"event starts in {mins} minutes:\n"
                        + outcome.untrusted("calendar", f"{title}{where}"))
         how = _deliver("COMING UP", screen, instruction, urgent=True,
-                       summary=f"{title} at {t.strftime('%H:%M')}")
+                       summary=f"{title} at {t.strftime('%H:%M')}",
+                       phone=("event", f"In {mins} min", f"{title}{where} at {t.strftime('%H:%M')}"))
         done.append(f"{how}: {title}")
     return done
 
@@ -355,7 +372,8 @@ def check_todos(state: dict, cfg: dict) -> list[str]:
     instruction = ("[SYSTEM] In one or two short sentences, tell the user what is due "
                    "today from their to-do list:\n" + outcome.untrusted("todo", "\n".join(lines)))
     how = _deliver("DUE TODAY", "\n".join(lines), instruction,
-                   urgent=False, summary=f"{len(due)} to-do(s) due today")
+                   urgent=False, summary=f"{len(due)} to-do(s) due today",
+                   phone=("todo", "Due today", "\n".join(lines)))
     return [f"{how}: {len(due)} to-dos"]
 
 
