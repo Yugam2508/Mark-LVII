@@ -1616,6 +1616,10 @@ class JarvisLive:
         print(f"[JARVIS] 🔧 {name}  {args}")
         _t_tool = time.monotonic()
         self.ui.set_state("THINKING")
+        try:
+            self.ui.push_context(name, "tool")
+        except Exception:
+            pass
 
 
         if name == "save_memory":

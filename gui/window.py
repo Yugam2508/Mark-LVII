@@ -127,6 +127,7 @@ class MainWindow(QMainWindow):
     _edit_sig       = pyqtSignal(object)   # spec dict — an editable draft panel
     _quit_sig       = pyqtSignal()         # close the app from another thread (updater)
     _notice_sig     = pyqtSignal(str, str, str)   # title, text, kind — cards that stay
+    _context_sig    = pyqtSignal(str, str)        # label, kind — a HUD satellite
     _wake_dl_sig    = pyqtSignal(bool, str)  # wake-word install finished (ok, message)
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
@@ -423,6 +424,7 @@ class MainWindow(QMainWindow):
         self._edit_sig.connect(self._show_edit_panel)
         self._quit_sig.connect(self.close)
         self._notice_sig.connect(self._add_notice)
+        self._context_sig.connect(lambda label, kind: self.hud.push_context(label, kind))
         QTimer.singleShot(3500, self._maybe_show_whats_new)   # once per update
         self._cam_stream_sig.connect(self._on_cam_stream)
         self._cam_frame_sig.connect(self._on_cam_frame)
@@ -1901,6 +1903,10 @@ class MainWindow(QMainWindow):
         # The panel opens below the head, so the head looks down at it. It is a
         # tiny thing that answers "did that land?" before you read a word.
         self.hud.glance(0.0, -0.85, hold=1.3)
+        try:
+            self.hud.push_context(str(title).split(" — ")[0].split(" · ")[0][:24], "panel")
+        except Exception:
+            pass
         # Only the app's own label is upper-cased ("NEWS — …"); what follows the
         # dash is a search or a name in the user's language, and str.upper()
         # applies English rules to it (Turkish "istanbul" -> "ISTANBUL").
@@ -2536,24 +2542,25 @@ class MainWindow(QMainWindow):
 
     def _refresh_hud_btn(self):
         from memory.config_manager import get_hud_style
-        face = get_hud_style() == "face"
-        # Neither state is "off", so both read as active — this is a choice
-        # between two things, not a switch with a disabled side.
-        self._hud_btn.setText("🧑  HUD: ANIMATED FACE" if face
-                              else "◉  HUD: REACTOR CORE")
+        style = get_hud_style()
+        # No state is "off", so all read as active — this is a choice between
+        # three things, not a switch with a disabled side.
+        self._hud_btn.setText({"holo": "◎  HUD: HOLOGRAPHIC", "face": "🧑  HUD: ANIMATED FACE"}
+                              .get(style, "◉  HUD: REACTOR CORE"))
         self._hud_btn.setStyleSheet(btn_css("choice"))
-        self._hud_btn.setToolTip(
-            "An animated head that speaks your words and shows what JARVIS is "
-            "doing. Tap to switch to the reactor core."
-            if face else
-            "A 3-D reactor core that turns with the state and moves with your "
-            "voice. Tap to switch to the animated head.")
+        self._hud_btn.setToolTip({
+            "holo": "Holographic rings that turn with the state, a live audio spectrum, and "
+                    "satellites for whatever JARVIS is doing. Tap for the animated head.",
+            "face": "An animated head that speaks your words. Tap for the reactor core.",
+        }.get(style, "A 3-D reactor core that turns with the state. Tap for the holographic HUD."))
 
     def _toggle_hud_style(self):
         """Swap the centrepiece. Both objects stay in memory, so the change is
         instant and switching back costs nothing."""
         from memory.config_manager import get_hud_style, save_hud_style
-        want = "core" if get_hud_style() == "face" else "face"
+        order = ("holo", "face", "core")
+        cur = get_hud_style()
+        want = order[(order.index(cur) + 1) % len(order)] if cur in order else "holo"
         save_hud_style(want)
         try:
             self.hud.hud_style = want
@@ -2561,9 +2568,9 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         self._refresh_hud_btn()
-        self._log.append_log(
-            "SYS: HUD switched to the animated face." if want == "face"
-            else "SYS: HUD switched to the reactor core.")
+        self._log.append_log({"holo": "SYS: HUD switched to the holographic display.",
+                              "face": "SYS: HUD switched to the animated face."}
+                             .get(want, "SYS: HUD switched to the reactor core."))
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,
@@ -2852,6 +2859,10 @@ class MainWindow(QMainWindow):
             stack = NoticeStack(parent=self.centralWidget())
             self._notice_stack = stack
         stack.add(title, text, kind)
+        try:
+            self.hud.push_context(title, "error" if kind == "error" else "notice")
+        except Exception:
+            pass
 
     # ── What's new ───────────────────────────────────────────────────────────
 

@@ -46,6 +46,8 @@ try:
 except Exception:      # pragma: no cover — the classic core still draws
     Reactor3D = None
 
+from gui.holo import HoloCore
+
 
 class HudCanvas(QWidget):
     def __init__(self, face_path: str, assistant_name: str = "J.A.R.V.I.S", parent=None):
@@ -85,8 +87,11 @@ class HudCanvas(QWidget):
             from memory.config_manager import get_hud_style
             self.hud_style = get_hud_style()
         except Exception:
-            self.hud_style = "face"
+            self.hud_style = "holo"
         self._core_phase = 0.0
+        # The holographic centrepiece and its satellites (gui/holo.py). Kept
+        # alive in every style so satellites pushed meanwhile are there on switch.
+        self._holo = HoloCore()
 
         self._tick       = 0
         self._scale      = 1.0
@@ -181,6 +186,14 @@ class HudCanvas(QWidget):
                         return
             self._visemes = (new, at, hop)
             self._vis_i = None
+        except Exception:
+            pass
+
+    def push_context(self, label: str, kind: str = "tool") -> None:
+        """GUI thread: something JARVIS is doing becomes a satellite (holo style)."""
+        try:
+            self._holo.push(label, kind)
+            self.update()
         except Exception:
             pass
 
@@ -336,7 +349,11 @@ class HudCanvas(QWidget):
         # starts talking. Same lesson the head's sway taught.
         self._core_phase += min(0.10, max(0.0, dt))
 
-        if self._avatar is not None and self.hud_style == "face":
+        if self.hud_style == "holo":
+            self._holo.step(dt, amp, self.speaking,
+                            self.state in ("THINKING", "PROCESSING"),
+                            self.state == "LISTENING", self.muted)
+        elif self._avatar is not None and self.hud_style == "face":
             self._avatar.step(dt, amp, speaking=self.speaking,
                               muted=self.muted, state=self.state,
                               v_open=v_open, v_wide=v_wide or 0.0,
@@ -388,7 +405,9 @@ class HudCanvas(QWidget):
         # either way because the animation state keeps stepping at 60 Hz.
         self._paint_tick = (self._paint_tick + 1) % 6
         active = (self.speaking or amp > 0.02
-                  or self.state in ("THINKING", "PROCESSING"))
+                  or self.state in ("THINKING", "PROCESSING")
+                  or (self.hud_style == "holo" and bool(self._holo.sats)
+                      and now - max(s["fresh"] for s in self._holo.sats) < 6))
         if _blinked or (self._paint_tick % 2 == 0 if active
                         else self._paint_tick % 3 == 0):
             # Nothing is on screen when the window is hidden or minimised, so
@@ -610,7 +629,14 @@ class HudCanvas(QWidget):
         band_t = 30.0
         band_h = max(60.0, sy - 14.0 - band_t)
 
-        if self._avatar is not None and self.hud_style == "face":
+        if self.hud_style == "holo":
+            r = min(W * 0.25, band_h / 2.0 / 1.22)
+            main, acc = self._core_colours()
+            self._holo.paint(p, cx, band_t + band_h / 2.0, r, main, acc, qcol(C.WHITE),
+                             lambda k: qcol(getattr(C, k, C.PRI)), self._amp_disp,
+                             self._assistant_name or "", str(self.state), W, sy - 4,
+                             self.muted)
+        elif self._avatar is not None and self.hud_style == "face":
             r_head = min(fw * 0.355, band_h / (self._avatar.SPAN + 0.08))
             head_cy = band_t + (band_h - self._avatar.SPAN * r_head) / 2.0 + r_head
             if self.muted:

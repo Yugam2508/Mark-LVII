@@ -168,6 +168,10 @@ class JarvisUI:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
 
+    def push_context(self, label: str, kind: str = "tool") -> None:
+        """Thread-safe: show on the HUD that JARVIS is doing this (a satellite)."""
+        self._win._context_sig.emit(str(label)[:40], str(kind or "tool"))
+
     def show_notice(self, title: str, text: str, kind: str = "info") -> None:
         """Thread-safe: a card that stays on the HUD until dismissed — used when the
         user is busy or away (core.addons.notify)."""
