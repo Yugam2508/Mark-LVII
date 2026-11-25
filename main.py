@@ -117,6 +117,15 @@ PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
 # It is reassigned on every connect, so a model that runs out of quota is
 # stepped over and the assistant keeps talking instead of failing to start.
 LIVE_MODEL          = "models/gemini-3.1-flash-live-preview"
+
+
+def _live_voice() -> str:
+    """The voice to connect with: the persona's, when one is on (core/personas.py)."""
+    try:
+        from core import personas
+        return personas.voice(get_voice())
+    except Exception:
+        return get_voice()
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000 
 RECEIVE_SAMPLE_RATE = 24000
@@ -1488,6 +1497,13 @@ class JarvisLive:
         if mem_str:
             parts.append(mem_str)
         parts.append(sys_prompt)
+        try:
+            from core import personas as _personas
+            _pb = _personas.prompt_block()
+            if _pb:
+                parts.append(_pb)
+        except Exception as e:
+            print(f"[Persona] skipped: {e}")
 
         cfg = dict(
             response_modalities=["AUDIO"],
@@ -1520,7 +1536,7 @@ class JarvisLive:
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name=get_voice()
+                        voice_name=_live_voice()
                     )
                 )
             ),

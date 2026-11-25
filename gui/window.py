@@ -406,6 +406,11 @@ class MainWindow(QMainWindow):
         self._metric_tmr.timeout.connect(self._update_metrics)
         self._metric_tmr.start(2000)
         self._update_metrics()
+        # Engine/voice rows: a persona switched by voice changes them with no
+        # settings window involved, so re-read them every few seconds.
+        self._ident_tmr = QTimer(self)
+        self._ident_tmr.timeout.connect(self._refresh_identity_rows)
+        self._ident_tmr.start(5000)
 
         self._log_sig.connect(self._log.append_log)
         self._state_sig.connect(self._apply_state)
@@ -1334,6 +1339,9 @@ class MainWindow(QMainWindow):
             mode = str(get_provider_mode() or "gemini")
             engine = "GEMINI LIVE" if mode == "gemini" else f"LOCAL {mode.upper()}"
             voice = str(get_voice() or "--").upper()
+            from core import personas
+            if personas.current() != "off":
+                voice = f"{personas.current().upper()} · {personas.voice(get_voice()).upper()}"
         except Exception:
             engine, voice = "GEMINI LIVE", "--"
         self._engine_label = engine
@@ -2721,6 +2729,15 @@ class MainWindow(QMainWindow):
             if voice != get_voice():
                 save_voice(voice)
                 voice_changed = True
+                try:   # a voice picked here replaces a persona's voice
+                    from core import personas
+                    from memory.config_manager import get_plugin_config, save_plugin_config
+                    if personas.current() != "off":
+                        pc = get_plugin_config("persona")
+                        pc["persona"] = "off"
+                        save_plugin_config("persona", pc)
+                except Exception:
+                    pass
 
         try:
             from memory.config_manager import update_config

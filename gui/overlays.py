@@ -286,7 +286,7 @@ class CustomizeOverlay(QWidget):
     """Floating overlay — change assistant name, user name, UI colour and voice."""
 
     saved = pyqtSignal(str, str, str, str)   # assistant_name, user_name, ui_color, voice
-    _OW, _OH = 400, 588
+    _OW, _OH = 400, 640
 
     def __init__(self, assistant_name="JARVIS", user_name="",
                  ui_color=DEFAULT_UI_COLOR, voice="", parent=None):
@@ -348,8 +348,11 @@ class CustomizeOverlay(QWidget):
         if self._sel_voice not in AVAILABLE_VOICES:
             self._sel_voice = DEFAULT_VOICE
         self._voice_btns: dict[str, QPushButton] = {}
-        voice_row = QHBoxLayout(); voice_row.setSpacing(4)
-        for _v in AVAILABLE_VOICES:
+        voice_rows = [QHBoxLayout(), QHBoxLayout()]
+        for _r in voice_rows:
+            _r.setSpacing(4)
+        for _i, _v in enumerate(AVAILABLE_VOICES):
+            voice_row = voice_rows[0 if _i < (len(AVAILABLE_VOICES) + 1) // 2 else 1]
             b = QPushButton(_v)
             b.setCheckable(True)
             b.setFixedHeight(28)
@@ -358,7 +361,13 @@ class CustomizeOverlay(QWidget):
             b.clicked.connect(lambda _=False, name=_v: self._on_voice_pick(name))
             self._voice_btns[_v] = b
             voice_row.addWidget(b)
-        lay.addLayout(voice_row)
+        for _r in voice_rows:
+            lay.addLayout(_r)
+        _hint = _lbl("Accents and characters: say \"switch to the Irish persona\", or "
+                     "⚙ → PLUGIN SETTINGS → VOICE PERSONA", 7, color=C.TEXT_DIM,
+                     align=Qt.AlignmentFlag.AlignLeft)
+        _hint.setWordWrap(True)
+        lay.addWidget(_hint)
         self._refresh_voice_btns()
 
         # ── UI colour — colour wheel ─────────────────────────────────────────
