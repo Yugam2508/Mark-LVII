@@ -28,7 +28,9 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Money | "I spent 12 on lunch", budgets | `plugins/money_tracker.py` |
 | Reading & watch list | "Save this for later", "pick something to watch" | `plugins/reading_list.py` |
 | Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
-| Version & what's new | "YOUR NAME EDITION · v1.5" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Memory boxes | Always-on "who you are" and "the essentials" — steer every reply (§39) | `memory/memory_manager.py` |
+| Claude on the web | Opens your Jarvis session in your Chrome profile; "add X to yourself" (§40) | `plugins/claude_web.py` |
+| Version & what's new | "YOUR NAME EDITION · v1.7" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
 | Holographic HUD | Rings, live spectrum and satellites showing what Jarvis is doing (§34) | `gui/holo.py` |
 | Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
 | Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
@@ -581,8 +583,8 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVII · YUGAM EDITION · v1.5** (your name, from first launch) and
-the status bar says **EDITION · v1.5**. After each update a **What's new** panel opens
+The header reads **MARK LVII · YUGAM EDITION · v1.7** (your name, from first launch) and
+the status bar says **EDITION · v1.7**. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.
 
@@ -705,6 +707,127 @@ the microphone stops sending sound or the speakers stop taking it, then reopens 
 on whatever is there (your chosen mic/speakers in ⚙ → audio when they're connected, the
 Windows default otherwise). The log says "SYS: Audio connected: … — switching devices".
 Switch it off in CONVERSATION & PRESENCE if you'd rather it didn't.
+
+---
+
+## 39. Memory boxes: what Jarvis always keeps in mind
+
+Jarvis's memory has ordinary categories (identity, preferences, projects, people, wishes,
+notes), of which only a recent slice rides in each conversation and the rest is looked up
+on demand. Two boxes are different — they are **always in front of it, in full**:
+
+- **WHO YOU ARE** (`core_self`): its character, its role with you, standing rules you've given.
+  "You're my training partner and chief of staff, not a butler." "Never bring up work after 9pm."
+- **THE ESSENTIALS** (`core_user`): what matters most about you, so it steers toward it:
+  main goals, what drives you, how you want to be helped.
+  "Finishing the IRONMAN 70.3 is my top goal." "Be direct, push me when I'm slacking."
+
+Fill them by talking: "remember this always: …", "this is who you are to me: …", "that's
+essential, pin it". Keep them short and few (about 1,500 characters each; the oldest
+lines lead, newer ones past the limit are still remembered but ride in the ordinary
+memory). "What's in your core memory?" and "forget …" work as for any memory. They sync
+between your PCs like the rest of memory. Your personality tweaks ("be more sarcastic")
+are separate and live in §37.
+
+---
+
+## 40. Claude on the web: your Jarvis session
+
+Jarvis can open Claude in your own Chrome (already signed in), go to your Jarvis Claude Code
+session and hand it requests — including "add this feature to yourself".
+
+**One-time setup (2 minutes)**
+1. On the laptop, open Chrome with your **yugamsmart** profile, go to
+   **claude.ai/code** and open (or start) the session for Jarvis — name it
+   "personal jarvis assistant" and point it at the repo `Yugam2508/Mark-LVII`. Leave it in front.
+2. Say **"remember this as my Jarvis session"**. Jarvis copies the address from the browser
+   bar and saves it (or paste it by hand in ⚙ → PLUGIN SETTINGS → **CLAUDE ON THE WEB**).
+3. Check it: say **"check Claude on the web"** (or, in PowerShell,
+   `.\.venv\Scripts\python.exe -m plugins.claude_web`). It says whether Chrome, the profile
+   name `yugamsmart` (spelled as Chrome's profile menu shows it), the session address and the
+   clipboard/keyboard pieces are all there, with a fix for anything that isn't.
+4. Say **"open Claude"**: Chrome should open on that session.
+
+**At work (Claude desktop app):** say **"use the desktop app"** (or set *Open Claude in* to
+desktop). Jarvis then starts the Claude app the way Windows starts any app, brings its window
+forward, pastes, and presses Enter on "send it". Open the Code tab and your Jarvis
+session once yourself so it's the one showing; say **"use Chrome"** to switch back at home.
+
+**Using it**
+- "Open Claude" / "open my Jarvis session" — opens the page.
+- "Add a pomodoro mode to yourself" / "give yourself the ability to …" — Jarvis writes a
+  full request (what you want, the repo, the rules in AGENTS.md, tests, docs, a pull
+  request) and shows it for **EDIT / CONFIRM** (say "confirm"). It then opens the page and
+  **pastes** it — it does *not* send it.
+- Read it, then say **"send it"** — the Claude window doesn't have to be in front. Jarvis
+  brings that window forward itself and presses Enter. If it can't find a Claude window at all
+  it refuses rather than press Enter somewhere else.
+- When Claude says the pull request is ready, tell it **"merge it"** there, then tell Jarvis
+  **"update yourself"**. New abilities arrive without reinstalling.
+- "Tell Claude: …" pastes any message the same way.
+
+For quick jobs on a project folder on this PC, "ask Claude Code to …" (§36) is faster; the
+web session is for changes to Jarvis itself, since Claude there can open pull requests.
+
+---
+
+## 41. Notion in two minutes
+
+Say **"set up Notion"**. Jarvis does what it can and tells you the next step; say it again
+after each step:
+
+1. It opens Notion's integrations page. Choose **New integration**, name it `JARVIS`, type
+   *Internal*, pick your workspace, **Save**, then press **Copy** next to the *Internal
+   Integration Secret* (starts `ntn_`).
+2. Say **"set up Notion"** again. Jarvis takes the secret from the clipboard — you never say or
+   type it, it isn't shown, and the clipboard is cleared afterwards.
+3. In Notion make a page called **Jarvis**, press **•••** → **Connections** → add **JARVIS**
+   (sharing a parent page shares everything inside it). Say "set up Notion" once more and it
+   sets that page as the home for new notes.
+
+Then: "add *buy a new mouse* to my Jarvis page", "search Notion for project ideas", "make a
+Notion page called Trip plan". Notion pages are only visible to Jarvis once shared with the
+connection.
+
+---
+
+## 42. In the system: tray, hotkey, handoff
+
+- **Tray icon.** Closing the window now hides Jarvis to the notification area and it keeps
+  listening (a bubble tells you once). Click the icon to show or hide it; right-click for mute,
+  stop talking, layout and **Quit**. Turn off in CONVERSATION & PRESENCE → *Closing the window
+  keeps Jarvis running in the tray*.
+- **Ctrl+Alt+J** brings Jarvis to the front from any window (Windows; on other systems it works
+  while Jarvis has focus). Start at login is ⚙ → CONTROLS → AUTO-START.
+- **Handoff.** With device sync on, each Jarvis leaves its last few turns in the sync folder. Move
+  to another device and it knows what you were just discussing; "where were we on the desktop?"
+  pulls it on demand. Turns are kept for 30 minutes and overwritten.
+
+The bigger plan — one always-on Jarvis that every device reaches — is in `HUB.md`.
+
+---
+
+## 43. When Claude Code or the phone link doesn't work
+
+Both have a self-check that names the broken step and the fix. Run it first.
+
+**Claude Code** — say "diagnose Claude Code", or in PowerShell:
+```powershell
+cd $env:USERPROFILE\Jarvis
+.\.venv\Scripts\python.exe -m plugins.claude_code
+```
+Typical results: *not found* → `irm https://claude.ai/install.ps1 | iex`, then reopen
+PowerShell and Jarvis; *not signed in* → run `claude` once and log in with the Claude
+account; *knows no projects* → add `jarvis=C:\Users\<you>\Jarvis` in CLAUDE CODE CONTROL.
+
+**Phone link** — with Jarvis running and Remote Control open, in PowerShell:
+```powershell
+cd $env:USERPROFILE\Jarvis
+.\.venv\Scripts\python.exe -m core.tailnet
+```
+It checks Tailscale, that Jarvis's page is listening, that it answers on the Tailscale
+address, the Windows network category, and the firewall rule, and prints the fix for the
+first one that fails (the usual one: Windows treating Tailscale as a "Public" network).
 
 ---
 

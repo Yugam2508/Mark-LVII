@@ -493,7 +493,14 @@ TOOL_DECLARATIONS = [
                         "projects — active projects, goals, things being built | "
                         "relationships — friends, family, partner, colleagues | "
                         "wishes — future plans, things to buy, travel dreams | "
-                        "notes — habits, schedule, anything else worth remembering"
+                        "notes — habits, schedule, anything else worth remembering | "
+                        "core_user — ESSENTIAL things about the user that must shape every "
+                        "conversation: main goals, what drives them, how they want to be helped. "
+                        "Use when they say it matters, say 'remember this always', or it is "
+                        "clearly central to their life. Keep it short and few | "
+                        "core_self — how YOU should be: your character, role and standing rules "
+                        "the user gave you ('you're my training partner', 'never bring up X'). "
+                        "Both core_* boxes are in front of you in every session"
                     )
                 },
                 "key":   {"type": "STRING", "description": "Short snake_case key (e.g. name, favorite_food, sister_name)"},
@@ -1159,6 +1166,15 @@ class JarvisLive:
         if loop and ev is not None:
             loop.call_soon_threadsafe(ev.set)
 
+    def _publish_handoff(self) -> None:
+        """Leave the last turns in the shared folder for another device (core/handoff.py)."""
+        try:
+            from core import handoff
+            turns = list(self._session_log[-handoff.KEEP_TURNS:])
+            threading.Thread(target=handoff.publish, args=(turns,), daemon=True).start()
+        except Exception:
+            pass
+
     def _on_voice_change(self):
         """Voice picker applied.
 
@@ -1523,8 +1539,18 @@ class JarvisLive:
         # rejected handle, a restart within the hour) would otherwise know
         # nothing of what was just said. Hand it the last turns instead.
         try:
-            if self._resume_handle is None and self._session_log and \
-                    time.time() - getattr(self, "_log_last_at", 0.0) < 45 * 60:
+            from core import handoff
+            other = handoff.latest_other()
+            mine_at = getattr(self, "_log_last_at", 0.0)
+            if other and other["at"] > mine_at and self._resume_handle is None:
+                parts.append(
+                    f"[CONVERSATION ON ANOTHER DEVICE]\nThe user was just talking to you on their "
+                    f"{other['device']} and has moved to this one. The last turns there, oldest "
+                    f"first, are below. Carry on from them if they continue it; if they ask where "
+                    f"you were, tell them. Do not greet again or recap unprompted.\n"
+                    + "\n".join(other["turns"]))
+            elif self._resume_handle is None and self._session_log and \
+                    time.time() - mine_at < 45 * 60:
                 recent = "\n".join(t[:400] for t in self._session_log[-12:])
                 parts.append(
                     "[CONVERSATION SO FAR]\nYou were already talking with the user; the session was "
@@ -2178,6 +2204,7 @@ class JarvisLive:
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
                                 self._log_last_at = time.time()
+                                self._publish_handoff()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "user",
@@ -2209,6 +2236,7 @@ class JarvisLive:
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
                                 self._log_last_at = time.time()
+                                self._publish_handoff()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "jarvis",

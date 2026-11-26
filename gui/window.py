@@ -72,6 +72,7 @@ from gui.widgets import (
     _fmt_size,
 )
 from gui.immersive import CommandBar, FlowLayer
+from gui.tray import TrayIntegration
 from gui.overlays import (
     AudioDeviceOverlay,
     ClipboardPanel,
@@ -440,7 +441,7 @@ class MainWindow(QMainWindow):
         self._confirm_sig.connect(self._show_confirm_banner)
         self._confirm_hide_sig.connect(self._hide_confirm_banner)
         self._edit_sig.connect(self._show_edit_panel)
-        self._quit_sig.connect(self.close)
+        self._quit_sig.connect(self._quit_for_real)
         self._notice_sig.connect(self._add_notice)
         self._context_sig.connect(lambda label, kind: self.hud.push_context(label, kind))
         QTimer.singleShot(3500, self._maybe_show_whats_new)   # once per update
@@ -479,6 +480,18 @@ class MainWindow(QMainWindow):
         sc_full.activated.connect(self._toggle_fullscreen)
         sc_intr = QShortcut(QKeySequence("Escape"), self)
         sc_intr.activated.connect(self._do_interrupt)
+        # In the notification area, and summonable from any window (gui/tray.py, core/summon.py).
+        self._tray = TrayIntegration(self, _display)
+        try:
+            from core.summon import Summon
+            self._summon = Summon(self._tray.summoned.emit)
+            if self._summon.scope == "global":
+                self._summon.start()
+            else:
+                sc_sum = QShortcut(QKeySequence("Ctrl+Alt+J"), self)
+                sc_sum.activated.connect(self._tray.show_window)
+        except Exception as e:
+            print(f"[Summon] not started: {e}")
         sc_lay = QShortcut(QKeySequence("F2"), self)
         sc_lay.activated.connect(self._toggle_layout)
         self._caption_sig.connect(lambda who, text: self._flow.caption(who, text))
@@ -1177,6 +1190,28 @@ class MainWindow(QMainWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def _quit_for_real(self) -> None:
+        """The updater and the tray's Quit: exit, don't hide."""
+        tray = getattr(self, "_tray", None)
+        if tray is not None:
+            tray.quit()
+        else:
+            self.close()
+
+    def closeEvent(self, event):
+        tray = getattr(self, "_tray", None)
+        if tray is not None and tray.wants_hide_on_close():
+            event.ignore()
+            self.hide()
+            tray.hid()
+            return
+        try:
+            if getattr(self, "_summon", None) is not None:
+                self._summon.stop()
+        except Exception:
+            pass
+        super().closeEvent(event)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

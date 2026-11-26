@@ -43,9 +43,22 @@ PROMPT_INDEX_CHARS = 420
 # Most entries any one category may contribute to the core block, so a person
 # with forty stored preferences still gets their sister into the prompt.
 PROMPT_MAX_PER_CATEGORY = 6
+# The two "core" boxes are not part of the shuffle above. They are shown in full,
+# every session, each within its own budget, before anything else: what is
+# essential about JARVIS and about the user must never lose a place to whatever
+# was updated most recently.
+CORE_BOX_CHARS = 1500
+CORE_BOXES = (
+    ("core_self", "WHO YOU ARE — your own character, role and standing rules. "
+                  "Stay true to these in every reply"),
+    ("core_user", "THE ESSENTIALS ABOUT THIS PERSON — always keep these in mind and steer "
+                  "toward them: their goals, what matters to them, how they like to be helped"),
+)
 
 def _empty_memory() -> dict:
     return {
+        "core_self":     {},     # always in the prompt: who JARVIS is, how it behaves
+        "core_user":     {},     # always in the prompt: the essentials about the user
         "identity":      {},
         "preferences":   {},
         "projects":      {},
@@ -217,6 +230,21 @@ def format_memory_for_prompt(memory: dict | None) -> str:
         return ""
 
     core_lines: list[str] = []
+    boxes: list[str] = []
+    for cat, heading in CORE_BOXES:
+        items = [(e.get("updated", "") if isinstance(e, dict) else "", k, _entry_value(e))
+                 for k, e in (memory.get(cat, {}) or {}).items()]
+        items = [i for i in items if i[2]]
+        items.sort(key=lambda t: t[0])                # oldest first: the foundations lead
+        lines, used_box = [], 0
+        for _u, k, v in items:
+            line = f"- {_pretty(k).title()}: {v}"
+            if used_box + len(line) + 1 > CORE_BOX_CHARS:
+                break
+            lines.append(line)
+            used_box += len(line) + 1
+        if lines:
+            boxes.append(f"[{heading}]\n" + "\n".join(lines))
 
     # 1. Identity - always, in full
     identity = memory.get("identity", {}) or {}
@@ -295,10 +323,10 @@ def format_memory_for_prompt(memory: dict | None) -> str:
             core_lines.append(f"{label}:")
             core_lines.extend(shown[cat])
 
-    if not core_lines and not indexed:
+    if not core_lines and not indexed and not boxes:
         return ""
 
-    out = [
+    out = ([b + "\n" for b in boxes] if boxes else []) + [
         "[WHAT YOU KNOW ABOUT THIS PERSON — use naturally, never recite like a list]",
         *core_lines,
     ]

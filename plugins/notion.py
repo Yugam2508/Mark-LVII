@@ -244,13 +244,81 @@ def _test(values: dict) -> tuple[bool, str]:
     return True, f"Connected as {me.get('name') or 'JARVIS'}: {n} shared page(s){note}"
 
 
-_ACTIONS = {"search": _search, "read": _read, "append": _append, "create_page": _create_page}
+INTEGRATIONS_URL = "https://www.notion.so/profile/integrations"
+
+
+def _clipboard_secret() -> str:
+    try:
+        import pyperclip
+        c = (pyperclip.paste() or "").strip()
+        return c if re.match(r"^(ntn_|secret_)[A-Za-z0-9]{20,}$", c) else ""
+    except Exception:
+        return ""
+
+
+def _setup(p, player) -> str:
+    """Walk the setup one step at a time; each call does what it can and says what is next.
+    The secret is taken from the clipboard — never spoken, typed to Jarvis or shown."""
+    from memory.config_manager import get_plugin_config, save_plugin_config
+    cfg = get_plugin_config(NAMESPACE)
+    if not _token():
+        secret = _clipboard_secret()
+        if not secret:
+            try:
+                from plugins import claude_web
+                claude_web.open_page(INTEGRATIONS_URL)
+            except Exception:
+                import webbrowser
+                webbrowser.open(INTEGRATIONS_URL)
+            return outcome.done(
+                "notion_setup", step="1 of 3: create the connection", opened=INTEGRATIONS_URL,
+                note="tell the user, briefly: on the page that just opened choose New integration, "
+                     "name it JARVIS, type Internal, pick their workspace, Save; then press Copy on "
+                     "the Internal Integration Secret (it starts ntn_) and say 'set up Notion' again — "
+                     "you will read it from the clipboard, they never need to say or type it")
+        cfg["token"] = secret
+        save_plugin_config(NAMESPACE, cfg)
+        try:
+            import pyperclip; pyperclip.copy("")           # the secret does not linger
+        except Exception:
+            pass
+    try:
+        me = api("GET", "/users/me")
+        results = api("POST", "/search", {"page_size": 100}).get("results", [])
+    except NotionError as e:
+        return outcome.failed("notion_setup", str(e),
+                              note="the secret was saved but Notion refused it: copy it again from the "
+                                   "integration page and say 'set up Notion' again")
+    pages = [r for r in results if r.get("object") == "page"]
+    if not pages:
+        return outcome.done(
+            "notion_setup", step="2 of 3: share a page", connected=me.get("name") or "JARVIS", shared=0,
+            note="connected, but no pages are shared yet. Tell the user: in Notion make a page called "
+                 "Jarvis (or open any page), press the ••• menu, Connections, and add JARVIS; sharing "
+                 "a parent page shares everything inside. Then say 'set up Notion' again")
+    msg = ""
+    if not home_page():
+        pick = next((r for r in pages if "jarvis" in title_of(r).lower()), None) or pages[0]
+        cfg = get_plugin_config(NAMESPACE)
+        cfg["home_page"] = pick.get("url") or pick["id"]
+        save_plugin_config(NAMESPACE, cfg)
+        msg = f"home page set to '{title_of(pick)}'"
+    return outcome.done("notion_setup", step="3 of 3: done", connected=me.get("name") or "JARVIS",
+                        shared=len(pages), home=msg or "kept the existing home page",
+                        note="say it is ready in one sentence and give an example, like 'add buy a new "
+                             "mouse to my Jarvis page'")
+
+
+_ACTIONS = {"search": _search, "read": _read, "append": _append, "create_page": _create_page,
+            "setup": _setup}
 
 PLUGIN = {
     "name": "notion",
     "description": (
         "The user's Notion: search pages and databases, read one, add text to a page, or "
         "create a page (or a row in a database). Use whenever the user mentions Notion. "
+        "'setup' for 'set up Notion' / 'connect Notion': it does the setup step by step and says "
+        "what to do next; call it again after each step. "
         "Refer to results by their number in the last list."
     ),
     "parameters": {
