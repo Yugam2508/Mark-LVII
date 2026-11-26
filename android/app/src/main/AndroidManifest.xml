@@ -58,6 +58,18 @@
                 android:value="Keeps the connection to the user's own Jarvis PC open so it can ask this phone to call, text or ring" />
         </service>
 
+        <service
+            android:name=".SendTapService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/send_tap_service" />
+        </service>
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

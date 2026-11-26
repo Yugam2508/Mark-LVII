@@ -27,7 +27,7 @@ import org.json.JSONObject
  */
 object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
-        "settings", "volume", "flashlight", "timer", "media", "navigate")
+        "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -51,6 +51,7 @@ object PhoneActions {
             "flashlight" -> flashlight(context, args.optBoolean("on", true))
             "timer" -> timer(context, args.optInt("seconds", 0), args.optString("label"))
             "media" -> media(context, args.optString("key"))
+            "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
         }
@@ -217,6 +218,19 @@ object PhoneActions {
         audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
         audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code))
         return Result(true, "Sent $key")
+    }
+
+    /** Opens the chat with the message typed in; the accessibility service (if on) presses Send. */
+    private fun whatsapp(context: Context, number: String, message: String): Result {
+        val digits = number.filter { it.isDigit() }
+        if (digits.length < 6 || message.isBlank()) return Result(false, "I need a number and a message")
+        val url = "https://wa.me/$digits?text=" + Uri.encode(message)
+        if (SendTapService.enabled) SendTapService.arm()
+        val r = guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        if (!r.ok) return r
+        return Result(true, if (SendTapService.enabled) "WhatsApp opened and Send pressed"
+            else "WhatsApp is open with the message typed in; it still needs a tap on Send",
+            JSONObject().put("auto_send", SendTapService.enabled))
     }
 
     private fun navigate(context: Context, where: String): Result {

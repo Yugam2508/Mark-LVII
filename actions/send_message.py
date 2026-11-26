@@ -410,7 +410,7 @@ def _send_and_report(player, platform: str, receiver: str,
 TOOL = {
     "name": "send_message",
     "description": (
-        "Sends a text message via WhatsApp, Telegram, or another messaging "
+        "Sends a text message via Telegram or another messaging (NOT WhatsApp: use whatsapp_message for that) "
         "platform. Write 'message_text' in the USER'S OWN LANGUAGE, exactly "
         "what they asked to be said. "
         "This tool answers immediately and sends in the background. On "

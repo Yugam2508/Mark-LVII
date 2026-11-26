@@ -142,6 +142,11 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Phone, menu → "Let Jarvis open apps and sites" → switch it on. Then "open Spotify on my phone",
       "open example.com on my phone", "turn the phone's volume to 40", "flashlight on", "set a 5 minute timer
       on my phone", "pause the music on my phone", "navigate to <place>".
+- [ ] "WhatsApp <a friend> hi from Jarvis" → shows the message → "confirm" → WhatsApp opens the right chat and
+      sends (it says it can't verify delivery; check the chat). An unknown name → it asks for the number
+      once and remembers it. WhatsApp Desktop must be installed and signed in.
+- [ ] "WhatsApp <a friend> hi, from my phone" → the chat opens on the phone with the text typed. Phone menu →
+      "Let Jarvis tap Send in WhatsApp" → switch Jarvis on in Accessibility → repeat: Send is pressed for you.
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
 ## 8. Things from earlier versions still worth a run
