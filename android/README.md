@@ -20,7 +20,8 @@ digital assistant** so long-press power opens it. Design and later steps: `../AN
 
 ## Build and run (about 10 minutes)
 1. Update Jarvis on the PC (**v1.8** adds the pairing endpoint this app uses).
-2. Open Android Studio → **Open** → choose this `android` folder. Let Gradle sync; accept any SDK
+2. Open Android Studio → **Open** → choose this `android` folder (it includes the Gradle wrapper, which
+   downloads Gradle 8.9 on first sync). Let Gradle sync; accept any SDK
    download prompts (Android 15 / API 35). If it offers to update the Android Gradle Plugin, accept.
 3. On the OnePlus: Settings → About → tap **Build number** 7 times → Developer options → **USB
    debugging** (or **Wireless debugging**). Connect it and pick it in Android Studio's device list.
