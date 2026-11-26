@@ -16,6 +16,7 @@ import android.widget.FrameLayout
  */
 class MainActivity : Activity() {
     private val root by lazy { FrameLayout(this) }
+    private var triedAuto = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,7 +37,8 @@ class MainActivity : Activity() {
             LinkService.start(this)
             root.addView(ConversationPanel(this, listenOnShow = intent?.action == Intent.ACTION_ASSIST, onUnpaired = { show() }))
         } else {
-            root.addView(PairPanel(this) { show() })
+            root.addView(PairPanel(this, autoConnect = Prefs(this).canAutoConnect && !triedAuto) { show() })
+            triedAuto = true
         }
         window.statusBarColor = android.graphics.Color.rgb(2, 8, 12)
     }

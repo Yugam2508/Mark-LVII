@@ -18,6 +18,18 @@ late", "find my phone", "what's my phone's battery?". The PC asks you to confirm
 (say "confirm"). The first time, the app asks for Contacts, Phone, SMS and Notifications permissions:
 allow them, or those actions say they lack permission.
 
+## So the app never asks for the address
+Put your PC's Tailscale address in a one-line file and rebuild; the app then connects by itself the
+first time it opens (no typing, and no key when the phone is on the same Tailscale account). The file
+is git-ignored, so your address stays out of the public repository. In PowerShell (adjust the folder if
+yours differs):
+
+    New-Item -ItemType Directory -Force "$env:USERPROFILE\Jarvis\android\app\src\main\assets" | Out-Null
+    Set-Content -NoNewline "$env:USERPROFILE\Jarvis\android\app\src\main\assets\default_address.txt" "100.89.195.89:8000"
+
+Then **Run ▶** in Android Studio again. (Use your PC's name from the Tailscale app, e.g.
+`yugam.tail4e090e.ts.net:8000`, if you'd rather not depend on the number.)
+
 ## Staying connected
 The PC remembers paired phones across restarts, and the app reconnects by itself with backoff. It
 keeps the link while the PC is on, awake and running Jarvis (Jarvis keeps a mains-powered PC awake
