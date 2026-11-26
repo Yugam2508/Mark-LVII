@@ -106,6 +106,9 @@ CHANGELOG = [
         "the tray pops up a notification. Phone: a Jarvis tile in the pull-down Quick Settings, Mute and Stop on the "
         "listening notification (tap it to open the app), \"Tailscale looks off — tap to open it\" when the PC can't "
         "be reached, and long-press the conversation to copy it",
+        "Talk to the display like Tony: \"close that\", \"close the weather\", \"clear the screen\", \"pin the calendar\", "
+        "\"expand the email\", \"full screen\", \"switch to panels\", \"hide\" — and the phone's orb now has the same "
+        "living layers as the PC (glow, drifting motes, ripples on loud moments, a turning globe in the core)",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

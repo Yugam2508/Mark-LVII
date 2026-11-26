@@ -135,6 +135,7 @@ class MainWindow(QMainWindow):
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
     _review_sig     = pyqtSignal(str, str, object, object)  # document review payload
+    _display_sig    = pyqtSignal(str, str, object)          # (action, target, reply box) — voice control of the HUD
 
     def __init__(self, face_path: str):
         super().__init__()
@@ -459,6 +460,7 @@ class MainWindow(QMainWindow):
         self._quiz_sig.connect(self._show_quiz)
         self._quiz_hide_sig.connect(self._hide_quiz)
         self._review_sig.connect(self._show_review)
+        self._display_sig.connect(self._display_command)
         self._cam_stop = threading.Event()
 
         # Camera preview overlay (child of central widget, positioned in resizeEvent)
@@ -2016,6 +2018,76 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
         self._log.append_log("SYS: Layout — " + ("immersive." if mode == "immersive" else "panels."))
+
+    def _display_command(self, action: str, target: str, box) -> None:
+        """Voice control of what's on screen ("close that", "clear the screen", "pin it", "expand the
+        calendar", "full screen"). Runs on the GUI thread; the outcome goes back through `box`."""
+        flow = getattr(self, "_flow", None)
+        cards = list(flow.cards) if flow is not None else []
+        t = (target or "").strip().lower()
+
+        def pick():
+            if not cards:
+                return None
+            if t and t not in ("that", "it", "this", "last", "latest"):
+                return next((c for c in cards if t in c.title.lower()), None)
+            return cards[0]                                     # newest first
+        msg = ""
+        try:
+            if action == "close":
+                if t in ("all", "everything") or not cards:
+                    for c in cards:
+                        flow._remove(c)
+                    stack = getattr(self, "_notice_stack", None)
+                    if stack is not None and t in ("all", "everything"):
+                        stack.clear()
+                    msg = f"closed {len(cards)} panel(s)"
+                else:
+                    c = pick()
+                    if c is None:
+                        msg = f"no panel called {target} is open"
+                    else:
+                        flow._remove(c)
+                        msg = f"closed {c.title}"
+            elif action in ("pin", "unpin"):
+                c = pick()
+                if c is None:
+                    msg = "no such panel"
+                else:
+                    if c.pinned != (action == "pin"):
+                        c._toggle_pin()
+                    msg = f"{action}ned {c.title}"
+            elif action == "expand":
+                c = pick()
+                if c is None:
+                    msg = "no such panel"
+                else:
+                    self._expand_card(c.title, c.text)
+                    msg = f"expanded {c.title}"
+            elif action == "list":
+                msg = "; ".join(c.title for c in cards) or "nothing is on screen"
+            elif action == "fullscreen":
+                self._toggle_fullscreen()
+                msg = "toggled full screen"
+            elif action in ("immersive", "panels"):
+                if (self._layout == "immersive") != (action == "immersive"):
+                    self._toggle_layout()
+                msg = f"switched to {action}"
+            elif action == "show":
+                self._tray.show_window()
+                msg = "window shown"
+            elif action == "hide":
+                self.hide()
+                msg = "hidden in the tray"
+            else:
+                msg = f"unknown display action {action}"
+        except Exception as e:
+            msg = f"failed: {e}"
+        try:
+            box["msg"] = msg
+            box["done"].set()
+        except Exception:
+            pass
 
     def _expand_card(self, title: str, text: str) -> None:
         """A card's EXPAND: the full text in the panel under the HUD."""

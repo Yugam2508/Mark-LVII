@@ -213,6 +213,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       "stop that" → stopped. "Cancel the install" → it says it can't be stopped half-way.
 - [ ] While Jarvis talks, say "wait" → it stops and says nothing. "Go on" → it carries on where it stopped.
 - [ ] Phone: tap the orb while Jarvis is talking → silence at once, and it listens.
+- [ ] With a few panels up: "close that", "close the weather", "pin the calendar", "expand the email",
+      "clear the screen", "full screen", "switch to panels" — each happens.
 
 ## 7j. Driving it
 
