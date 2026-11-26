@@ -199,7 +199,11 @@ class TaskEngine:
         if not text:
             raise ValueError("the task is empty")
         profiles = self.agents()
-        prof = profiles.get(str(agent or "").lower()) or profiles.get("general") \
+        want = str(agent or "").lower()
+        if want in ("", "general", "auto", "jarvis", "default"):
+            # One Jarvis: the task's words pick the way of working, nobody chooses an "agent".
+            want = agent_profiles.choose(text, profiles)
+        prof = profiles.get(want) or profiles.get("general") \
             or next(iter(profiles.values()))
         now = self._clock()
         minutes = max(1, min(720, int(minutes or prof.minutes)))

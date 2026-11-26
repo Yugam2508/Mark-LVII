@@ -118,3 +118,27 @@ def load(dirs, log=print) -> dict[str, AgentProfile]:
     if not out:
         out[FALLBACK.name] = FALLBACK
     return out
+
+
+# ── one Jarvis, not a menu of agents ─────────────────────────────────────────
+# The profiles stay as ways of working, but nobody has to pick one: the task's own words choose it.
+import re as _re
+
+_WAYS = (
+    ("deal_hunter", r"\b(price|prices|deal|deals|cheapest|cheaper|discount|sale|buy|buying|worth buying|cost of|"
+                    r"where (?:can|should) i (?:get|buy)|best place to buy)\b"),
+    ("study_coach", r"\b(study pack|flashcards?|revis(?:e|ion)|exam|quiz me|practice questions|key terms|"
+                    r"lecture notes|study guide|help me learn|teach me)\b"),
+    ("daily_digest", r"\b(digest|headlines|news (?:on|about|digest)|morning news|what's happening in)\b"),
+    ("researcher", r"\b(research|investigate|compare|comparison|sources|evidence|find out|look into|"
+                   r"report on|in depth|thorough|pros and cons|review of|what does the science)\b"),
+)
+
+
+def choose(task: str, available) -> str:
+    """The way of working that fits this task ('general' when nothing stands out)."""
+    text = (task or "").lower()
+    for name, pattern in _WAYS:
+        if name in available and _re.search(pattern, text):
+            return name
+    return "general"

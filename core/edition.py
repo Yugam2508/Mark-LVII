@@ -94,6 +94,13 @@ CHANGELOG = [
         "the install\" stops it — or says plainly when something can't be stopped half-way",
         "Interrupting: \"stop\", \"wait\", \"hold on\" now just stop Jarvis (no \"okay, stopping\"), \"go on\" picks up "
         "where it was cut off, and tapping the orb on the phone while Jarvis talks cuts it off instantly on both devices",
+        "A more alive hologram: a wireframe globe turns inside the core, a field of motes drifts in while Jarvis "
+        "listens and is blown outward when it speaks, live processor / memory / network / graphics gauges sit "
+        "around the dial, the whole thing leans slightly toward your mouse, and every new card is projected — a "
+        "beam from the core, the frame drawing itself, a scan line revealing the content",
+        "One Jarvis instead of a menu of agents: background work picks its own way of working (research with "
+        "checked sources, price hunting, a study pack, a news digest, or general work) from what you ask — "
+        "nobody has to choose a \"researcher\" or a \"general\" agent any more",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
