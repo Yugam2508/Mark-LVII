@@ -71,6 +71,10 @@ object Protocol {
     fun helloBody(name: String, abilities: List<String>): String =
         JSONObject().put("type", "hello").put("name", name).put("abilities", org.json.JSONArray(abilities)).toString()
 
+    /** The user's answer to a confirmation shown on the PC (and mirrored here). */
+    fun confirmBody(title: String, accepted: Boolean): String =
+        JSONObject().put("type", "confirm_answer").put("title", title).put("accepted", accepted).toString()
+
     /** The phone's answer to an action the PC asked for. */
     fun resultBody(id: String, ok: Boolean, text: String, data: JSONObject? = null): String {
         val o = JSONObject().put("type", "result").put("id", id).put("ok", ok).put("text", text)

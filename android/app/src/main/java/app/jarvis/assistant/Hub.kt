@@ -167,6 +167,7 @@ object Hub {
                             val e = Protocol.parseEvent(text) ?: return
                             when (e) {
                                 is Protocol.Event.PhoneAction -> handle(webSocket, e)
+                                is Protocol.Event.Card -> { if (e.kind == "confirm" || e.kind == "confirm_done") ConfirmNote.update(appContext, e); emit(e) }
                                 is Protocol.Event.Wake -> { LiveAudio.onWake(e.awake, e.available); emit(e) }
                                 else -> emit(e)
                             }

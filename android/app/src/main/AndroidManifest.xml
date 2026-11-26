@@ -113,6 +113,10 @@
         </service>
 
         <receiver
+            android:name=".ConfirmReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>

@@ -213,6 +213,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       "stop that" → stopped. "Cancel the install" → it says it can't be stopped half-way.
 - [ ] While Jarvis talks, say "wait" → it stops and says nothing. "Go on" → it carries on where it stopped.
 - [ ] Phone: tap the orb while Jarvis is talking → silence at once, and it listens.
+- [ ] Away from the PC, ask through the phone: "text Aarav I'm on my way" → the phone shows "Jarvis needs your OK"
+      with CONFIRM / CANCEL (in the app, and as a notification) → CONFIRM → the text goes; the PC banner closes.
 - [ ] Have someone call your phone while you're at the PC → Jarvis says who's calling. "Decline it" → it stops
       ringing. Next time "answer it" → the call connects on the phone.
 - [ ] With a few panels up: "close that", "close the weather", "pin the calendar", "expand the email",

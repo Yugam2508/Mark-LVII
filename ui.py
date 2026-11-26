@@ -163,10 +163,13 @@ class JarvisUI:
         """Thread-safe: raise the irreversible-action gate. Called from action
         handlers running in executor threads, so it goes through a signal."""
         self._win._confirm_sig.emit(str(title)[:120], str(detail)[:300])
+        # The phone sees it too, with CONFIRM / CANCEL — you may be asking from the phone, away from here.
+        self._mirror_out(str(title)[:120], str(detail)[:600], "confirm")
 
     def hide_confirm(self) -> None:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
+        self._mirror_out("", "", "confirm_done")
 
     def caption(self, who: str, text: str) -> None:
         """Thread-safe: live words for the immersive layout's captions."""

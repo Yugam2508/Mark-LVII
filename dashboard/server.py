@@ -1061,7 +1061,10 @@ class DashboardServer:
     # ── broadcast ────────────────────────────────────────────────────────
 
     async def broadcast(self, msg: dict) -> None:
-        self._history.append(msg)
+        live_only = msg.get("type") == "phone_wake" or (msg.get("type") == "card"
+                                                         and msg.get("kind") in ("confirm", "confirm_done"))
+        if not live_only:
+            self._history.append(msg)
         if len(self._history) > 300:
             self._history = self._history[-300:]
         dead: set[WebSocket] = set()
@@ -1486,6 +1489,15 @@ class DashboardServer:
                         if fut is not None and not fut.done():
                             fut.set_result({"ok": bool(data.get("ok")), "text": str(data.get("text") or "")[:2000],
                                             "data": data.get("data")})
+                    elif data.get("type") == "confirm_answer":
+                        if websocket in self._phones:
+                            try:
+                                from core import confirm as _confirm
+                                # Answer only the confirmation the phone was shown, if it's still the one waiting.
+                                if _confirm.pending_title() and _confirm.pending_title() == str(data.get("title") or ""):
+                                    await asyncio.to_thread(_confirm.resolve, bool(data.get("accepted")))
+                            except Exception as e:
+                                print(f"[Dashboard] confirm from phone: {e}")
                     elif data.get("type") in ("share", "phone_event"):
                         if websocket in self._phones:
                             try:

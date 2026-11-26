@@ -33,6 +33,9 @@ class ConversationPanel(
     private val scroll = ScrollView(context)
     private val input = EditText(context)
     private val mic = Button(context)
+    private val confirmBar = LinearLayout(context)
+    private val confirmText = TextView(context)
+    private var confirmTitle = ""
     private val lines = StringBuilder()
 
     init {
@@ -76,6 +79,19 @@ class ConversationPanel(
         }
         scroll.addView(log)
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+
+        // A confirmation waiting on the PC (a text to send, an install): answer it right here.
+        confirmBar.orientation = VERTICAL
+        confirmBar.setBackgroundColor(Color.argb(235, 40, 22, 0))
+        confirmBar.setPadding(dp(10), dp(8), dp(10), dp(8))
+        confirmText.setTextColor(Color.rgb(255, 200, 120)); confirmText.textSize = 14f
+        confirmBar.addView(confirmText)
+        val answers = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.END }
+        answers.addView(Button(context).apply { text = "CANCEL"; setOnClickListener { answerConfirm(false) } })
+        answers.addView(Button(context).apply { text = "CONFIRM"; setOnClickListener { answerConfirm(true) } })
+        confirmBar.addView(answers)
+        confirmBar.visibility = GONE
+        addView(confirmBar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         input.hint = "Just talk, or type here"; input.setHintTextColor(Color.rgb(80, 110, 125))
@@ -138,6 +154,8 @@ class ConversationPanel(
         when (event) {
             is Protocol.Event.Said -> { append(event.speaker, event.text); render() }
             is Protocol.Event.Card -> {
+                if (event.kind == "confirm") { showConfirm(event.title, event.text); return }
+                if (event.kind == "confirm_done") { confirmBar.visibility = GONE; confirmTitle = ""; return }
                 lines.append("▣ ").append(event.title.uppercase())
                 if (event.text.isNotEmpty()) lines.append("\n").append(event.text)
                 lines.append("\n\n"); render()
@@ -145,6 +163,19 @@ class ConversationPanel(
             is Protocol.Event.Wake -> onState(LiveAudio.state, 0f)
             is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
+    }
+
+    private fun showConfirm(title: String, text: String) {
+        confirmTitle = title
+        confirmText.text = "Jarvis needs your OK: $title\n$text"
+        confirmBar.visibility = VISIBLE
+    }
+
+    private fun answerConfirm(accepted: Boolean) {
+        if (confirmTitle.isNotEmpty()) Hub.sendRaw(Protocol.confirmBody(confirmTitle, accepted))
+        confirmBar.visibility = GONE
+        confirmTitle = ""
+        ConfirmNote.clear(context)
     }
 
     // ── the voice ────────────────────────────────────────────────────────────

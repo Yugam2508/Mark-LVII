@@ -111,6 +111,9 @@ CHANGELOG = [
         "living layers as the PC (glow, drifting motes, ripples on loud moments, a turning globe in the core)",
         "\"Sir, Mum is calling your phone\": when your phone rings, the PC says who it is (or shows a card if you're "
         "busy), and \"answer it\" / \"decline it\" presses the call's own buttons on the phone (needs notification access)",
+        "Confirm from the phone: when Jarvis needs your OK (a text, an install), the phone shows it with CONFIRM and "
+        "CANCEL — in the app and as a notification you can answer from the lock screen; a stale card can never "
+        "confirm a different request",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
