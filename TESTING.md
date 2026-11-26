@@ -159,6 +159,18 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Shut down the PC in 10 minutes" → confirm → scheduled; "cancel the shutdown" → cancelled. "Clean my temp files".
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
+## 7g. Notes, dictation and self-check
+
+- [ ] Say "run a self-check" → a card lists Screenshot / Notes folder / Dictation / Notion / Phone link / API keys
+      with OK or FAIL and the reason. Send me any FAIL lines.
+- [ ] "Take dictation, it's my feature list" → Jarvis says nothing more. Talk for a minute or two. A new file
+      appears in the knowledge folder under Dictations, growing as you speak.
+- [ ] "End dictation" → Jarvis says how many words were kept and whether they reached your notes. The notes
+      entry holds all of it, not a summary.
+- [ ] "Tidy up that dictation and save it" → clean bullet points in the notes.
+- [ ] With Notion as the notes backend and a long dictation (100+ lines) → all of it is on the Notion page.
+- [ ] Ask Jarvis to "note that the sky is blue" → it says it saved only after the tool reports it; check the note exists.
+
 ## 7f. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.

@@ -108,11 +108,22 @@ def _paragraphs(text: str) -> list[dict]:
         for i in range(0, max(1, len(body)), 2000):
             blocks.append({"object": "block", "type": kind, kind: {
                 "rich_text": [{"type": "text", "text": {"content": body[i:i + 2000]}}]}})
-    return blocks[:100]   # Notion takes at most 100 blocks per request
+    return blocks
 
 
-def append_text(pid: str, text: str) -> None:
-    api("PATCH", f"/blocks/{pid}/children", {"children": _paragraphs(text)})
+def append_text(pid: str, text: str) -> int:
+    """Append ALL of `text` (Notion takes 100 blocks per request, so in batches). Returns the number of
+    blocks written; raises if any batch fails, so a partial save is never reported as a save."""
+    blocks = _paragraphs(text)
+    written = 0
+    for i in range(0, len(blocks), 100):
+        batch = blocks[i:i + 100]
+        data = api("PATCH", f"/blocks/{pid}/children", {"children": batch})
+        got = len(data["results"]) if isinstance(data, dict) and "results" in data else len(batch)
+        if got < len(batch):
+            raise NotionError(f"Notion only accepted {written + got} of {len(blocks)} blocks")
+        written += got
+    return written
 
 
 def read_text(pid: str) -> str:

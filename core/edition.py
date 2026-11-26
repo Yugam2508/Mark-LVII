@@ -36,6 +36,13 @@ CHANGELOG = [
         "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
         "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "
         "decide for itself again",
+        "Dictation: say \"take dictation\" before a long ramble (a feature list, ideas) and the app writes every "
+        "word to a file as you say it while Jarvis stays silent; \"end dictation\" saves it to your notes and "
+        "tells you how many words were kept and whether they reached the notes. Nothing depends on the AI remembering",
+        "Jarvis may no longer say \"saved\" unless a tool said so; Notion notes longer than 100 lines used to be "
+        "silently cut off and are now sent in full (or reported as failed); \"run a self-check\" tests screenshots, "
+        "notes, Notion, dictation and the phone link for real and says exactly what is broken",
+        "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
         "of failing again and again",

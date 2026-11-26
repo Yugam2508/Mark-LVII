@@ -2132,8 +2132,13 @@ class JarvisLive:
                             self._resume_handle = _sru.new_handle
 
                     if response.data:
-                        if self._interrupted:
-                            pass  # discard: interrupted
+                        try:
+                            from core import dictation as _dict
+                            _dictating = _dict.active()
+                        except Exception:
+                            _dictating = False
+                        if self._interrupted or _dictating:
+                            pass  # discard: interrupted, or taking dictation (stay silent)
                         else:
                             if self._turn_done_event and self._turn_done_event.is_set():
                                 self._turn_done_event.clear()
@@ -2173,6 +2178,11 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                try:
+                                    from core import dictation as _dict
+                                    _dict.feed(txt)          # on disk the moment it is heard
+                                except Exception as _e:
+                                    print(f"[Dictation] {_e}")
                                 try:
                                     self.ui.caption("you", txt)
                                 except Exception:
@@ -2219,6 +2229,11 @@ class JarvisLive:
 
                             full_in = " ".join(in_buf).strip()
                             if full_in:
+                                try:
+                                    from core import dictation as _dict
+                                    _dict.paragraph()
+                                except Exception:
+                                    pass
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
