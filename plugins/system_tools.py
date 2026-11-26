@@ -1,0 +1,320 @@
+"""
+plugins/system_tools.py — the hands Jarvis needs to run the computer.
+
+    "Turn Bluetooth on" / "what Bluetooth devices do I have"    bluetooth
+    "Install VLC" / "uninstall Zoom"                            install / uninstall   (winget, confirm)
+    "Run this: ipconfig /all" / "run the script in Downloads"   run_command           (confirm, time limit)
+    "Organise my Downloads"                                     organise  (sorts by type, confirm, undo)
+    "Undo the tidy-up"                                          undo_organise
+    "Open youtube.com"                                          open_url
+
+Anything that changes the machine waits for the user's confirmation, like email does. Commands that
+could wipe a disk or the system are refused whatever the confirmation says. Output comes back as data.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+from pathlib import Path
+
+from core import confirm, outcome
+
+WINDOWS = sys.platform.startswith("win")
+LOG = Path(__file__).resolve().parent.parent / "config" / "organise_log.json"
+_NOWIN = 0x08000000 if WINDOWS else 0   # CREATE_NO_WINDOW
+
+CATEGORIES = {
+    "Images": {".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".heic", ".tiff"},
+    "Videos": {".mp4", ".mkv", ".mov", ".avi", ".webm", ".wmv"},
+    "Audio": {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"},
+    "Documents": {".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt", ".md", ".ppt", ".pptx", ".xls", ".xlsx", ".csv"},
+    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz"},
+    "Installers": {".exe", ".msi", ".dmg", ".apk", ".deb"},
+    "Code": {".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".html", ".css", ".json", ".ipynb"},
+}
+
+# Refused outright, however the confirmation goes.
+_DANGEROUS = [re.compile(p, re.I) for p in (
+    r"\bformat-volume\b", r"\bformat\s+[a-z]:", r"\bdiskpart\b", r"\bclear-disk\b", r"\bremove-partition\b",
+    r"\bmkfs\b", r"\bdd\s+if=", r"\brm\s+(-\w+\s+)*-?\w*r\w*\s+/(\s|$|\*)", r"rd\s+/s\s+/q\s+[a-z]:\\\s*$",
+    r"\bdel\s+/[sfq]+.*\\windows", r"remove-item.*(-recurse).*[a-z]:\\(windows|users)?\s*$",
+    r"\bbcdedit\b", r"\bcipher\s+/w", r"reg\s+delete\s+hk(lm|cr)", r":\(\)\s*\{", r"shutdown\s+/[rsp]",
+)]
+
+
+def _flag(cmd: str) -> str:
+    for rx in _DANGEROUS:
+        if rx.search(cmd):
+            return "that can wipe a disk or break the system"
+    return ""
+
+
+def _run(args, timeout: int = 60, shell: bool = False) -> tuple[int, str]:
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=timeout, shell=shell,
+                           creationflags=_NOWIN, errors="replace")
+        return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
+    except subprocess.TimeoutExpired:
+        return 124, f"timed out after {timeout}s"
+    except FileNotFoundError as e:
+        return 127, f"not found: {e.filename}"
+
+
+def _ps(script: str, timeout: int = 60) -> tuple[int, str]:
+    return _run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script], timeout)
+
+
+# ── Bluetooth ────────────────────────────────────────────────────────────────
+
+_BT_SET = r"""
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$m = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' })[0]
+function Await($t, $r) { $n = $m.MakeGenericMethod($r).Invoke($null, @($t)); $n.Wait(-1) | Out-Null; $n.Result }
+[Windows.Devices.Radios.Radio,Windows.System.Devices,ContentType=WindowsRuntime] | Out-Null
+[Windows.Devices.Radios.RadioAccessStatus,Windows.System.Devices,ContentType=WindowsRuntime] | Out-Null
+Await ([Windows.Devices.Radios.Radio]::RequestAccessAsync()) ([Windows.Devices.Radios.RadioAccessStatus]) | Out-Null
+$radios = Await ([Windows.Devices.Radios.Radio]::GetRadiosAsync()) ([System.Collections.Generic.IReadOnlyList[Windows.Devices.Radios.Radio]])
+$bt = $radios | ? { $_.Kind -eq 'Bluetooth' }
+if (-not $bt) { 'NO_RADIO'; exit }
+if ('%s' -ne 'status') { Await ($bt.SetStateAsync('%s')) ([Windows.Devices.Radios.RadioAccessStatus]) | Out-Null }
+'STATE=' + ($radios | ? { $_.Kind -eq 'Bluetooth' }).State
+"""
+
+
+def _bluetooth(p: dict) -> str:
+    what = str(p.get("state") or "status").lower()
+    if what in ("settings", "open"):
+        _open_settings("bluetooth")
+        return outcome.done("bluetooth_settings", note="opened the Bluetooth settings page, where a device is picked to connect")
+    if not WINDOWS:
+        return outcome.failed("bluetooth", "Bluetooth control is only built for Windows")
+    if what in ("on", "off"):
+        rc, out = _ps(_BT_SET % (what, "On" if what == "on" else "Off"), 30)
+        if "NO_RADIO" in out:
+            return outcome.failed("bluetooth", "this PC has no Bluetooth radio")
+        return outcome.done("bluetooth", state=what) if "STATE=" in out else outcome.failed("bluetooth", out[:160] or "no answer")
+    if what == "devices":
+        rc, out = _ps("Get-PnpDevice -Class Bluetooth | ? { $_.FriendlyName -and $_.Status -eq 'OK' } | "
+                      "Select -Expand FriendlyName | Sort -Unique")
+        return outcome.done("bluetooth_devices") + "\n" + outcome.untrusted("bluetooth", out or "none found")
+    rc, out = _ps(_BT_SET % ("status", "On"), 30)
+    m = re.search(r"STATE=(\w+)", out)
+    return outcome.done("bluetooth", state=(m.group(1).lower() if m else "unknown"))
+
+
+def _open_settings(page: str) -> None:
+    if WINDOWS:
+        os.startfile(f"ms-settings:{page}")  # type: ignore[attr-defined]
+
+
+# ── install / uninstall ──────────────────────────────────────────────────────
+
+def _winget_find(query: str) -> tuple[str, str]:
+    rc, out = _run(["winget", "search", query, "--accept-source-agreements"], 60)
+    if rc == 127:
+        return "", "winget isn't installed on this PC (it comes with the App Installer from the Microsoft Store)"
+    for line in out.splitlines():
+        parts = re.split(r"\s{2,}", line.strip())
+        if len(parts) >= 2 and re.match(r"^[\w.+-]+\.[\w.+-]+$", parts[1]):
+            return parts[1], parts[0]
+    return "", f"winget found nothing called {query}"
+
+
+def _install(p: dict, remove: bool = False) -> str:
+    query = str(p.get("name") or p.get("query") or "").strip()
+    if not query:
+        return outcome.ask("install", "What should I install?")
+    verb = "uninstall" if remove else "install"
+    pkg, label = _winget_find(query)
+    if not pkg:
+        return outcome.failed(verb, label)
+
+    def go() -> str:
+        args = ["winget", verb, "--id", pkg, "-e", "--accept-source-agreements"]
+        if not remove:
+            args.append("--accept-package-agreements")
+        rc, out = _run(args, 900)
+        tail = out.splitlines()[-1] if out else ""
+        return outcome.done(verb, app=label) if rc == 0 else outcome.failed(verb, tail[:160] or f"exit {rc}")
+
+    return confirm.request(f"{verb}:{pkg}", f"{verb.title()} {label}",
+                           f"{verb.title()} {label} ({pkg}) with winget", go)
+
+
+# ── run a command ────────────────────────────────────────────────────────────
+
+def _command(p: dict) -> str:
+    cmd = str(p.get("command") or "").strip()
+    if not cmd:
+        return outcome.ask("run_command", "What should I run?")
+    why = _flag(cmd)
+    if why:
+        return outcome.failed("run_command", f"refused: {why}")
+    timeout = max(5, min(int(p.get("timeout") or 120), 900))
+
+    def go() -> str:
+        rc, out = _ps(cmd, timeout) if WINDOWS else _run(cmd, timeout, shell=True)
+        return outcome.done("run_command", exit_code=rc) + "\n" + outcome.untrusted("command output", out[-3000:] or "(no output)")
+
+    return confirm.request(f"cmd:{cmd[:60]}", "Run command", f"Run on this PC:\n{cmd}", go)
+
+
+# ── organise a folder ────────────────────────────────────────────────────────
+
+def _folder(name: str) -> Path:
+    home = Path.home()
+    low = (name or "downloads").strip().lower()
+    known = {"downloads": "Downloads", "desktop": "Desktop", "documents": "Documents",
+             "pictures": "Pictures", "videos": "Videos", "music": "Music"}
+    if low in known:
+        return home / known[low]
+    return Path(os.path.expandvars(os.path.expanduser(name)))
+
+
+def _category(path: Path) -> str:
+    ext = path.suffix.lower()
+    for cat, exts in CATEGORIES.items():
+        if ext in exts:
+            return cat
+    return "Other"
+
+
+def plan_organise(folder: Path) -> list[tuple[Path, Path]]:
+    moves = []
+    for f in sorted(folder.iterdir()):
+        if not f.is_file() or f.name.startswith(".") or f.suffix.lower() in (".lnk", ".ini"):
+            continue
+        dest = folder / _category(f) / f.name
+        if not dest.exists():
+            moves.append((f, dest))
+    return moves
+
+
+def _organise(p: dict) -> str:
+    folder = _folder(str(p.get("folder") or "downloads"))
+    if not folder.is_dir():
+        return outcome.failed("organise", f"no folder {folder}")
+    try:
+        from plugins import file_finder
+        why = file_finder.protected_reason(folder)
+        if why:
+            return outcome.failed("organise", why)
+    except Exception:
+        pass
+    moves = plan_organise(folder)
+    if not moves:
+        return outcome.done("organise", moved=0, note="nothing loose to sort")
+    counts: dict[str, int] = {}
+    for _, d in moves:
+        counts[d.parent.name] = counts.get(d.parent.name, 0) + 1
+    summary = ", ".join(f"{n} → {c}" for c, n in sorted(counts.items()))
+
+    def go() -> str:
+        done = []
+        for src, dst in moves:
+            try:
+                dst.parent.mkdir(exist_ok=True)
+                shutil.move(str(src), str(dst))
+                done.append([str(src), str(dst)])
+            except OSError:
+                continue
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        LOG.write_text(json.dumps({"at": time.time(), "moves": done}), encoding="utf-8")
+        return outcome.done("organise", moved=len(done), folder=folder.name, note="say 'undo the tidy-up' to put it all back")
+
+    return confirm.request(f"organise:{folder}", f"Organise {folder.name}",
+                           f"Sort {len(moves)} loose files in {folder}:\n{summary}", go)
+
+
+def _undo(p: dict) -> str:
+    try:
+        data = json.loads(LOG.read_text(encoding="utf-8"))
+    except Exception:
+        return outcome.failed("undo_organise", "there's nothing to undo")
+    back = 0
+    for src, dst in reversed(data.get("moves", [])):
+        try:
+            if Path(dst).exists() and not Path(src).exists():
+                shutil.move(dst, src)
+                back += 1
+        except OSError:
+            pass
+    for d in {Path(m[1]).parent for m in data.get("moves", [])}:
+        try:
+            d.rmdir()
+        except OSError:
+            pass
+    LOG.unlink(missing_ok=True)
+    return outcome.done("undo_organise", restored=back)
+
+
+# ── websites ─────────────────────────────────────────────────────────────────
+
+def _open_url(p: dict) -> str:
+    url = str(p.get("url") or "").strip()
+    if not url:
+        return outcome.ask("open_url", "Which site?")
+    if not re.match(r"^https?://", url, re.I):
+        if re.match(r"^[\w-]+(\.[\w-]+)+(/.*)?$", url):
+            url = "https://" + url
+        else:
+            url = "https://www.google.com/search?q=" + re.sub(r"\s+", "+", url)
+    webbrowser.open(url)
+    return outcome.done("open_url", url=url)
+
+
+_ACTIONS = {
+    "bluetooth": _bluetooth,
+    "install": _install,
+    "uninstall": lambda p: _install(p, remove=True),
+    "run_command": _command,
+    "organise": _organise,
+    "undo_organise": _undo,
+    "open_url": _open_url,
+}
+
+PLUGIN = {
+    "name": "system_tools",
+    "description": (
+        "Does things on this PC: turn Bluetooth on/off, list paired Bluetooth devices or open the "
+        "Bluetooth page to connect one (state: on/off/status/devices/settings); install or uninstall "
+        "an app with winget (name); run a PowerShell command or script the user dictated (command; "
+        "asks to confirm); organise a messy folder like Downloads into folders by file type "
+        "(folder; asks to confirm) and undo it; open a website or search (url). Use for 'install X', "
+        "'run this', 'tidy my downloads', 'turn on Bluetooth', 'open youtube.com'. For finding or "
+        "deleting files use file_finder; for Spotify use spotify_control."
+    ),
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "action": {"type": "STRING", "enum": list(_ACTIONS)},
+            "state": {"type": "STRING", "description": "For bluetooth: on, off, status, devices or settings"},
+            "name": {"type": "STRING", "description": "For install/uninstall: the app, e.g. 'VLC'"},
+            "command": {"type": "STRING", "description": "For run_command: the PowerShell to run"},
+            "timeout": {"type": "INTEGER", "description": "For run_command: seconds before it is stopped (default 120)"},
+            "folder": {"type": "STRING", "description": "For organise: downloads, desktop, documents or a path"},
+            "url": {"type": "STRING", "description": "For open_url: a site, address or search words"},
+        },
+        "required": ["action"],
+    },
+    "tier": "core",
+    "brief": "PC: Bluetooth, install apps, run commands, organise folders, open sites.",
+}
+
+
+def run(parameters: dict, player=None, session_memory=None) -> str:
+    action = str(parameters.get("action") or "").lower()
+    fn = _ACTIONS.get(action)
+    if fn is None:
+        return outcome.failed("system_tools", f"unknown action {action}")
+    try:
+        return fn(parameters)
+    except Exception as e:
+        return outcome.failed(action, str(e)[:160])

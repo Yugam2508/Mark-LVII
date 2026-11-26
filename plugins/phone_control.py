@@ -63,14 +63,28 @@ PLUGIN = {
     "name": "phone_control",
     "description": (
         "Uses the user's Android phone: call someone, send a text, find the phone (rings loudly), "
-        "check battery and connection, look up a contact's number. Pass the person as they said "
-        "it (a name or a number). Calls and texts need the user's confirmation, which this tool "
-        "asks for. Not for messages on WhatsApp or email — use those tools."
+        "check battery and connection, look up a contact's number; open an app by name (open_app), "
+        "open a website (open_url), open the Bluetooth/Wi-Fi/sound/display settings page "
+        "(settings; Android won't let apps flip Bluetooth or Wi-Fi themselves, so say it is one tap "
+        "on the page), phone volume, flashlight, set a timer, play/pause/next on whatever the phone "
+        "is playing (media), start navigation (navigate). For a person pass the name or number. "
+        "Calls and texts need the user's confirmation, which this tool asks for. Not for messages on "
+        "WhatsApp or email — use those tools. For music by name use spotify_control with the phone as the device."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts"]},
+            "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts", "open_app", "open_url",
+                                                    "settings", "volume", "flashlight", "timer", "media", "navigate"]},
+            "name": {"type": "STRING", "description": "For open_app: the app's name, e.g. 'Spotify'"},
+            "url": {"type": "STRING", "description": "For open_url: a full https:// address"},
+            "page": {"type": "STRING", "description": "For settings: bluetooth, wifi, sound, display, location, battery"},
+            "level": {"type": "INTEGER", "description": "For volume: 0-100"},
+            "direction": {"type": "STRING", "description": "For volume: up or down"},
+            "on": {"type": "BOOLEAN", "description": "For flashlight: true or false"},
+            "seconds": {"type": "INTEGER", "description": "For timer: length in seconds"},
+            "key": {"type": "STRING", "description": "For media: play, pause, next or previous"},
+            "where": {"type": "STRING", "description": "For navigate: the destination"},
             "who": {"type": "STRING", "description": "Contact name or phone number"},
             "message": {"type": "STRING", "description": "For text: the message, in the user's words"},
         },
@@ -97,6 +111,18 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             r = phone("status")
             return outcome.done("phone_status") + "\n" + outcome.untrusted("phone", r.get("text", "")) \
                 if r.get("ok") else outcome.failed("phone_status", r.get("text") or "no answer")
+        simple = {"open_app": ("name",), "open_url": ("url",), "settings": ("page",),
+                  "volume": ("level", "direction"), "flashlight": ("on",), "timer": ("seconds", "label"),
+                  "media": ("key",), "navigate": ("where",)}
+        if action in simple:
+            args = {k: parameters[k] for k in simple[action] if parameters.get(k) is not None}
+            if action == "open_url":
+                u = str(args.get("url", ""))
+                if not re.match(r"^https?://", u, re.I) and re.match(r"^[\w-]+(\.[\w-]+)+", u):
+                    args["url"] = "https://" + u
+            r = phone(action, args)
+            return outcome.done(f"phone_{action}", result=r.get("text", "")) if r.get("ok") else \
+                outcome.failed(f"phone_{action}", r.get("text") or "no answer")
         if action == "find_phone":
             r = phone("find_phone", {"seconds": 30})
             return outcome.done("phone_find", note="it is ringing at full volume for 30 seconds; the "

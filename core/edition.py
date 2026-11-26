@@ -42,6 +42,10 @@ CHANGELOG = [
         "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
         "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
         "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
+        "More hands: Bluetooth on/off and device list, install/uninstall apps (winget), run commands, "
+        "tidy a messy folder by file type (with undo), open websites, and \"play my liked songs\"; on the "
+        "phone: open any app or link, Bluetooth/Wi-Fi settings pages, volume, flashlight, timers, media keys, "
+        "navigation. Anything that changes the PC asks you to confirm first; disk-wiping commands are refused",
         "When Jarvis can't reach Google it now says why on screen (usage limit, blocked or invalid key, "
         "billing, Google overloaded, no network) instead of silently looking frozen",
         "The window footer credits you instead of the original author (the original credit stays in "

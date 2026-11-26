@@ -129,6 +129,21 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Allow Claude Code to run commands" → confirm. Then "ask Claude Code to find what's using space on D:
       and propose what's safe to clean" → a plan → read it → "go ahead" → confirm → it runs.
 
+## 7e. Doing things on the PC and phone
+
+- [ ] "Turn Bluetooth off", then "on" (Windows). "What Bluetooth devices do I have?" lists paired ones.
+- [ ] "Install VLC" → confirmation naming the winget package → "confirm" → installed. "Uninstall it" likewise.
+- [ ] "Run ipconfig" → shows the command → confirm → output summarised. "Format my D drive" → refused.
+- [ ] "Organise my Downloads" → says how many files go where → confirm → sorted into Images, Documents…
+      "Undo the tidy-up" → back where they were.
+- [ ] "Open youtube.com", "search for best pizza near me" → opens in the PC browser.
+- [ ] "Play my liked songs" (optionally "on my phone") → plays shuffled. Spotify's Jam can't be started by
+      apps, so Jarvis should say that rather than pretend.
+- [ ] Phone, menu → "Let Jarvis open apps and sites" → switch it on. Then "open Spotify on my phone",
+      "open example.com on my phone", "turn the phone's volume to 40", "flashlight on", "set a 5 minute timer
+      on my phone", "pause the music on my phone", "navigate to <place>".
+- [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
+
 ## 8. Things from earlier versions still worth a run
 
 - [ ] Morning briefing (tomorrow morning), proactive email alerts with suggested replies.
