@@ -204,6 +204,16 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Set an alarm for 7:15 on my phone" → it's in the Clock app. With Accessibility on: "take a screenshot on my
       phone" (in the gallery), "lock my phone".
 
+## 7i. Iron Man bits
+
+- [ ] "Create a night protocol: lock the PC, phone on Do Not Disturb, set an alarm for 7" → saved, shown on screen.
+      "Initiate night protocol" → the panel says INITIATED and the steps happen one after another.
+- [ ] "Run diagnostics" → a DIAGNOSTICS panel with ●/▲/■ per line; Jarvis mentions only what needs attention.
+- [ ] Start "update all my apps" (confirm), then "what are you working on?" → it's listed. "Run a speed test", then
+      "stop that" → stopped. "Cancel the install" → it says it can't be stopped half-way.
+- [ ] While Jarvis talks, say "wait" → it stops and says nothing. "Go on" → it carries on where it stopped.
+- [ ] Phone: tap the orb while Jarvis is talking → silence at once, and it listens.
+
 ## 7h. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.

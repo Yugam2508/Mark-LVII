@@ -240,12 +240,22 @@ def resolve(accepted: bool, values: Optional[dict] = None) -> None:
             edited = cleaned
 
     def _worker():
+        op = None
+        try:
+            from core import ops
+            op = ops.start(p.title, kind="confirmed")
+        except Exception:
+            pass
         try:
             result = (p.run_edited(edited) if edited is not None else p.run()) or "Done."
+            if op is not None:
+                op.finish(ok=not str(result).startswith("status=failed"))
             _log(f"SYS: Confirmed — {p.title}. {result}")
         except Exception as e:
             result = f"status=failed action={p.key.split(':')[0]} reason={str(e)[:160]!r}"
             _log(f"ERR: {p.title} failed — {e}")
+            if op is not None:
+                op.finish(ok=False, detail=str(e)[:80])
         _report(p.title, result)
 
     threading.Thread(target=_worker, daemon=True,

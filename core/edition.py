@@ -84,6 +84,16 @@ CHANGELOG = [
         "goes through, with a chime and a buzz, and the conversation flows until it's quiet for a while. Tap the orb "
         "to talk without the phrase, long-press to send it back to waiting; the screen says which state it's in. "
         "If the PC hasn't got the wake word yet it sets it up once and listens to everything meanwhile",
+        "Protocols, Tony-style: \"create a night protocol: lock the PC, phone on Do Not Disturb, lights off\", then "
+        "\"initiate night protocol\" runs every step (anything that needs your OK still asks); \"what protocols do I "
+        "have?\", add or delete steps by voice",
+        "\"Run diagnostics\": a status readout of processor, memory, graphics, disks, temperatures, battery, internet "
+        "latency, Tailscale, the phone link, backups and the wake word, with Jarvis saying only what needs attention",
+        "A controllable agent: \"what are you working on?\" lists everything running in the background (installs, "
+        "updates, deep thinking, speed tests, dictation, Claude Code jobs, agent tasks) and \"stop that\" / \"cancel "
+        "the install\" stops it — or says plainly when something can't be stopped half-way",
+        "Interrupting: \"stop\", \"wait\", \"hold on\" now just stop Jarvis (no \"okay, stopping\"), \"go on\" picks up "
+        "where it was cut off, and tapping the orb on the phone while Jarvis talks cuts it off instantly on both devices",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

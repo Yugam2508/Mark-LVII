@@ -96,9 +96,17 @@ def context_text(max_turns: int = 12) -> str:
 
 
 def _worker(question: str, context: str) -> None:
+    from core import ops
+    op = ops.start("Deep thinking", kind="think", cancel=lambda: None)   # stopping drops the answer
     try:
         text, model = deepthink.think(question, context)
+        op.finish(True, model)
+        if op.cancelled.is_set():
+            return
     except Exception as e:
+        op.finish(False, str(e)[:60])
+        if op.cancelled.is_set():
+            return
         addons.notify("Deeper analysis failed", str(e)[:400],
                       "[SYSTEM] The deeper analysis could not be done. In one sentence say so and why, and "
                       "answer as well as you can yourself:\n" + outcome.untrusted("deep_think", str(e)[:300]),

@@ -2830,8 +2830,18 @@ class JarvisLive:
                         self._forward_phone_audio(held)
                 continue
             if "control" in chunk:                       # the phone's orb was tapped
+                ctl = chunk["control"]
+                if ctl == "interrupt":                   # tapped while Jarvis was talking: stop now
+                    with self._speaking_lock:
+                        talking = self._is_speaking
+                    if talking:
+                        self.interrupt()
+                    pw = getattr(self, "_phone_wake", None)
+                    if pw is not None:
+                        pw.wake_now()                    # and listen for what they say next
+                    continue
                 pw = self._get_phone_wake()
-                pw.wake_now() if chunk["control"] == "wake_now" else pw.sleep_now()
+                pw.wake_now() if ctl == "wake_now" else pw.sleep_now()
                 continue
             self._phone_active = True   # phone is streaming — silence PC mic
             with self._speaking_lock:

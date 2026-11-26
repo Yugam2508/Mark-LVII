@@ -58,7 +58,13 @@ class ConversationPanel(
         hint.setPadding(0, dp(2), 0, dp(6))
         addView(hint, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         // Tap the orb to talk without the wake word; long-press to send it back to waiting.
-        holo.setOnClickListener { if (LiveAudio.running) LiveAudio.wakeNow() else toggleMic() }
+        holo.setOnClickListener {
+            when {
+                !LiveAudio.running -> toggleMic()
+                LiveAudio.state == LiveAudio.State.SPEAKING -> LiveAudio.interruptNow()   // tap to cut Jarvis off
+                else -> LiveAudio.wakeNow()
+            }
+        }
         holo.setOnLongClickListener { LiveAudio.sleepNow(); true }
 
         log.setTextColor(Color.rgb(220, 235, 245)); log.textSize = 15f

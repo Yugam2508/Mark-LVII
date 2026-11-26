@@ -1359,7 +1359,7 @@ class DashboardServer:
                         ctl = str(_j.loads(text).get("type") or "")
                     except Exception:
                         ctl = ""
-                    if ctl in ("wake_now", "sleep_now"):
+                    if ctl in ("wake_now", "sleep_now", "interrupt"):
                         try:
                             self._phone_audio_queue.put_nowait({"control": ctl})
                         except asyncio.QueueFull:

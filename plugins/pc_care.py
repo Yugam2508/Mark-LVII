@@ -239,12 +239,19 @@ def measure_speed(down_bytes: int = 25_000_000, up_bytes: int = 5_000_000) -> di
 
 
 def _speed_test(p: dict) -> str:
+    from core import ops
+    op = ops.start("Speed test", kind="network", cancel=lambda: None)
+
     def work():
         try:
             r = measure_speed()
             msg = outcome.done("speed_test", **r)
+            op.finish(True, f"{r['down_mbps']} Mbps down")
         except Exception as e:
             msg = outcome.failed("speed_test", str(e)[:160])
+            op.finish(False, str(e)[:60])
+        if op.cancelled.is_set():
+            return
         try:
             from core import addons
             addons.say("The internet speed test the user asked for has finished. Tell them the result in one "

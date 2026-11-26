@@ -69,6 +69,17 @@ def _auto_stop() -> None:
         pass
 
 
+def _watch_op(op) -> None:
+    """Mark the dictation job finished when the dictation ends by any route."""
+    import time as _t
+
+    def watch():
+        while dictation.active():
+            _t.sleep(1)
+        op.finish(True, f"{dictation.status().get('words', 0)} words")
+    threading.Thread(target=watch, daemon=True, name="dictation-op").start()
+
+
 def run(parameters: dict, player=None, session_memory=None) -> str:
     action = str(parameters.get("action") or "status")
     try:
@@ -77,6 +88,13 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                 return outcome.done("dictation_start", note="already taking dictation")
             title = str(parameters.get("title") or "").strip()
             path = dictation.start(title, on_stop=_auto_stop)
+            try:
+                from core import ops
+                op = ops.start("Dictation" + (f" — {title}" if title else ""), kind="dictation",
+                               cancel=lambda: (dictation.stop_now(), _auto_stop()))
+                _watch_op(op)
+            except Exception:
+                pass
             return outcome.done("dictation_start", file=str(path),
                                 note="now stay silent: no replies and no acknowledgements until they say "
                                      "'end dictation'; everything they say is being written to disk")

@@ -246,6 +246,14 @@ object LiveAudio {
     fun wakeNow() { socket?.send("""{"type":"wake_now"}""") }
     fun sleepNow() { socket?.send("""{"type":"sleep_now"}""") }
 
+    /** Tap while Jarvis is talking: silence the speaker here at once and tell the PC to stop. */
+    fun interruptNow() {
+        flush()
+        lastVoiceAt = 0L
+        socket?.send("""{"type":"interrupt"}""")
+        emit(State.LISTENING)
+    }
+
     private fun cue() {
         val c = ctx ?: return
         if (!Prefs(c).chime) return
