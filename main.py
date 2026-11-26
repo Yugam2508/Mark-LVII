@@ -2100,6 +2100,10 @@ class JarvisLive:
                             # twice AND made the avatar mouth it twice.
                             if txt and not _is_repeat_chunk(txt, out_buf):
                                 out_buf.append(txt)
+                                try:
+                                    self.ui.caption("ai", txt)       # immersive captions
+                                except Exception:
+                                    pass
                                 # Hand the words to the mouth as they arrive, so
                                 # the avatar can form the consonants the audio
                                 # alone cannot show. Pure string work — it adds
@@ -2111,6 +2115,10 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                try:
+                                    self.ui.caption("you", txt)
+                                except Exception:
+                                    pass
                                 # A spoken "confirm" / "cancel" answers an on-screen
                                 # confirmation. From the microphone transcript only.
                                 try:

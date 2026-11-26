@@ -177,6 +177,11 @@ reads to answer.
 
 ## 7. Interrupt by voice
 
+*(v1.6)* Jarvis now uses real echo cancellation — the same technique video calls use — to
+hear you over its own voice, so just start talking and it stops, even on laptop speakers.
+If it ever stops by itself (very loud speakers, lots of typing), set **careful** below.
+
+
 It's **on**: just start talking while Jarvis is speaking and it stops. Turn it off or make
 it *careful* in **⚙ → PLUGIN SETTINGS → VOICE INTERRUPT**, or by voice.
 
@@ -602,6 +607,24 @@ cycles holographic → animated face → reactor core). What moves means somethi
 - **satellites**: every tool it uses (SPOTIFY, GMAIL, CLAUDE CODE…), every panel it opens
   and every card it leaves flies out of the core as a labelled node, pulses while it's
   fresh, orbits, and fades after a few minutes. A glance tells you what it's been doing.
+
+---
+
+### The immersive layout (v1.6, the default)
+
+The side panels are gone unless you want them: the holographic display fills the window
+and things come to you.
+
+- **Cards**: anything Jarvis shows (weather, an email, your calendar, search results, a
+  finished job) slides out of the core as a card beside it and drifts away after a
+  minute. Hover to keep it, **PIN** to keep it until you close it, **EXPAND** for the full
+  text. Alerts that arrive while you're busy come as pinned cards.
+- **Captions**: what you and Jarvis say, live, at the top; they fade after a few seconds.
+- **Vitals**: CPU, memory, battery, mode and busy/away in one line, bottom left.
+- **Command bar** under the display: type, MIC ON/OFF, STOP, and **◫ PANELS**.
+
+**F2** or the ◫ button in the header switches between immersive and the classic panels
+(systems, status, tasks, log); the choice is remembered.
 
 ---
 

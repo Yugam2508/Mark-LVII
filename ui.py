@@ -168,6 +168,10 @@ class JarvisUI:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
 
+    def caption(self, who: str, text: str) -> None:
+        """Thread-safe: live words for the immersive layout's captions."""
+        self._win._caption_sig.emit("you" if who == "you" else "ai", str(text)[:300])
+
     def push_context(self, label: str, kind: str = "tool") -> None:
         """Thread-safe: show on the HUD that JARVIS is doing this (a satellite)."""
         self._win._context_sig.emit(str(label)[:40], str(kind or "tool"))
