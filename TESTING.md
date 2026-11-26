@@ -102,6 +102,16 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Not built yet, so don't expect them: wake word, the AC through the IR blaster, reading
       notifications, controlling other apps, and picking up a conversation from the PC.
 
+## 7c. Deeper thinking
+
+- [ ] Copy an OpenAI key, say "add this OpenAI key" → it confirms how many keys and which model.
+- [ ] Ask something that needs reasoning ("should I take the 9am swim or the 6pm one if I'm sleeping
+      badly and have a lecture at 10?") → it says it's getting the stronger model, then a card appears and
+      it summarises the answer, naming the model.
+- [ ] After a quick answer say "hmm, that doesn't sound right" → it goes deeper without being told to.
+- [ ] "Use Claude for deep thinking", ask again → the card says Claude. "Use OpenAI" → back.
+- [ ] "How much deep thinking have I used today?" → calls and tokens per model.
+
 ## 8. Things from earlier versions still worth a run
 
 - [ ] Morning briefing (tomorrow morning), proactive email alerts with suggested replies.

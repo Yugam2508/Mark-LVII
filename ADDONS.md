@@ -808,7 +808,31 @@ The bigger plan — one always-on Jarvis that every device reaches — is in `HU
 
 ---
 
-## 43. Your phone as part of Jarvis
+## 43. Deeper thinking, on its own
+
+Jarvis answers most things with fast models. When a question needs real reasoning — trade-offs,
+planning, maths, a decision, a tangled analysis — or when it isn't confident in its quick answer, it
+**hands the question to a stronger model by itself**. You can also trigger it in ordinary words: "that
+doesn't sound right", "are you sure?", "hmm", "think about it more", "get a second opinion". There is no
+command to remember. The stronger model gets the question, the conversation so far and your two
+always-on memory boxes; the answer appears as a card and Jarvis tells you the conclusion and which
+model said it (and says so if it disagrees with its own earlier answer).
+
+- **Add OpenAI keys:** copy a key from platform.openai.com/api-keys, then say **"add this OpenAI
+  key"**. Jarvis reads it from the clipboard (you never say or type it), checks it with OpenAI,
+  stores it with your other credentials and clears the clipboard. It asks OpenAI which models that key
+  can use and picks the strongest. Add up to five; when one runs out of credit the next is used, and a
+  rate-limited key rests for a minute.
+- **Claude** (your Claude subscription, no API cost) is the other option and the fallback.
+- **Choose by voice:** "use Claude for deep thinking", "use OpenAI", "go back to automatic", "use model
+  <name>". The setting also lives in ⚙ → PLUGIN SETTINGS → **DEEP THINKING**.
+- **Usage:** "how much deep thinking have I used today?" shows calls and tokens per model (not money,
+  because prices change), and a daily limit (default 40) stops it overspending: "raise the deep
+  thinking limit to 80".
+
+---
+
+## 44. Your phone as part of Jarvis
 
 With the Android app (`android/README.md`) paired, Jarvis on the PC can use the phone: **"call Mum"**,
 **"text Aarav I'm running ten minutes late"**, **"find my phone"** (rings at full volume), **"what's
@@ -832,7 +856,7 @@ is kept).
 
 ---
 
-## 44. When Claude Code or the phone link doesn't work
+## 45. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 
