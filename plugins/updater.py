@@ -69,6 +69,57 @@ def check() -> tuple[int, str]:
     return behind, "; ".join(log)
 
 
+def _blocking_files(err: str) -> list[str]:
+    """The paths git lists (tab-indented) under 'would be overwritten'."""
+    return [ln.strip() for ln in err.splitlines() if ln.startswith(("\t", "        ")) and ln.strip()]
+
+
+def _is_own_file(rel: str) -> bool:
+    """A file Jarvis itself writes (settings, keys, state): anything in config/
+    or memory/ except the icon, or anything .gitignore says is not code."""
+    rel = rel.replace("\\", "/")
+    if rel.startswith(("config/", "memory/")) and not rel.endswith((".ico", ".py")):
+        return True
+    return _git("check-ignore", "-q", "--no-index", rel).returncode == 0
+
+
+def _pull_keeping_own_files(err: str) -> tuple[bool, str]:
+    """git refused because files would be overwritten. When every one of them is
+    Jarvis's own (ignored) data — which happens when an old version tracked a
+    settings file by mistake — keep a copy, let git update, put the copy back.
+    Anything else is a real hand edit and is left alone."""
+    files = _blocking_files(err) or [
+        ln[3:].strip() for ln in _git("status", "--porcelain").stdout.splitlines()
+        if ln[:2].strip() in ("M", "D", "MM", "AM")]
+    if not files or not all(_is_own_file(f) for f in files):
+        return False, ", ".join(files[:6])
+    saved: dict[str, bytes] = {}
+    for f in files:
+        try:
+            saved[f] = (REPO / f).read_bytes()
+        except OSError:
+            pass
+    backup = REPO.parent / f"jarvis-update-backup-{time.strftime('%Y%m%d-%H%M%S')}"
+    try:
+        backup.mkdir(parents=True, exist_ok=True)
+        for f, data in saved.items():
+            (backup / f.replace("/", "__")).write_bytes(data)
+    except OSError:
+        pass
+    _git("checkout", "--", *files)
+    for f in files:      # untracked files git would have to overwrite
+        if (REPO / f).exists() and f in saved and \
+                _git("ls-files", "--error-unmatch", f).returncode != 0:
+            (REPO / f).unlink()
+    pull = _git("pull", "--ff-only", "origin", BRANCH, timeout=300)
+    for f, data in saved.items():
+        (REPO / f).parent.mkdir(parents=True, exist_ok=True)
+        (REPO / f).write_bytes(data)
+    if pull.returncode != 0:
+        return False, (pull.stderr or pull.stdout).strip()[:160]
+    return True, ""
+
+
 def update(restart: bool = True) -> tuple[bool, str]:
     """Pull, install new requirements, restart. (ok, message)."""
     with _lock:
@@ -82,11 +133,15 @@ def update(restart: bool = True) -> tuple[bool, str]:
         before = _git("rev-parse", "HEAD").stdout.strip()
         pull = _git("pull", "--ff-only", "origin", BRANCH, timeout=300)
         if pull.returncode != 0:
-            err = (pull.stderr or pull.stdout).strip()
+            err = (pull.stderr or pull.stdout)
             if "local changes" in err or "would be overwritten" in err:
-                return False, ("Files in the Jarvis folder were changed by hand, so the update "
-                               "stopped without touching them. Ask for help to merge them.")
-            return False, "The update failed: " + err[:160]
+                ok, which = _pull_keeping_own_files(err)
+                if not ok:
+                    return False, ("Files in the Jarvis folder were changed by hand, so the update "
+                                   "stopped without touching them" + (f" ({which})" if which else "")
+                                   + ". Ask for help to merge them.")
+            else:
+                return False, "The update failed: " + err.strip()[:160]
         changed = _git("diff", "--name-only", before, "HEAD").stdout.split()
         if "requirements.txt" in changed:
             pip = subprocess.run([_python_console(), "-m", "pip", "install", "-q", "-r",
