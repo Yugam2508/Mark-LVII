@@ -33,7 +33,7 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
 | Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
 | Claude Code control | "Ask Claude Code to…", "go ahead", "stop Claude Code" (§36) | `plugins/claude_code.py` |
-| Voice personas | "Switch to the Irish persona", "use a British accent" (§37) | `core/personas.py`, `plugins/persona.py` |
+| Personality | "Be more sarcastic", "stop calling me sir" — applies instantly (§37) | `core/personality.py`, `plugins/personality.py` |
 | Audio follows devices | Headphones / Bluetooth on or off → switches by itself (§38) | `core/audio_watch.py` |
 | Agents | Daily digest, study coach, deal hunter (run in the background) | `agents/*.md` |
 | Knowledge folder | "What do my notes say about momentum?" | `plugins/knowledge_base.py` |
@@ -677,25 +677,23 @@ satellite; the result arrives the presence-aware way (spoken, card, or phone).
 
 ---
 
-## 37. Voices and accents
+## 37. One personality, shaped by talking to it
 
-Say **"switch to the Irish persona"**, **"use a British accent"**, **"what voices do you
-have?"** — or ⚙ → PLUGIN SETTINGS → **VOICE PERSONA** → APPLY NOW.
+Jarvis has one character: on your side, honest, curious, dry-humoured, steady. It knows your
+life from its memory and life profile and uses it: it notices progress, remembers what
+you were nervous about and asks how it went.
 
-| Persona | Sounds like |
-|---|---|
-| classic | British butler — formal, dry wit (the closest to the films' JARVIS feel) |
-| irish | soft Irish co-pilot — warm, quick, teasing |
-| tactical | crisp mission control, neutral American |
-| coach | lively Australian, pushes you a bit — good for training days |
-| mentor | deep, slow and calm |
-| desi | warm Indian English, the odd Hindi word |
-| custom | any of 30 Gemini voices + your own description ("Scottish, dry, calls me boss") |
+Change how it behaves by saying so, in your own words:
 
-These are original characters: Gemini can't copy an actor's or celebrity's real voice,
-and Jarvis won't impersonate one. The switch reconnects the voice, so the last few
-sentences of conversation aren't carried over (memory is). You can also rename the
-assistant in ⚙ → Customize.
+- "Be more sarcastic." / "Less chatty." / "Stop calling me sir, it's Yugam."
+- "Talk with a slight British accent." / "Be more like a coach when I'm training."
+- "What have I asked you to change?" / "Forget the sarcasm one." / "Go back to default."
+
+A change applies from that moment, with no reconnect, and is remembered for every later
+session. Voices themselves (Charon, Puck, Kore and so on) are chosen in ⚙ → Customize;
+changing the voice rebuilds the connection, but the last turns of the conversation carry
+over and Jarvis finishes its sentence first. It won't impersonate a real person or a film
+character: Gemini can't copy anyone's voice, and Jarvis offers the qualities instead.
 
 ---
 

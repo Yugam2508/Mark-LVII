@@ -120,12 +120,8 @@ LIVE_MODEL          = "models/gemini-3.1-flash-live-preview"
 
 
 def _live_voice() -> str:
-    """The voice to connect with: the persona's, when one is on (core/personas.py)."""
-    try:
-        from core import personas
-        return personas.voice(get_voice())
-    except Exception:
-        return get_voice()
+    """The voice to connect with: the one picked in Customize."""
+    return get_voice()
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000 
 RECEIVE_SAMPLE_RATE = 24000
@@ -1170,8 +1166,9 @@ class JarvisLive:
         required. It is rebuilt WITHOUT the resumption handle on purpose:
         resuming restores the server's own session state, and the safe reading
         is that it restores the voice with it — which would make the picker
-        appear to do nothing. Losing context here is acceptable because changing
-        voice is a deliberate, rare act; losing it on a dropped packet was not."""
+        appear to do nothing. The conversation is not lost: the last turns go into
+        the new session's instructions (see _build_config), and the reconnect
+        waits for the current sentence to finish."""
         self.request_reconnect(keep_context=False, reason="new voice")
 
     def _on_audio_device_change(self):
@@ -1217,6 +1214,14 @@ class JarvisLive:
         self._reconnect_event.clear()
         keep   = self._reconnect_keep
         reason = getattr(self, "_reconnect_reason", "") or "settings"
+        # A planned change (a new voice, an engine switch) waits for the end of
+        # the sentence being spoken. A dead audio device can't wait: nothing it
+        # says is being heard.
+        if reason != "audio device":
+            waited = 0.0
+            while self._is_speaking and waited < 15.0:
+                await asyncio.sleep(0.2)
+                waited += 0.2
         self.ui.write_log(
             f"SYS: Applying {reason} — reconnecting"
             + ("..." if keep else " (starting a fresh conversation)...")
@@ -1510,12 +1515,24 @@ class JarvisLive:
             parts.append(mem_str)
         parts.append(sys_prompt)
         try:
-            from core import personas as _personas
-            _pb = _personas.prompt_block()
-            if _pb:
-                parts.append(_pb)
+            from core import personality as _personality
+            parts.append(_personality.prompt_block())
         except Exception as e:
-            print(f"[Persona] skipped: {e}")
+            print(f"[Personality] skipped: {e}")
+        # A session that starts without a resumption handle (a voice change, a
+        # rejected handle, a restart within the hour) would otherwise know
+        # nothing of what was just said. Hand it the last turns instead.
+        try:
+            if self._resume_handle is None and self._session_log and \
+                    time.time() - getattr(self, "_log_last_at", 0.0) < 45 * 60:
+                recent = "\n".join(t[:400] for t in self._session_log[-12:])
+                parts.append(
+                    "[CONVERSATION SO FAR]\nYou were already talking with the user; the session was "
+                    "rebuilt (a setting changed). The last turns, oldest first, are below. Carry on "
+                    "naturally from them — do not greet again, do not recap, and do not mention the "
+                    "reconnect unless asked.\n" + recent)
+        except Exception as e:
+            print(f"[Context] carry-over skipped: {e}")
 
         cfg = dict(
             response_modalities=["AUDIO"],
@@ -2160,6 +2177,7 @@ class JarvisLive:
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
+                                self._log_last_at = time.time()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "user",
@@ -2190,6 +2208,7 @@ class JarvisLive:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
+                                self._log_last_at = time.time()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "jarvis",

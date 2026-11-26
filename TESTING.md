@@ -47,13 +47,17 @@ Set up once: ⚙ → PLUGIN SETTINGS → CLAUDE CODE CONTROL → add a project
 - [ ] "What's Claude Code doing?" during a job; "stop Claude Code".
 - [ ] "Open Claude Code in jarvis" → a terminal window opens there.
 
-## 5. Voices
+## 5. Personality
 
-- [ ] "Switch to the Irish persona" → it says it's switching, then speaks with an accent.
-- [ ] Try classic, tactical, coach, mentor, desi. Pick a favourite.
-- [ ] Custom: VOICE PERSONA settings → custom, voice Gacrux, "Scottish accent, dry
-      humour" → APPLY NOW.
-- [ ] Customize → pick a plain voice → persona turns off.
+- [ ] "Be more sarcastic" → it answers in a few words, already sarcastic, **without
+      disconnecting**. Keep talking: it should remember what you were just discussing.
+- [ ] "Stop calling me sir, call me Yugam" → it does, from then on.
+- [ ] "What have I asked you to change?" → it lists them. "Forget the first one" → gone.
+- [ ] Restart Jarvis → the tweaks are still there.
+- [ ] Customize → pick another voice → it finishes its sentence, reconnects, and carries
+      on the conversation without greeting you again.
+- [ ] Over a few days: does it feel like someone who knows you? Tell it what's off
+      ("too much advice", "ask me how training went") and it adjusts.
 
 ## 6. Audio devices
 

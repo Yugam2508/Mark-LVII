@@ -23,6 +23,11 @@ CHANGELOG = [
         "Phone dashboard over Tailscale: the firewall fix now also marks the Tailscale "
         "connection as private (and only that one)",
         "Updates no longer stop with 'files changed by hand' because of Jarvis's own settings",
+        "One personality instead of voice presets: shape it by talking (\"be more sarcastic\", "
+        "\"stop calling me sir\", \"a slight British accent\"); it applies at once, no reconnect, "
+        "and is remembered. The persona presets are gone",
+        "Changing the voice no longer loses the conversation: the last turns carry over, and "
+        "it waits for the end of the sentence",
     ]},
     {"version": "1.5", "date": "2026-11-27", "items": [
         "Holographic HUD: rings that turn with what Jarvis is doing, a live voice spectrum, "

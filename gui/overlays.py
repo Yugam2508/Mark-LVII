@@ -363,8 +363,8 @@ class CustomizeOverlay(QWidget):
             voice_row.addWidget(b)
         for _r in voice_rows:
             lay.addLayout(_r)
-        _hint = _lbl("Accents and characters: say \"switch to the Irish persona\", or "
-                     "⚙ → PLUGIN SETTINGS → VOICE PERSONA", 7, color=C.TEXT_DIM,
+        _hint = _lbl("Manner, humour and accent are shaped by talking to it: say \"be more "
+                     "sarcastic\" or \"talk with a slight British accent\"", 7, color=C.TEXT_DIM,
                      align=Qt.AlignmentFlag.AlignLeft)
         _hint.setWordWrap(True)
         lay.addWidget(_hint)
