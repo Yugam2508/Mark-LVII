@@ -795,6 +795,9 @@ class DashboardServer:
         # The Android app registers itself over the same socket ("hello") so the PC can ask the
         # phone to do things (plugins/phone_control.py) and get an answer ("result").
         self._phones: dict[WebSocket, dict] = {}
+        # Audio sockets from the Android app that asked to HEAR Jarvis too (out=1): the PC's voice is
+        # sent to them instead of its own speakers, so the phone is a proper microphone + speaker.
+        self._audio_out: dict[WebSocket, dict] = {}
         self._pending_calls: dict[str, "asyncio.Future"] = {}
         self._loop = None
         self._history: list[dict]         = []
@@ -853,6 +856,40 @@ class DashboardServer:
             _os.replace(tmp, path)
         except OSError as e:
             print(f"[Dashboard] could not save paired devices: {e}")
+
+    # ── the phone as microphone and speaker ───────────────────────────────
+
+    def phone_audio_active(self) -> bool:
+        """True while a phone is receiving Jarvis's voice (the PC then stays quiet)."""
+        return bool(self._audio_out)
+
+    def phone_duplex(self) -> bool:
+        """True when the phone cleans its own microphone of echo, so it can be heard while Jarvis speaks."""
+        return any(v.get("duplex") for v in self._audio_out.values())
+
+    async def send_phone_audio(self, pcm: bytes) -> None:
+        for ws in list(self._audio_out):
+            try:
+                await ws.send_bytes(pcm)
+            except Exception:
+                self._audio_out.pop(ws, None)
+
+    async def phone_flush(self) -> None:
+        """Tell the phone to drop whatever it has queued (Jarvis was interrupted)."""
+        for ws in list(self._audio_out):
+            try:
+                await ws.send_json({"type": "flush"})
+            except Exception:
+                self._audio_out.pop(ws, None)
+
+    def phone_flush_threadsafe(self) -> None:
+        loop = self._loop
+        if loop is not None and self._audio_out:
+            asyncio.run_coroutine_threadsafe(self.phone_flush(), loop)
+
+    async def broadcast_card(self, title: str, text: str, kind: str = "panel") -> None:
+        """What Jarvis shows on the PC (a card, a notice) also goes to connected phones."""
+        await self.broadcast({"type": "card", "title": str(title)[:120], "text": str(text)[:4000], "kind": kind})
 
     # ── the phone as a limb ───────────────────────────────────────────────
 
@@ -1277,12 +1314,15 @@ class DashboardServer:
         # ── Phone mic real-time audio → Gemini Live ──────────────────────────
 
         @app.websocket("/ws/phone-audio")
-        async def phone_audio_ws(websocket: WebSocket, token: str = ""):
+        async def phone_audio_ws(websocket: WebSocket, token: str = "", out: int = 0, duplex: int = 0):
             tok = token.strip()
             if not _valid(tok):
                 await websocket.close(code=4001)
                 return
             await websocket.accept()
+            self._loop = asyncio.get_running_loop()
+            if out:
+                self._audio_out[websocket] = {"duplex": bool(duplex)}
             asyncio.create_task(self.broadcast(
                 {"type": "sys", "text": "Phone microphone live."}
             ))
@@ -1298,6 +1338,7 @@ class DashboardServer:
             except WebSocketDisconnect:
                 pass
             finally:
+                self._audio_out.pop(websocket, None)
                 asyncio.create_task(self.broadcast(
                     {"type": "sys", "text": "Phone microphone stopped."}
                 ))

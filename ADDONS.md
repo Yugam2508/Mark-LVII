@@ -832,7 +832,30 @@ model said it (and says so if it disagrees with its own earlier answer).
 
 ---
 
-## 44. Your phone as part of Jarvis
+## 44. Seeing inside the computer, and acting on it
+
+Jarvis used to say "I can't see that" to most questions about the machine. It can now:
+
+- **"What's using my GPU?" / "why is it slow?" / "what's eating my memory?"** shows the actual programs, with
+  GPU % and video memory per program (the way Task Manager does), plus CPU, memory, disk and network.
+  "What's on port 8000?", "is Chrome running?", "how full are my drives?" work too.
+- **"Where is my thermodynamics report?"** searches every drive from a small index built in the
+  background (refreshed every few hours; "refresh your file list" forces it). **"Show it in Explorer"**,
+  **"what's taking up space on D:?"** (folder sizes) and **"delete the second one"** follow, by number.
+- **Deleting and closing programs always ask you to confirm** (say "confirm" or press it). Files go to the
+  Recycle Bin ("undo" brings them back), never permanent. Windows, Program Files, drive roots, your profile
+  folder and Jarvis itself are refused. If Windows denies a close, Jarvis can retry through the normal
+  "allow this app to make changes?" prompt, so permission is yours each time.
+- **Bigger jobs go to Claude Code:** "clean up my D: drive", "organise my Downloads by type", "find what's
+  using space and tell me what's safe to remove". Say the job; Claude Code **investigates read-only and
+  proposes a plan** (exact commands, sizes, counts), you say "go ahead" and **confirm**, and only then does it
+  run it. Turn on "allow Claude Code to run commands" once (you'll confirm); computer jobs always start as a
+  read-only plan, delete to the Recycle Bin, never touch Windows, partitions or Jarvis, and don't read your
+  secrets. Disk partitioning is deliberately a "name the exact operation and drive" job.
+
+---
+
+## 45. Your phone as part of Jarvis
 
 With the Android app (`android/README.md`) paired, Jarvis on the PC can use the phone: **"call Mum"**,
 **"text Aarav I'm running ten minutes late"**, **"find my phone"** (rings at full volume), **"what's
@@ -856,7 +879,7 @@ is kept).
 
 ---
 
-## 45. When Claude Code or the phone link doesn't work
+## 46. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 

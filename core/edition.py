@@ -41,6 +41,10 @@ CHANGELOG = [
         "\"how's my phone's battery\" — calls and texts always wait for your confirm",
         "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
         "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
+        "Jarvis can see inside the computer and act on it: which programs use the GPU/CPU/memory/disk/"
+        "network/a port, find files on every drive (instant, from an index), what's taking disk space, "
+        "delete to the Recycle Bin and close programs (always confirmed), and hand whole-computer jobs "
+        "(\"clean up my D: drive\") to Claude Code, which proposes a plan first and runs it only on your confirm",
         "Deeper thinking on its own: when a question needs real reasoning, Jarvis isn't sure, or you "
         "doubt it in any words, it hands the question (with the conversation and your memory boxes) to "
         "a stronger model — your OpenAI keys (several, rotated when one runs out) or Claude through your "

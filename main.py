@@ -1391,9 +1391,22 @@ class JarvisLive:
         except Exception:
             self._barge_enabled = False
 
+    def _phone_audio_routed(self) -> bool:
+        """True while a phone is acting as the speaker (and microphone): this PC stays quiet."""
+        d = getattr(self, "_dashboard", None)
+        try:
+            return bool(d is not None and d.phone_audio_active())
+        except Exception:
+            return False
+
     def interrupt(self) -> None:
         """Stop JARVIS mid-speech: drain queued audio and open mic immediately."""
         self._interrupted = True
+        try:
+            if self._dashboard is not None:
+                self._dashboard.phone_flush_threadsafe()      # the phone drops what it had queued
+        except Exception:
+            pass
         q = self.audio_in_queue
         if q:
             drained = 0
@@ -1920,6 +1933,8 @@ class JarvisLive:
             # the echo of what we are playing right now", sustained long enough
             # that a cough or a keystroke cannot trigger it.
             if jarvis_speaking:
+                if self._phone_active:
+                    return        # the phone is the microphone now; this PC's mic doesn't interrupt
                 # Nothing is streamed while JARVIS talks.
                 #
                 # Interrupting by voice: ON by default in this fork; switch it off or
@@ -2175,6 +2190,10 @@ class JarvisLive:
                         # stop discarding — otherwise the new answer was dropped
                         # too, and JARVIS went silent after being interrupted.
                         if getattr(sc, "interrupted", False):
+                            try:
+                                self._dashboard.phone_flush_threadsafe()
+                            except Exception:
+                                pass
                             self._interrupted = False
                             q = self.audio_in_queue
                             while q is not None and not q.empty():
@@ -2401,7 +2420,13 @@ class JarvisLive:
                     self._aec.feed_far(bytes(batch), RECEIVE_SAMPLE_RATE)
                 self._spk_write_started = time.monotonic()   # core/audio_watch
                 try:
-                    await asyncio.to_thread(stream.write, bytes(batch))
+                    if self._phone_audio_routed():
+                        # The phone is the speaker: send it the voice, paced in real time the way a
+                        # sound card would consume it, so speaking/turn timing stays right here.
+                        await self._dashboard.send_phone_audio(bytes(batch))
+                        await asyncio.sleep(len(batch) / 2.0 / RECEIVE_SAMPLE_RATE)
+                    else:
+                        await asyncio.to_thread(stream.write, bytes(batch))
                 except (RuntimeError, asyncio.CancelledError):
                     break   # executor shutting down — exit cleanly
                 finally:
@@ -2743,7 +2768,14 @@ class JarvisLive:
             self._phone_active = True   # phone is streaming — silence PC mic
             with self._speaking_lock:
                 speaking = self._is_speaking
-            if not speaking and not self.ui.muted:
+            # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
+            # over it exactly as on the PC (Gemini ends its own turn when it hears you).
+            duplex = False
+            try:
+                duplex = self._dashboard.phone_duplex()
+            except Exception:
+                pass
+            if (not speaking or duplex) and not self.ui.muted:
                 try:
                     self.out_queue.put_nowait(chunk)
                 except asyncio.QueueFull:
@@ -2950,6 +2982,10 @@ class JarvisLive:
             from dashboard.server import DashboardServer
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
+            # What Jarvis shows on this PC (cards, notices) also reaches connected phones.
+            _loop = asyncio.get_running_loop()
+            self.ui.set_mirror(lambda t, x, k: asyncio.run_coroutine_threadsafe(
+                self._dashboard.broadcast_card(t, x, k), _loop) if self._dashboard else None)
             self._keep_task(asyncio.create_task(self._dashboard.serve()))
             # Runs for the whole lifetime, not just inside an active session
             self._keep_task(asyncio.create_task(self._process_dashboard_commands()))

@@ -180,6 +180,7 @@ class JarvisUI:
         """Thread-safe: a card that stays on the HUD until dismissed — used when the
         user is busy or away (core.addons.notify)."""
         self._win._notice_sig.emit(str(title)[:120], str(text)[:2000], str(kind or "info"))
+        self._mirror_out(title, text, str(kind or "notice"))
 
     def request_quit(self) -> None:
         """Thread-safe: close the window, which ends the app the normal way
@@ -293,9 +294,22 @@ class JarvisUI:
         while not self._win._ready:
             time.sleep(0.1)
 
+    def set_mirror(self, fn) -> None:
+        """Send what is shown here to connected phones too: fn(title, text, kind)."""
+        self._mirror = fn
+
+    def _mirror_out(self, title: str, text: str, kind: str) -> None:
+        fn = getattr(self, "_mirror", None)
+        if fn is not None:
+            try:
+                fn(str(title), str(text), kind)
+            except Exception:
+                pass
+
     def show_content(self, title: str, text: str):
         """Thread-safe: display content in the panel below the HUD."""
         self._win._content_sig.emit(title[:48], text[:4000])
+        self._mirror_out(title, text, "panel")
 
     def show_code_job(self, job: dict) -> None:
         """Thread-safe: draw the coding agent's live progress in the panel."""

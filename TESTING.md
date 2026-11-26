@@ -112,6 +112,19 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Use Claude for deep thinking", ask again → the card says Claude. "Use OpenAI" → back.
 - [ ] "How much deep thinking have I used today?" → calls and tokens per model.
 
+## 7d. Seeing inside the computer
+
+- [ ] Start a game or video, then "what's using my GPU?" → a list with GPU % and video memory per program.
+- [ ] "What's eating my memory?" / "is Chrome running?" / "what's using port 8000?".
+- [ ] "Where is <a file you know>?" (wait a couple of minutes after the update for the first index) →
+      a numbered list; "show me the first one in Explorer" → Explorer opens on it.
+- [ ] "What's taking up space on C:?" → biggest folders with sizes.
+- [ ] Make a junk file; "delete it" → asks to confirm → Recycle Bin; "undo" → back. Say "cancel" once to check.
+- [ ] "Delete C:\Windows" or your user folder → refused.
+- [ ] "Close Notepad" (open one) → confirm → closed.
+- [ ] "Allow Claude Code to run commands" → confirm. Then "ask Claude Code to find what's using space on D:
+      and propose what's safe to clean" → a plan → read it → "go ahead" → confirm → it runs.
+
 ## 8. Things from earlier versions still worth a run
 
 - [ ] Morning briefing (tomorrow morning), proactive email alerts with suggested replies.
