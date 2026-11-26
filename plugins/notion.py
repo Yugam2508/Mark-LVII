@@ -174,6 +174,30 @@ def _show(player, title: str, text: str) -> None:
             pass
 
 
+def find_by_name(name: str) -> dict | None:
+    """The page or database the user named, without a separate search step: an exact title match
+    first, then one that contains the words, then Notion's best hit."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    data = api("POST", "/search", {"query": name, "page_size": 10})
+    items = [{"id": r["id"], "object": r["object"], "title": title_of(r), "url": r.get("url")}
+             for r in data.get("results", [])]
+    if not items:
+        return None
+    low = name.lower()
+    pick = next((i for i in items if i["title"].lower() == low), None) \
+        or next((i for i in items if low in i["title"].lower()), None) or items[0]
+    _remember([pick])
+    return pick
+
+
+def _target(p: dict, number_key: str = "item_number") -> dict | None:
+    if p.get("page"):
+        return find_by_name(str(p["page"]))
+    return _pick(p.get(number_key))
+
+
 # ── actions ───────────────────────────────────────────────────────────────────
 
 def _search(p, player) -> str:
@@ -194,9 +218,11 @@ def _search(p, player) -> str:
 
 
 def _read(p, player) -> str:
-    it = _pick(p.get("item_number"))
+    it = _target(p)
     if it is None:
-        return outcome.ask("notion_read", "Which page? Search first, then say its number.")
+        if p.get("page"):
+            return outcome.failed("notion_read", f"no page called {p['page']} is shared with the JARVIS connection")
+        return outcome.ask("notion_read", "Which page?")
     if it["object"] == "database":
         rows = api("POST", f"/databases/{it['id']}/query", {"page_size": 50}).get("results", [])
         text = "\n".join(f"- {title_of(r)}" for r in rows)
@@ -212,12 +238,14 @@ def _append(p, player) -> str:
     content = (p.get("content") or "").strip()
     if not content:
         return outcome.ask("notion_append", "What should I add?")
-    it = _pick(p.get("item_number"))
-    pid = it["id"] if it and it["object"] == "page" else (None if p.get("item_number") else home_page())
+    it = _target(p)
+    if p.get("page") and it is None:
+        return outcome.failed("notion_append", f"no page called {p['page']} is shared with the JARVIS connection")
+    pid = it["id"] if it and it["object"] == "page" else (None if (p.get("item_number") or p.get("page")) else home_page())
     if pid is None:
         return outcome.ask("notion_append", "Which page should I add it to?")
-    append_text(pid, content)
-    return outcome.done("notion_append", page=it["title"] if it else "home page")
+    n = append_text(pid, content)
+    return outcome.done("notion_append", page=it["title"] if it else "home page", blocks_written=n)
 
 
 def _create_page(p, player) -> str:
@@ -225,7 +253,10 @@ def _create_page(p, player) -> str:
     if not title:
         return outcome.ask("notion_create_page", "What should the page be called?")
     content = (p.get("content") or "").strip()
-    parent = _pick(p.get("parent_number")) if p.get("parent_number") else None
+    parent = find_by_name(str(p["parent"])) if p.get("parent") else \
+        (_pick(p.get("parent_number")) if p.get("parent_number") else None)
+    if p.get("parent") and parent is None:
+        return outcome.failed("notion_create_page", f"no page called {p['parent']} is shared with the JARVIS connection")
     if parent and parent["object"] == "database":
         db = api("GET", f"/databases/{parent['id']}")
         title_prop = next((k for k, v in db.get("properties", {}).items() if v.get("type") == "title"), "Name")
@@ -238,9 +269,12 @@ def _create_page(p, player) -> str:
                                "parent page first, or set a home page in plugin settings.")
         body = {"parent": {"page_id": pid},
                 "properties": {"title": {"title": [{"text": {"content": title}}]}}}
-    if content:
-        body["children"] = _paragraphs(content)
+    blocks = _paragraphs(content) if content else []
+    if blocks:
+        body["children"] = blocks[:100]           # Notion takes 100 on create; the rest are appended
     page = api("POST", "/pages", body)
+    for i in range(100, len(blocks), 100):
+        api("PATCH", f"/blocks/{page['id']}/children", {"children": blocks[i:i + 100]})
     _remember([{"id": page["id"], "object": "page", "title": title, "url": page.get("url")}])
     return outcome.done("notion_create_page", title=title, url=page.get("url"))
 
@@ -330,13 +364,16 @@ PLUGIN = {
         "create a page (or a row in a database). Use whenever the user mentions Notion. "
         "'setup' for 'set up Notion' / 'connect Notion': it does the setup step by step and says "
         "what to do next; call it again after each step. "
-        "Refer to results by their number in the last list."
+        "Name the page with 'page' (e.g. page='Jarvis ideas') to read or add to it directly, no search "
+        "needed; or refer to a number from the last list."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
             "action": {"type": "STRING", "enum": list(_ACTIONS)},
             "query": {"type": "STRING", "description": "For search"},
+            "page": {"type": "STRING", "description": "For read/append: the page's name as the user said it"},
+            "parent": {"type": "STRING", "description": "For create_page: name of the parent page or database"},
             "item_number": {"type": "INTEGER", "description": "For read/append: number from the last list"},
             "parent_number": {"type": "INTEGER",
                               "description": "For create_page: number of the parent page or database "

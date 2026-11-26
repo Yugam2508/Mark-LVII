@@ -169,6 +169,10 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       entry holds all of it, not a summary.
 - [ ] "Tidy up that dictation and save it" → clean bullet points in the notes.
 - [ ] With Notion as the notes backend and a long dictation (100+ lines) → all of it is on the Notion page.
+- [ ] Restart Jarvis, then ask "what did I tell you earlier about <something from before>?" → it searches the
+      conversation log and answers from it (the log is in the Jarvis folder under memory\conversations).
+- [ ] "Take a screenshot" → a PNG appears in Pictures\Screenshots and Jarvis says where.
+- [ ] "Add 'test from Jarvis' to my <page name> page in Notion" → it lands on that page without asking for a number.
 - [ ] Ask Jarvis to "note that the sky is blue" → it says it saved only after the tool reports it; check the note exists.
 
 ## 7f. The PC as the hub

@@ -45,6 +45,9 @@ CHANGELOG = [
         "Jarvis stops forgetting: every conversation is now kept word for word on this PC (memory/conversations), "
         "and \"what did I tell you yesterday about…\" searches it; before, a whole session shrank to two "
         "sentences when it ended. \"Take a screenshot\" now actually saves one to Pictures/Screenshots",
+        "Notion by name: \"add this to my Jarvis ideas page\" finds the page itself (no search-then-number step), "
+        "and long pages are created in full. Remembering a fact now reports when it did NOT save, instead of "
+        "always answering ok; session summaries keep every item of a list you gave",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

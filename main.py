@@ -1694,14 +1694,30 @@ class JarvisLive:
             category = args.get("category", "notes")
             key      = args.get("key", "")
             value    = args.get("value", "")
-            if key and value:
-                update_memory({category: {key: {"value": value}}})
-                print(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
+            # Report what really happened: "ok" only if the value is now in the store.
+            # It used to answer "ok" even when nothing was written, which is how
+            # "I've saved that" was said about things that were never saved.
+            _mem_result = {"result": "ok", "silent": True}
+            if not (key and value):
+                _mem_result = {"result": "NOT SAVED: a key and a value are both needed", "silent": False}
+            else:
+                try:
+                    update_memory({category: {key: {"value": value}}})
+                    _stored = (load_memory().get(category, {}) or {}).get(key)
+                    _stored_v = _stored.get("value") if isinstance(_stored, dict) else _stored
+                    if not _stored_v:
+                        _mem_result = {"result": "NOT SAVED: the memory store did not keep it", "silent": False}
+                    elif len(str(value)) > len(str(_stored_v)):
+                        _mem_result = {"result": "saved, but shortened; for long text use the notes or dictation tool",
+                                       "silent": False}
+                    print(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
+                except Exception as _e:
+                    _mem_result = {"result": f"NOT SAVED: {str(_e)[:120]}", "silent": False}
             if not self.ui.muted:
                 self.ui.set_state("LISTENING")
             return types.FunctionResponse(
                 id=fc.id, name=name,
-                response={"result": "ok", "silent": True}
+                response=_mem_result
             )
 
         loop   = asyncio.get_event_loop()
@@ -2668,8 +2684,10 @@ class JarvisLive:
 
         convo = "\n".join(log[-40:])   # cap at last 40 turns to stay within token budget
         prompt = (
-            f"Summarize this conversation in 1-2 sentences in {lang}. "
-            "Focus on what the user accomplished or discussed. "
+            f"Summarize this conversation in 1-3 sentences in {lang}. "
+            "Focus on what the user accomplished or discussed. If the user gave a list, plan, "
+            "decisions or things to remember, name every item briefly (the full words are in the "
+            "conversation log). "
             "Output ONLY the summary text, nothing else:\n\n" + convo
         )
         try:
