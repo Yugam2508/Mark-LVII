@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """59 -> 'LIX'."""
+    """60 -> 'LX'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,12 +26,20 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 59                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LIX"
+MARK_NUMBER = 60                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LX"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-30"
 
 CHANGELOG = [
+    {"version": "LX", "date": "2026-11-30", "items": [
+        "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
+        "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "
+        "decide for itself again",
+        "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
+        "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
+        "of failing again and again",
+    ]},
     {"version": "LIX", "date": "2026-11-30", "items": [
         "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
         "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "

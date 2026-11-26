@@ -26,10 +26,11 @@ from core import addons, deepthink, outcome
 PLUGIN = {
     "name": "deep_think",
     "description": (
-        "Hand a question to a stronger reasoning model and bring back the analysis. CALL THIS BY "
-        "YOURSELF when the question needs multi-step reasoning, trade-offs, maths, planning or careful "
-        "analysis, when you are not confident in your own quick answer, or when the user doubts you "
-        "in any words ('that doesn't sound right', 'are you sure', 'think harder', 'second opinion'). "
+        "Hand a question to a stronger, slower reasoning model and bring back the analysis. RARELY NEEDED: "
+        "answer yourself by default. Call it when the user asks for it or doubts you in words ('think "
+        "harder', 'go deeper', 'second opinion', 'are you sure', 'that doesn't sound right'), setting "
+        "user_asked true; or for a genuinely hard, high-stakes problem you can't do properly in a short "
+        "answer. NEVER for quick facts, commands, opening things, chat, or merely being unsure. "
         "Pass the question fully, including what the user was really asking. Also: 'use' to change "
         "which model does the deep thinking (openai / claude / auto, or a model name), 'add_key' when "
         "the user wants to add an OpenAI key (they copy it first), 'status' for usage."
@@ -39,6 +40,8 @@ PLUGIN = {
         "properties": {
             "action": {"type": "STRING", "enum": ["think", "use", "add_key", "status", "remove_keys", "set_limit"]},
             "question": {"type": "STRING", "description": "For think: the full question to analyse"},
+            "user_asked": {"type": "BOOLEAN", "description": "For think: true only when the user asked for deeper "
+                           "thinking or doubted your answer in words"},
             "provider": {"type": "STRING", "description": "For use: openai, claude, auto, or a model name"},
             "limit": {"type": "INTEGER", "description": "For set_limit: deep-thinking calls allowed per day"},
         },
@@ -59,6 +62,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["auto", "openai", "claude"], "default": "auto"},
         {"key": "model", "label": "OpenAI model (empty = the strongest the key can use)", "type": "text",
          "placeholder": "chosen automatically"},
+        {"key": "auto", "label": "Let Jarvis go to the stronger model on its own for hard problems "
+         "(off = only when I ask or doubt it)", "type": "toggle", "default": False},
         {"key": "claude_model", "label": "Claude model when Claude does it", "type": "choice",
          "options": ["opus", "sonnet"], "default": "opus"},
         {"key": "daily_calls", "label": "Most deep-thinking calls per day", "type": "text", "placeholder": "40"},
@@ -121,6 +126,9 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             q = str(parameters.get("question") or "").strip()
             if not q:
                 return outcome.ask("deep_think", "What should I think through?")
+            if not parameters.get("user_asked") and not deepthink.auto_enabled():
+                return outcome.done("deep_think", skipped="not asked for",
+                                    note="answer it yourself now; the user did not ask for the stronger model")
             if not deepthink.keys() and not _claude_possible():
                 return outcome.failed("deep_think", "no deeper model is set up yet — say 'add this OpenAI key' "
                                       "after copying one, or sign in to Claude Code on this PC")

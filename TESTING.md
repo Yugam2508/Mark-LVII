@@ -109,10 +109,13 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 ## 7c. Deeper thinking
 
 - [ ] Copy an OpenAI key, say "add this OpenAI key" → it confirms how many keys and which model.
-- [ ] Ask something that needs reasoning ("should I take the 9am swim or the 6pm one if I'm sleeping
-      badly and have a lecture at 10?") → it says it's getting the stronger model, then a card appears and
-      it summarises the answer, naming the model.
-- [ ] After a quick answer say "hmm, that doesn't sound right" → it goes deeper without being told to.
+- [ ] Ordinary questions, commands and chat → answered by Jarvis itself; it should NOT go to the stronger model.
+- [ ] Ask something and then say "think harder about that" (or "are you sure?" / "second opinion") → it says
+      it's getting the stronger model, then a card appears and it summarises the answer, naming the model.
+- [ ] Optional: PLUGIN SETTINGS → DEEP THINKING → switch on "Let Jarvis go to the stronger model on its own" →
+      only genuinely hard, high-stakes questions trigger it.
+- [ ] If it fails, the card names the real reason (out of credit, rate limit, model not available, Claude not
+      signed in) and it waits five minutes before trying again.
 - [ ] "Use Claude for deep thinking", ask again → the card says Claude. "Use OpenAI" → back.
 - [ ] "How much deep thinking have I used today?" → calls and tokens per model.
 

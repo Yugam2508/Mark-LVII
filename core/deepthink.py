@@ -31,6 +31,10 @@ NAMESPACE = "deepthink"
 OPENAI_BASE = "https://api.openai.com/v1"
 _lock = threading.Lock()
 _rest: dict[str, float] = {}            # key id -> time it may be tried again
+_bad_models: set[str] = set()           # "keyid:model" pairs this key can't call
+_down_until = 0.0                       # every backend failed: don't hammer them until then
+_down_reason = ""
+_DOWN_FOR = 300.0
 MAX_KEYS = 5
 _REST_RATE = 60.0
 _REST_EMPTY = 6 * 3600.0
@@ -87,6 +91,11 @@ def set_preference(p: str) -> str:
 
 def set_model(model: str) -> None:
     cfg = _cfg(); cfg["model"] = (model or "").strip(); cfg.pop("models", None); _save(cfg)
+
+
+def auto_enabled() -> bool:
+    """Whether Jarvis may escalate by itself, without being asked (off by default)."""
+    return bool(_cfg().get("auto", False))
 
 
 def daily_cap() -> int:
@@ -179,9 +188,10 @@ def model_for(key: str) -> str:
     if named:
         return named
     m = (_cfg().get("models") or {}).get(key_id(key))
-    if m:
+    if m and f"{key_id(key)}:{m}" not in _bad_models:
         return m
-    m = choose_model(list_models(key))
+    ids = [i for i in list_models(key) if f"{key_id(key)}:{i}" not in _bad_models]
+    m = choose_model(ids)
     cfg = _cfg(); models = cfg.get("models") or {}; models[key_id(key)] = m; cfg["models"] = models; _save(cfg)
     return m
 
@@ -256,17 +266,31 @@ class _KeyProblem(DeepError):
         super().__init__(msg); self.rest = rest
 
 
+class _ModelProblem(DeepError):
+    """This key can't call this model; another model on the same key may work."""
+
+
+def _api_message(text: str) -> str:
+    try:
+        return str((json.loads(text).get("error") or {}).get("message") or "")[:200]
+    except Exception:
+        return text[:200]
+
+
 def _classify(status: int, text: str) -> Exception:
     low = text.lower()
+    msg = _api_message(text)
+    if status in (401, 403) and ("model" in low and ("access" in low or "does not have" in low)):
+        return _ModelProblem(f"no access to that model ({msg})")
     if status in (401, 403):
-        return _KeyProblem("the key was refused", _REST_EMPTY)
-    if status == 402 or "insufficient_quota" in low or "billing" in low or "exceeded your current quota" in low:
-        return _KeyProblem("out of credit", _REST_EMPTY)
-    if status == 429:
-        return _KeyProblem("rate limited", _REST_RATE)
+        return _KeyProblem(f"the key was refused ({msg})", _REST_EMPTY)
+    if status == 402 or "insufficient_quota" in low or "exceeded your current quota" in low:
+        return _KeyProblem(f"out of credit ({msg})", _REST_EMPTY)
     if status == 404 or "does not exist" in low or "model_not_found" in low:
-        return _KeyProblem("that model isn't available to this key", _REST_EMPTY)
-    return DeepError(f"OpenAI error {status}: {text[:160]}")
+        return _ModelProblem(f"that model isn't available to this key ({msg})")
+    if status == 429:
+        return _KeyProblem(f"rate limited ({msg})", _REST_RATE)
+    return DeepError(f"OpenAI error {status}: {msg}")
 
 
 def _via_openai(question: str, context: str) -> tuple[str, str]:
@@ -280,10 +304,22 @@ def _via_openai(question: str, context: str) -> tuple[str, str]:
             continue
         tried += 1
         try:
-            model = model_for(key)
-            text, tokens = _openai_once(key, model, msgs)
+            text = ""
+            for _ in range(4):                    # a model this key can't call: try the next one
+                model = model_for(key)
+                try:
+                    text, tokens = _openai_once(key, model, msgs)
+                    break
+                except _ModelProblem as e:
+                    _bad_models.add(f"{key_id(key)}:{model}")
+                    last = f"key {key_id(key)}, {model}: {e}"
+                    if str(_cfg().get("model") or "").strip():
+                        break                     # a model you named yourself isn't swapped
         except _KeyProblem as e:
             _rest[key_id(key)] = time.time() + e.rest
+            last = f"key {key_id(key)}: {e}"
+            continue
+        except DeepError as e:
             last = f"key {key_id(key)}: {e}"
             continue
         if not text:
@@ -307,6 +343,9 @@ def _via_claude(question: str, context: str) -> tuple[str, str]:
 
 def think(question: str, context: str = "") -> tuple[str, str]:
     """(answer, label of the model that answered). Raises DeepError if every backend failed."""
+    global _down_until, _down_reason
+    if time.time() < _down_until:
+        raise DeepError(f"deep thinking is unavailable for a few minutes ({_down_reason})")
     used = usage_today()["calls"]
     if used >= daily_cap():
         raise DeepError(f"today's deep-thinking limit ({daily_cap()} calls) is used up; say "
@@ -323,6 +362,9 @@ def think(question: str, context: str = "") -> tuple[str, str]:
             return text, model
         except Exception as e:
             errors.append(f"{backend}: {str(e)[:120]}")
+    _down_reason = "; ".join(errors)[:300]
+    if errors:
+        _down_until = time.time() + _DOWN_FOR
     raise DeepError("; ".join(errors) or "no deep-thinking model is set up yet")
 
 
