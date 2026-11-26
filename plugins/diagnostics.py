@@ -123,13 +123,31 @@ def _backup():
     return (WATCH if hours > 48 else OK), f"last one {hours:.0f} h ago"
 
 
+GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+def _gemini():
+    """Is the Gemini key answering? The same plain reasons as the on-screen connection errors."""
+    from memory.config_manager import load_api_keys
+    key = str(load_api_keys().get("gemini_api_key") or "")
+    if not key:
+        return BAD, "no Gemini key set"
+    import requests
+    r = requests.get(GEMINI_MODELS_URL, params={"key": key, "pageSize": 1}, timeout=8)
+    if r.status_code == 200:
+        return OK, "the key answers"
+    from core import apihealth
+    kind, msg = apihealth.diagnose(f"{r.status_code} {r.text[:300]}")
+    return (WATCH if kind in ("overloaded", "network") else BAD), msg
+
+
 def _wake():
     from core import wake_word
     return (OK, "ready") if wake_word.is_ready() else (WATCH, "not set up (CONTROLS → WAKE WORD)")
 
 
 CHECKS = [("Processor", _cpu), ("Memory", _memory), ("Graphics", _gpu), ("Disks", _disks),
-          ("Battery", _battery), ("Internet", _internet), ("Tailscale", _tailscale),
+          ("Battery", _battery), ("Internet", _internet), ("Gemini key", _gemini), ("Tailscale", _tailscale),
           ("Phone link", _phone), ("Backups", _backup), ("Wake word", _wake)]
 
 

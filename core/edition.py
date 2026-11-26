@@ -88,7 +88,8 @@ CHANGELOG = [
         "\"initiate night protocol\" runs every step (anything that needs your OK still asks); \"what protocols do I "
         "have?\", add or delete steps by voice",
         "\"Run diagnostics\": a status readout of processor, memory, graphics, disks, temperatures, battery, internet "
-        "latency, Tailscale, the phone link, backups and the wake word, with Jarvis saying only what needs attention",
+        "latency, whether your Gemini key is answering (or blocked / out of quota), Tailscale, the phone link, backups "
+        "and the wake word, with Jarvis saying only what needs attention",
         "A controllable agent: \"what are you working on?\" lists everything running in the background (installs, "
         "updates, deep thinking, speed tests, dictation, Claude Code jobs, agent tasks) and \"stop that\" / \"cancel "
         "the install\" stops it — or says plainly when something can't be stopped half-way",
