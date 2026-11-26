@@ -10,10 +10,25 @@ When you add features, bump VERSION and put a new entry at the top of CHANGELOG.
 """
 from __future__ import annotations
 
-VERSION = "1.5"
-DATE = "2026-11-27"
+VERSION = "1.6"
+DATE = "2026-11-28"
 
 CHANGELOG = [
+    {"version": "1.6", "date": "2026-11-28", "items": [
+        "Immersive layout: the holographic display fills the window; what Jarvis shows you "
+        "slides out of the core as cards that drift away (pin or expand them), with live "
+        "captions of the conversation and a slim command bar. F2 or ◫ switches to the panels",
+        "Talking over Jarvis now stops it: real echo cancellation (the kind video calls use) "
+        "tells your voice from its own, even on laptop speakers",
+        "Phone dashboard over Tailscale: the firewall fix now also marks the Tailscale "
+        "connection as private (and only that one)",
+        "Updates no longer stop with 'files changed by hand' because of Jarvis's own settings",
+        "One personality instead of voice presets: shape it by talking (\"be more sarcastic\", "
+        "\"stop calling me sir\", \"a slight British accent\"); it applies at once, no reconnect, "
+        "and is remembered. The persona presets are gone",
+        "Changing the voice no longer loses the conversation: the last turns carry over, and "
+        "it waits for the end of the sentence",
+    ]},
     {"version": "1.5", "date": "2026-11-27", "items": [
         "Holographic HUD: rings that turn with what Jarvis is doing, a live voice spectrum, "
         "and satellites for each tool, panel and alert (HUD button cycles holo / face / core)",

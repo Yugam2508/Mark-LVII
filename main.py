@@ -120,12 +120,8 @@ LIVE_MODEL          = "models/gemini-3.1-flash-live-preview"
 
 
 def _live_voice() -> str:
-    """The voice to connect with: the persona's, when one is on (core/personas.py)."""
-    try:
-        from core import personas
-        return personas.voice(get_voice())
-    except Exception:
-        return get_voice()
+    """The voice to connect with: the one picked in Customize."""
+    return get_voice()
 CHANNELS            = 1
 SEND_SAMPLE_RATE    = 16000 
 RECEIVE_SAMPLE_RATE = 24000
@@ -647,6 +643,16 @@ class JarvisLive:
         self._barge_extra          = 0       # extra blocks required on "careful"
         self._barge_run            = 0       # consecutive blocks judged to be the user
         self._barge_next_check     = 0.0
+        # Real echo cancellation for talking over JARVIS (core/aec.py); None
+        # falls back to the EchoGuard heuristic below.
+        self._aec = None
+        try:
+            from core import aec as _aec_mod
+            if _aec_mod.available():
+                self._aec = _aec_mod.Canceller()
+                print("[JARVIS] 🗣 Echo cancellation on — talk over me to interrupt")
+        except Exception as _e:
+            print(f"[JARVIS] Echo cancellation unavailable ({_e}) — using the echo guard")
         # `stream.write()` returns when the buffer accepts the audio, not when the
         # speaker has finished with it, so sound is still in the room after the
         # speaking flag drops. Streaming the microphone during that gap is how an
@@ -1160,8 +1166,9 @@ class JarvisLive:
         required. It is rebuilt WITHOUT the resumption handle on purpose:
         resuming restores the server's own session state, and the safe reading
         is that it restores the voice with it — which would make the picker
-        appear to do nothing. Losing context here is acceptable because changing
-        voice is a deliberate, rare act; losing it on a dropped packet was not."""
+        appear to do nothing. The conversation is not lost: the last turns go into
+        the new session's instructions (see _build_config), and the reconnect
+        waits for the current sentence to finish."""
         self.request_reconnect(keep_context=False, reason="new voice")
 
     def _on_audio_device_change(self):
@@ -1207,6 +1214,14 @@ class JarvisLive:
         self._reconnect_event.clear()
         keep   = self._reconnect_keep
         reason = getattr(self, "_reconnect_reason", "") or "settings"
+        # A planned change (a new voice, an engine switch) waits for the end of
+        # the sentence being spoken. A dead audio device can't wait: nothing it
+        # says is being heard.
+        if reason != "audio device":
+            waited = 0.0
+            while self._is_speaking and waited < 15.0:
+                await asyncio.sleep(0.2)
+                waited += 0.2
         self.ui.write_log(
             f"SYS: Applying {reason} — reconnecting"
             + ("..." if keep else " (starting a fresh conversation)...")
@@ -1263,6 +1278,8 @@ class JarvisLive:
     def set_speaking(self, value: bool):
         with self._speaking_lock:
             self._is_speaking = value
+        if not value and getattr(self, "_aec", None) is not None:
+            self._aec.speaking_stopped()
         if value:
             self._tail_until = 0.0
         else:
@@ -1498,12 +1515,24 @@ class JarvisLive:
             parts.append(mem_str)
         parts.append(sys_prompt)
         try:
-            from core import personas as _personas
-            _pb = _personas.prompt_block()
-            if _pb:
-                parts.append(_pb)
+            from core import personality as _personality
+            parts.append(_personality.prompt_block())
         except Exception as e:
-            print(f"[Persona] skipped: {e}")
+            print(f"[Personality] skipped: {e}")
+        # A session that starts without a resumption handle (a voice change, a
+        # rejected handle, a restart within the hour) would otherwise know
+        # nothing of what was just said. Hand it the last turns instead.
+        try:
+            if self._resume_handle is None and self._session_log and \
+                    time.time() - getattr(self, "_log_last_at", 0.0) < 45 * 60:
+                recent = "\n".join(t[:400] for t in self._session_log[-12:])
+                parts.append(
+                    "[CONVERSATION SO FAR]\nYou were already talking with the user; the session was "
+                    "rebuilt (a setting changed). The last turns, oldest first, are below. Carry on "
+                    "naturally from them — do not greet again, do not recap, and do not mention the "
+                    "reconnect unless asked.\n" + recent)
+        except Exception as e:
+            print(f"[Context] carry-over skipped: {e}")
 
         cfg = dict(
             response_modalities=["AUDIO"],
@@ -1879,6 +1908,15 @@ class JarvisLive:
                     threading.Thread(target=self._barge_in_settings, daemon=True).start()
                 if not self._barge_enabled:
                     return
+                if self._aec is not None:
+                    try:
+                        if self._aec.barge(indata, self._barge_extra):
+                            print(f"[JARVIS] 🗣 Voice interrupt (echo-cancelled; room floor "
+                                  f"{self._aec.floor:.4f})")
+                            threading.Thread(target=self.interrupt, daemon=True).start()
+                    except Exception:
+                        pass
+                    return
                 try:
                     if self._echo.is_user_speech(indata, SEND_SAMPLE_RATE, _pcm_level(indata)):
                         self._barge_run += 1
@@ -1887,11 +1925,17 @@ class JarvisLive:
                             print("[JARVIS] 🗣 Voice interrupt")
                             threading.Thread(target=self.interrupt, daemon=True).start()
                     else:
-                        self._barge_run = 0
+                        # a pause between syllables lowers the count, it doesn't reset it
+                        self._barge_run = max(0, self._barge_run - 1)
                 except Exception:
                     self._barge_run = 0
                 return
             self._barge_run = 0
+            if self._aec is not None:
+                try:
+                    self._aec.observe_idle(indata)   # learns the room; keeps the canceller warm
+                except Exception:
+                    pass
 
             # ── Echo tail ────────────────────────────────────────────────────
             # The speaking flag has dropped but the speakers have not finished.
@@ -2073,6 +2117,10 @@ class JarvisLive:
                             # twice AND made the avatar mouth it twice.
                             if txt and not _is_repeat_chunk(txt, out_buf):
                                 out_buf.append(txt)
+                                try:
+                                    self.ui.caption("ai", txt)       # immersive captions
+                                except Exception:
+                                    pass
                                 # Hand the words to the mouth as they arrive, so
                                 # the avatar can form the consonants the audio
                                 # alone cannot show. Pure string work — it adds
@@ -2084,12 +2132,32 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                try:
+                                    self.ui.caption("you", txt)
+                                except Exception:
+                                    pass
                                 # A spoken "confirm" / "cancel" answers an on-screen
                                 # confirmation. From the microphone transcript only.
                                 try:
                                     confirm_gate.hear(txt)
                                 except Exception:
                                     pass
+
+                        # Gemini heard the user over its answer (we stream the mic
+                        # again after a local interrupt) and stopped that answer.
+                        # Whatever comes next is the reply to what they said, so
+                        # stop discarding — otherwise the new answer was dropped
+                        # too, and JARVIS went silent after being interrupted.
+                        if getattr(sc, "interrupted", False):
+                            self._interrupted = False
+                            q = self.audio_in_queue
+                            while q is not None and not q.empty():
+                                try:
+                                    q.get_nowait()
+                                except Exception:
+                                    break
+                            self.set_speaking(False)
+                            out_buf = []
 
                         if sc.turn_complete:
                             if self._turn_done_event:
@@ -2109,6 +2177,7 @@ class JarvisLive:
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
+                                self._log_last_at = time.time()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "user",
@@ -2139,6 +2208,7 @@ class JarvisLive:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
+                                self._log_last_at = time.time()
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "jarvis",
@@ -2211,6 +2281,10 @@ class JarvisLive:
             lat = float(getattr(stream, "latency", 0.0) or 0.0)
             if 0.0 < lat < 1.0:
                 self._out_latency = lat
+            if self._aec is not None:
+                # Early rather than late: the canceller copes with hearing about
+                # our audio before the echo arrives, not after.
+                self._aec.set_play_delay(self._out_latency * 0.5)
             print(f"[JARVIS] 🔊 Output latency {self._out_latency*1000:.0f} ms "
                   f"→ echo tail {(self._out_latency + _TAIL_MARGIN)*1000:.0f} ms")
         except Exception:
@@ -2295,6 +2369,8 @@ class JarvisLive:
                 except Exception:
                     pass
 
+                if self._aec is not None:
+                    self._aec.feed_far(bytes(batch), RECEIVE_SAMPLE_RATE)
                 self._spk_write_started = time.monotonic()   # core/audio_watch
                 try:
                     await asyncio.to_thread(stream.write, bytes(batch))

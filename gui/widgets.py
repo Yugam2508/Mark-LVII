@@ -862,6 +862,10 @@ def paint_icon(p: QPainter, kind: str, r: QRectF, col: QColor) -> None:
             p.setBrush(QBrush(col))
             p.drawEllipse(QPointF(cx - s * 0.8 + k * s * 1.6, y), 2.4, 2.4)
             p.setBrush(Qt.BrushStyle.NoBrush)
+    elif kind == "layout":
+        p.drawRect(QRectF(cx - s * 0.8, cy - s * 0.65, s * 1.6, s * 1.3))
+        p.drawLine(QLineF(cx - s * 0.3, cy - s * 0.65, cx - s * 0.3, cy + s * 0.65))
+        p.drawLine(QLineF(cx + s * 0.3, cy - s * 0.65, cx + s * 0.3, cy + s * 0.65))
     elif kind == "expand":
         a, b = s * 0.75, s * 0.32
         for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):

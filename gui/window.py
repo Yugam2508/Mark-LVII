@@ -71,6 +71,7 @@ from gui.widgets import (
     _file_category,
     _fmt_size,
 )
+from gui.immersive import CommandBar, FlowLayer
 from gui.overlays import (
     AudioDeviceOverlay,
     ClipboardPanel,
@@ -128,6 +129,7 @@ class MainWindow(QMainWindow):
     _quit_sig       = pyqtSignal()         # close the app from another thread (updater)
     _notice_sig     = pyqtSignal(str, str, str)   # title, text, kind — cards that stay
     _context_sig    = pyqtSignal(str, str)        # label, kind — a HUD satellite
+    _caption_sig    = pyqtSignal(str, str)        # who ('you'/'ai'), words — live captions
     _wake_dl_sig    = pyqtSignal(bool, str)  # wake-word install finished (ok, message)
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
@@ -385,6 +387,23 @@ class MainWindow(QMainWindow):
         body.addWidget(self._right_panel, stretch=0)
 
         root.addLayout(body, stretch=1)
+
+        # Immersive layout (gui/immersive.py): the HUD fills the window, cards,
+        # captions and vitals come and go over it, and this slim bar replaces
+        # the COMMAND panel. F2 / ◫ switches to the classic panels.
+        self._flow = FlowLayer(self.hud, on_expand=self._expand_card)
+        self._cmd_bar = CommandBar()
+        self._cmd_bar.send.connect(self._send_from_bar)
+        self._cmd_bar.mute.connect(self._toggle_mute)
+        self._cmd_bar.stop.connect(self._do_interrupt)
+        self._cmd_bar.panels.connect(self._toggle_layout)
+        self._cmd_wrap = QWidget()
+        _cw = QHBoxLayout(self._cmd_wrap)
+        _cw.setContentsMargins(0, 0, 0, 8)
+        _cw.addStretch(1)
+        _cw.addWidget(self._cmd_bar, 4)
+        _cw.addStretch(1)
+        root.addWidget(self._cmd_wrap)
         root.addWidget(self._build_footer())
 
         # Quick-access drawer (floating overlay, built after central widget layout is done)
@@ -407,8 +426,7 @@ class MainWindow(QMainWindow):
         self._metric_tmr.timeout.connect(self._update_metrics)
         self._metric_tmr.start(2000)
         self._update_metrics()
-        # Engine/voice rows: a persona switched by voice changes them with no
-        # settings window involved, so re-read them every few seconds.
+        # Engine/voice rows: re-read them every few seconds.
         self._ident_tmr = QTimer(self)
         self._ident_tmr.timeout.connect(self._refresh_identity_rows)
         self._ident_tmr.start(5000)
@@ -461,6 +479,10 @@ class MainWindow(QMainWindow):
         sc_full.activated.connect(self._toggle_fullscreen)
         sc_intr = QShortcut(QKeySequence("Escape"), self)
         sc_intr.activated.connect(self._do_interrupt)
+        sc_lay = QShortcut(QKeySequence("F2"), self)
+        sc_lay.activated.connect(self._toggle_layout)
+        self._caption_sig.connect(lambda who, text: self._flow.caption(who, text))
+        self._apply_layout(self._saved_layout())
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -1159,6 +1181,8 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._fit_side_columns()
+        if getattr(self, "_flow", None) is not None:
+            QTimer.singleShot(0, self._flow.resized)
         stack = getattr(self, "_notice_stack", None)
         if stack is not None and stack.isVisible():
             stack.place()
@@ -1285,6 +1309,10 @@ class MainWindow(QMainWindow):
         self._ctrl_btn.setToolTip("Controls — the everyday switches")
         self._ctrl_btn.clicked.connect(self._toggle_controls)
         lay.addWidget(self._ctrl_btn)
+        self._layout_btn = IconButton("layout", 32)
+        self._layout_btn.setToolTip("Switch layout: immersive / panels  [F2]")
+        self._layout_btn.clicked.connect(self._toggle_layout)
+        lay.addWidget(self._layout_btn)
         lay.addStretch()
 
         self._state_chip = StateChip()
@@ -1341,9 +1369,6 @@ class MainWindow(QMainWindow):
             mode = str(get_provider_mode() or "gemini")
             engine = "GEMINI LIVE" if mode == "gemini" else f"LOCAL {mode.upper()}"
             voice = str(get_voice() or "--").upper()
-            from core import personas
-            if personas.current() != "off":
-                voice = f"{personas.current().upper()} · {personas.voice(get_voice()).upper()}"
         except Exception:
             engine, voice = "GEMINI LIVE", "--"
         self._engine_label = engine
@@ -1917,7 +1942,55 @@ class MainWindow(QMainWindow):
         self._content_display.moveCursor(
             self._content_display.textCursor().MoveOperation.Start
         )
-        self._reveal_below_hud(self._content_panel, 220)
+        if self._layout == "immersive":
+            self._flow.add_card(title, text)
+        else:
+            self._reveal_below_hud(self._content_panel, 220)
+
+    # ── layouts ──────────────────────────────────────────────────────────────
+    _layout = "panels"
+
+    @staticmethod
+    def _saved_layout() -> str:
+        try:
+            from memory.config_manager import get_plugin_setting
+            v = str(get_plugin_setting("ui", "layout", "immersive") or "immersive")
+            return v if v in ("immersive", "panels") else "immersive"
+        except Exception:
+            return "immersive"
+
+    def _apply_layout(self, mode: str) -> None:
+        self._layout = mode
+        immersive = mode == "immersive"
+        self._left_panel.setVisible(not immersive)
+        self._right_panel.setVisible(not immersive)
+        self._cmd_wrap.setVisible(immersive)
+        self._flow.set_enabled(immersive)
+        if immersive:
+            self._content_panel.hide()
+        QTimer.singleShot(0, self._flow.resized)
+
+    def _toggle_layout(self) -> None:
+        mode = "panels" if self._layout == "immersive" else "immersive"
+        self._apply_layout(mode)
+        try:
+            from memory.config_manager import get_plugin_config, save_plugin_config
+            cfg = get_plugin_config("ui")
+            cfg["layout"] = mode
+            save_plugin_config("ui", cfg)
+        except Exception:
+            pass
+        self._log.append_log("SYS: Layout — " + ("immersive." if mode == "immersive" else "panels."))
+
+    def _expand_card(self, title: str, text: str) -> None:
+        """A card's EXPAND: the full text in the panel under the HUD."""
+        self._content_display.setPlainText(text)
+        self._reveal_below_hud(self._content_panel, 260)
+
+    def _send_from_bar(self, text: str) -> None:
+        self._input.setText(text)
+        self._send()
+        self._flow.caption("you", text, append=False)
 
     # ── the coding agent, live ───────────────────────────────────────────────
     # The panel under the head shows a coding job while it runs: what was asked,
@@ -2736,15 +2809,6 @@ class MainWindow(QMainWindow):
             if voice != get_voice():
                 save_voice(voice)
                 voice_changed = True
-                try:   # a voice picked here replaces a persona's voice
-                    from core import personas
-                    from memory.config_manager import get_plugin_config, save_plugin_config
-                    if personas.current() != "off":
-                        pc = get_plugin_config("persona")
-                        pc["persona"] = "off"
-                        save_plugin_config("persona", pc)
-                except Exception:
-                    pass
 
         try:
             from memory.config_manager import update_config
@@ -2854,6 +2918,14 @@ class MainWindow(QMainWindow):
     # ── Notices that stay ────────────────────────────────────────────────────
 
     def _add_notice(self, title: str, text: str, kind: str):
+        if self._layout == "immersive":
+            col = getattr(C, NoticeStack.KIND_COLOUR.get(kind, "PRI"), C.PRI)
+            self._flow.add_card(title, text, pinned=True, accent=col)
+            try:
+                self.hud.push_context(title, "error" if kind == "error" else "notice")
+            except Exception:
+                pass
+            return
         stack = getattr(self, "_notice_stack", None)
         if stack is None:
             stack = NoticeStack(parent=self.centralWidget())
@@ -3003,6 +3075,8 @@ class MainWindow(QMainWindow):
             self._mute_btn.set_look("mic_off", "MIC MUTED", "MUTED_C")
         else:
             self._mute_btn.set_look("mic", "MIC ACTIVE", "GREEN")
+        if getattr(self, "_cmd_bar", None) is not None:
+            self._cmd_bar.set_muted(self._muted)
         self._refresh_status_strip()
 
     def _send(self):

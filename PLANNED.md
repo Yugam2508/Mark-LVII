@@ -10,7 +10,7 @@ bottom of their section; finished items move to **Done** with the date.
 ## To set up / test
 
 - [ ] **Go through TESTING.md for v1.5** — holo HUD, talking to someone else, voice
-      confirm, Claude Code control, personas, audio device switching, phone over Tailscale.
+      confirm, Claude Code control, personality, audio device switching, phone over Tailscale.
 - [ ] **Phone over Tailscale** — QR code now uses the 100.x address; for the phone mic,
       enable HTTPS in the Tailscale admin and switch on the secure link (ADDONS.md §9).
 
