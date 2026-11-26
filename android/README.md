@@ -1,4 +1,4 @@
-# Jarvis for Android (step 1: the assistant skeleton)
+# Jarvis for Android
 
 An Android app that connects to your Jarvis PC over Tailscale, shows the holographic display, takes
 typed or spoken requests, shows and reads the replies, and registers as the phone's **default
@@ -13,16 +13,24 @@ One Jarvis, not two. While the app is paired and listening:
   Jarvis (same brain, memory, personality and tools). The PC mutes its own speakers and microphone while
   the phone is doing this, so only one device answers.
 - **What Jarvis shows on the PC** (calendar, weather, results, alerts) also appears in the phone's log.
-- The app's menu (the phone's menu button or gesture) has *Always listening* and *Talk over Jarvis*
-  switches. If Jarvis seems to hear itself, turn *Talk over Jarvis* off.
-- Listening uses battery. *Stop listening* in the notification (or the menu) pauses it, and **MUTE** on
-  the screen stops sending your voice without hanging up.
+- **"Hey Jarvis"**: with the wake word on (the default), nothing you say reaches Jarvis until the PC hears
+  "Hey Jarvis" in it — then a chime and a buzz, and the conversation flows until it's quiet for a while.
+  Tap the orb to talk without the phrase, tap it while Jarvis speaks to cut it off, long-press to send it
+  back to waiting. The line under the orb always says what it's doing.
+- **Only speech is sent** (with a moment either side), so listening all day costs little mobile data.
+- **⋮ (top right) → Permissions & setup** is where every switch lives (phones have no menu key): a tick or a
+  cross for each permission with one tap to fix it, *Always listening*, *Wake word*, *Chime*, *Save mobile
+  data*, *Talk over Jarvis*, and *Forget this PC*. If Jarvis seems to hear itself, turn *Talk over Jarvis* off.
+- The listening notification has **Mute** and **Stop listening**; tap it to open the app. Add the **Jarvis
+  tile** to Quick Settings (pull down twice → edit) to switch listening on and off from anywhere.
 - Android only lets a listening service start while the app is open: after a phone restart the link
   comes back by itself, but open the app once to start listening again.
 
 ## What it does now
 - Pairs with a PC (address + the key from **Remote Control**), and remembers the phone.
-- Conversation screen: holo display, live log, type or tap **MIC** (Android's speech recogniser).
+- Conversation screen: the living orb, the conversation (long-press to copy it), a box to type in, and a
+  bar with **CONFIRM / CANCEL** when something you asked for needs your OK (also as a lock-screen notification).
+- **Share → Jarvis (to my PC)** from any app: text goes on the PC clipboard, links open on the PC.
 - Replies are Jarvis's own voice, played on the phone (see above), and shown as text.
 - Registers as an assistant: Settings → Apps → Default apps → **Digital assistant app** → Jarvis.
   Long-press power (or your assist gesture) then opens it over whatever you're doing and starts listening.
@@ -52,10 +60,16 @@ keeps the link while the PC is on, awake and running Jarvis (Jarvis keeps a main
 while a phone is connected). If the app says "The PC no longer knows this phone", press Remote
 Control on the PC and enter the new key: the address is kept.
 
+## More it can do (asked on the PC or through the phone)
+Read and reply to WhatsApp/Telegram/Messages notifications, read your texts and call log, announce a ringing
+call ("answer it" / "decline it"), open apps and links, Bluetooth/Wi-Fi pages, volume, flashlight, timers and
+alarms, media keys, navigation, where the phone is, Do Not Disturb, and — with the optional accessibility
+switch — press WhatsApp's Send, take a screenshot, lock the phone. Each needs the matching line in
+⋮ → Permissions & setup to show ✓.
+
 ## What it does *not* do yet (so you aren't surprised)
-- **No wake word** (step 2) — you invoke it by long-press power or by opening the app.
-- No notifications reading, other-app control or IR yet.
-- The PC has to be on and running Jarvis (the hub removes that).
+- The AC through the IR blaster (needs the AC's make and model), and controlling other apps beyond the above.
+- The PC has to be on and running Jarvis (hub mode keeps it that way).
 
 ## Build and run (about 10 minutes)
 1. Update Jarvis on the PC (**v1.8** adds the pairing endpoint this app uses).
