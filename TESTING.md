@@ -5,7 +5,7 @@ Work down the list on the G14 first, then the desktop. Each line is **what to do
 *Known issues* (or tell Claude Code — paste the log lines from the COMMUNICATIONS panel).
 
 Update first: say **"update yourself"**, or run the installer once more. After the
-restart the header should read **v1.5** and the What's new panel should open.
+restart the header should read **MARK LX** and the What's new panel should open.
 
 ---
 
@@ -76,7 +76,7 @@ Set up once: ⚙ → PLUGIN SETTINGS → CLAUDE CODE CONTROL → add a project
       "Secure phone link through Tailscale" → QR shows `https://….ts.net` → the phone
       mic button works.
 
-## 7b. The Android app (v1.8, `android/`)
+## 7b. The Android app (`android/`)
 
 Build and install it first: `android/README.md` has the steps (about 10 minutes in Android Studio).
 
@@ -88,23 +88,27 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Close and reopen the app → it logs straight back in without a key.
 - [ ] Open the app → it starts listening by itself (a "Jarvis is listening" notification). Just talk: the
       answer plays on the PHONE in the same voice as the PC, and the PC stays silent.
-- [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, turn off "Talk over
-      Jarvis" in the app menu).
+- [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, tap ⋮ → Permissions &
+      setup → turn "Talk over Jarvis" off).
+- [ ] Put on Bluetooth headphones → Jarvis's voice moves to them; take them off → back to the loudspeaker.
 - [ ] Close the app, lock the screen, talk → it still answers (the notification stays).
 - [ ] Ask for something that shows a card on the PC (the weather, your calendar) → it also appears in the phone log.
 - [ ] Press **Stop listening** in the notification → the PC speaks again.
 - [ ] Settings → Apps → Default apps → Digital assistant app → **Jarvis** → long-press power
       from another app → the panel opens over it and starts listening.
-- [ ] Allow the permission prompts (Microphone, Contacts, Phone, SMS, Notifications). A quiet
+- [ ] Allow the permission prompts (Microphone, Contacts, Phone, SMS, Call log, Location, Notifications). A quiet
       "Jarvis is linked to your PC" notification appears, and the PC log says "Phone linked".
+- [ ] Tap ⋮ → Permissions & setup → every line you care about shows ✓ (tap a ✗ to fix it). Allow "Battery: not
+      restricted", or OnePlus may close the link in the background.
 - [ ] Say to Jarvis on the PC: "what's my phone's battery?" → it answers from the phone.
 - [ ] "Find my phone" (with the app closed) → rings loudly for 30 s; opening the app stops it.
 - [ ] "Call <a contact>" → a confirmation on the PC → say "confirm" → the phone dials. Say
       "cancel" the next time → nothing happens. Try a name that matches two contacts → it asks which.
 - [ ] "Text <yourself or a friend> hello from Jarvis" → shown for edit/confirm → the text arrives.
-- [ ] Restart the phone → the link notification comes back by itself.
-- [ ] Not built yet, so don't expect them: wake word, the AC through the IR blaster, reading
-      notifications, controlling other apps, and picking up a conversation from the PC.
+- [ ] Restart the phone → the link notification comes back by itself (open the app once to start listening again:
+      Android doesn't let an app open the microphone by itself after a restart).
+- [ ] Not built yet, so don't expect them: a wake word on the phone, the AC through the IR blaster, and controlling
+      other apps beyond WhatsApp's Send button.
 
 ## 7c. Deeper thinking
 
@@ -161,7 +165,7 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Where's my phone?" → a map link (allow Location when the app asks). "Turn on Do Not Disturb on my phone".
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
-## 7g. Notes, dictation and self-check
+## 7f. Notes, dictation and self-check
 
 - [ ] Say "run a self-check" → a card lists Screenshot / Notes folder / Dictation / Notion / Phone link / API keys
       with OK or FAIL and the reason. Send me any FAIL lines.
@@ -177,7 +181,7 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Add 'test from Jarvis' to my <page name> page in Notion" → it lands on that page without asking for a number.
 - [ ] Ask Jarvis to "note that the sky is blue" → it says it saved only after the tool reports it; check the note exists.
 
-## 7h. PC care, backups, and the phone's new bits
+## 7g. PC care, backups, and the phone's new bits
 
 - [ ] "What Wi-Fi am I on?", "what networks are around?", "what's the Wi-Fi password?" (shown on screen).
 - [ ] "Are there app updates?" → a list. "Update all my apps" → confirm → when it finishes Jarvis says how it went.
@@ -193,7 +197,7 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Set an alarm for 7:15 on my phone" → it's in the Clock app. With Accessibility on: "take a screenshot on my
       phone" (in the gallery), "lock my phone".
 
-## 7f. The PC as the hub
+## 7h. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.
 - [ ] "Hub status" → hub mode on, phones linked, the Tailscale address, holding awake, starts at login.

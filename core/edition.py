@@ -74,6 +74,8 @@ CHANGELOG = [
         "if YouTube, a game or social media holds the screen for a minute during a block, Jarvis nudges you back",
         "Phone: \"set an alarm for 7 on my phone\", and with the accessibility switch on, \"take a screenshot on my "
         "phone\" and \"lock my phone\"; the phone timer's label and the send-to-phone heading now reach the phone",
+        "If Jarvis says \"saved\", \"noted\" or \"I've added it\" in a turn where no tool ran, it is told at once "
+        "to do it properly or say it isn't saved — the \"it said it saved it and hadn't\" problem, caught as it happens",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

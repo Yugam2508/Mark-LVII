@@ -1100,6 +1100,7 @@ class JarvisLive:
         loop = getattr(self, "_loop", None)
         if not loop or not self.session:
             return
+        self._last_app_prompt = time.time()          # the next reply answers the app, not the user
 
         async def _say():
             try:
@@ -2279,6 +2280,16 @@ class JarvisLive:
                                     _presence.note_not_addressed()
                                 except Exception:
                                     pass
+                            # "I've saved that" with no tool behind it: have Jarvis fix it now.
+                            try:
+                                from core import claims as _claims
+                                if _claims.unbacked_save_claim(
+                                        full_out, full_in, bool(getattr(self, "_turn_tool", False)),
+                                        time.time() - getattr(self, "_last_app_prompt", 0.0)):
+                                    print("[Claims] save claimed without a tool — asking for a correction")
+                                    self.plugin_say(_claims.CORRECTION)
+                            except Exception as _e:
+                                print(f"[Claims] {_e}")
                             self._turn_tool = False
                             # Second line of defence: even if a repeat slips
                             # into a *fresh* buffer after a flush, never log the
