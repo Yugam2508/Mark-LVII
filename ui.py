@@ -163,13 +163,29 @@ class JarvisUI:
         """Thread-safe: raise the irreversible-action gate. Called from action
         handlers running in executor threads, so it goes through a signal."""
         self._win._confirm_sig.emit(str(title)[:120], str(detail)[:300])
-        # The phone sees it too, with CONFIRM / CANCEL — you may be asking from the phone, away from here.
-        self._mirror_out(str(title)[:120], str(detail)[:600], "confirm")
+        # The phone gets it too, with CONFIRM / CANCEL — but only when you're on the phone or away from
+        # this PC; sitting here, a buzz in your pocket for every confirmation would just be noise.
+        if self._phone_should_confirm():
+            self._confirm_on_phone = True
+            self._mirror_out(str(title)[:120], str(detail)[:600], "confirm")
 
     def hide_confirm(self) -> None:
         """Thread-safe: take the gate down."""
         self._win._confirm_hide_sig.emit()
-        self._mirror_out("", "", "confirm_done")
+        if getattr(self, "_confirm_on_phone", False):
+            self._confirm_on_phone = False
+            self._mirror_out("", "", "confirm_done")
+
+    @staticmethod
+    def _phone_should_confirm() -> bool:
+        try:
+            from core import addons, presence
+            a = addons.assistant()
+            if a is not None and getattr(a, "_phone_audio_routed", lambda: False)():
+                return True                      # talking through the phone
+            return presence.state()[0] == "away"
+        except Exception:
+            return False
 
     def caption(self, who: str, text: str) -> None:
         """Thread-safe: live words for the immersive layout's captions."""

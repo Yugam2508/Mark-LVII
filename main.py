@@ -2810,72 +2810,87 @@ class JarvisLive:
     # ── Phone audio relay ────────────────────────────────────────────────────────
 
     async def _relay_phone_audio(self) -> None:
-        """Forward phone mic PCM chunks from dashboard queue into the Gemini Live session."""
+        """Forward phone mic PCM chunks from dashboard queue into the Gemini Live session.
+
+        Runs inside the session's task group: an exception escaping here would take the whole
+        conversation down, so each step is guarded and only logged."""
         q = self._dashboard._phone_audio_queue
         while True:
             try:
                 chunk = await asyncio.wait_for(q.get(), timeout=1.0)
             except asyncio.TimeoutError:
-                # No audio for 1 s. The phone sends sound only while someone talks (it saves data), so
-                # quiet doesn't mean it's gone: while it is still the speaker, the PC mic stays off;
-                # only when its audio link closes does the PC listen again.
-                self._phone_active = self._phone_audio_routed()
+                try:
+                    self._relay_idle()
+                except Exception as e:
+                    print(f"[PhoneRelay] {e}")
+                continue
+            try:
+                self._relay_chunk(chunk)
+            except Exception as e:
+                print(f"[PhoneRelay] {e}")
+
+    def _relay_idle(self) -> None:
+        # No audio for 1 s. The phone sends sound only while someone talks (it saves data), so
+        # quiet doesn't mean it's gone: while it is still the speaker, the PC mic stays off;
+        # only when its audio link closes does the PC listen again.
+        self._phone_active = self._phone_audio_routed()
+        pw = getattr(self, "_phone_wake", None)
+        if pw is not None:
+            with self._speaking_lock:
+                if self._is_speaking:
+                    pw.keep_awake()
+            pw.tick()
+            for held in pw.check_detected():
+                self._forward_phone_audio(held)
+
+    def _relay_chunk(self, chunk: dict) -> None:
+        if "control" in chunk:                       # the phone's orb was tapped
+            ctl = chunk["control"]
+            if ctl == "interrupt":                   # tapped while Jarvis was talking: stop now
+                with self._speaking_lock:
+                    talking = self._is_speaking
+                if talking:
+                    self.interrupt()
                 pw = getattr(self, "_phone_wake", None)
                 if pw is not None:
-                    with self._speaking_lock:
-                        if self._is_speaking:
-                            pw.keep_awake()
-                    pw.tick()
-                    for held in pw.check_detected():
-                        self._forward_phone_audio(held)
-                continue
-            if "control" in chunk:                       # the phone's orb was tapped
-                ctl = chunk["control"]
-                if ctl == "interrupt":                   # tapped while Jarvis was talking: stop now
-                    with self._speaking_lock:
-                        talking = self._is_speaking
-                    if talking:
-                        self.interrupt()
-                    pw = getattr(self, "_phone_wake", None)
-                    if pw is not None:
-                        pw.wake_now()                    # and listen for what they say next
-                    continue
-                pw = self._get_phone_wake()
-                pw.wake_now() if ctl == "wake_now" else pw.sleep_now()
-                continue
-            self._phone_active = True   # phone is streaming — silence PC mic
-            with self._speaking_lock:
-                speaking = self._is_speaking
-            pieces = [chunk["data"]]
-            try:
-                wake_wanted = self._dashboard.phone_wake_wanted()
-            except Exception:
-                wake_wanted = False
-            if wake_wanted:
-                pw = self._get_phone_wake()
-                if speaking:
-                    pw.keep_awake()
-                pieces = pw.check_detected() + pw.process(chunk["data"])
-                # Tell the phone once when the PC can't do the wake word (yet), so it doesn't
-                # say "Hey Jarvis" while in fact everything is going through.
-                if pw.available is False and not getattr(self, "_phone_wake_na_said", False):
-                    self._phone_wake_na_said = True
-                    asyncio.create_task(self._dashboard.broadcast(
-                        {"type": "phone_wake", "awake": False, "available": False}))
-                elif pw.available and getattr(self, "_phone_wake_na_said", False):
-                    self._phone_wake_na_said = False
-                    asyncio.create_task(self._dashboard.broadcast(
-                        {"type": "phone_wake", "awake": pw.awake, "available": True}))
-            # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
-            # over it exactly as on the PC (Gemini ends its own turn when it hears you).
-            duplex = False
-            try:
-                duplex = self._dashboard.phone_duplex()
-            except Exception:
-                pass
-            if (not speaking or duplex) and not self.ui.muted:
-                for piece in pieces:
-                    self._forward_phone_audio(piece)
+                    pw.wake_now()                    # and listen for what they say next
+                return
+            pw = self._get_phone_wake()
+            pw.wake_now() if ctl == "wake_now" else pw.sleep_now()
+            return
+        self._phone_active = True   # phone is streaming — silence PC mic
+        with self._speaking_lock:
+            speaking = self._is_speaking
+        pieces = [chunk["data"]]
+        try:
+            wake_wanted = self._dashboard.phone_wake_wanted()
+        except Exception:
+            wake_wanted = False
+        if wake_wanted:
+            pw = self._get_phone_wake()
+            if speaking:
+                pw.keep_awake()
+            pieces = pw.check_detected() + pw.process(chunk["data"])
+            # Tell the phone once when the PC can't do the wake word (yet), so it doesn't
+            # say "Hey Jarvis" while in fact everything is going through.
+            if pw.available is False and not getattr(self, "_phone_wake_na_said", False):
+                self._phone_wake_na_said = True
+                asyncio.create_task(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": False, "available": False}))
+            elif pw.available and getattr(self, "_phone_wake_na_said", False):
+                self._phone_wake_na_said = False
+                asyncio.create_task(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": pw.awake, "available": True}))
+        # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
+        # over it exactly as on the PC (Gemini ends its own turn when it hears you).
+        duplex = False
+        try:
+            duplex = self._dashboard.phone_duplex()
+        except Exception:
+            pass
+        if (not speaking or duplex) and not self.ui.muted:
+            for piece in pieces:
+                self._forward_phone_audio(piece)
 
     def _forward_phone_audio(self, data: bytes) -> None:
         try:
