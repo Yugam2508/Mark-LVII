@@ -647,6 +647,16 @@ class JarvisLive:
         self._barge_extra          = 0       # extra blocks required on "careful"
         self._barge_run            = 0       # consecutive blocks judged to be the user
         self._barge_next_check     = 0.0
+        # Real echo cancellation for talking over JARVIS (core/aec.py); None
+        # falls back to the EchoGuard heuristic below.
+        self._aec = None
+        try:
+            from core import aec as _aec_mod
+            if _aec_mod.available():
+                self._aec = _aec_mod.Canceller()
+                print("[JARVIS] 🗣 Echo cancellation on — talk over me to interrupt")
+        except Exception as _e:
+            print(f"[JARVIS] Echo cancellation unavailable ({_e}) — using the echo guard")
         # `stream.write()` returns when the buffer accepts the audio, not when the
         # speaker has finished with it, so sound is still in the room after the
         # speaking flag drops. Streaming the microphone during that gap is how an
@@ -1263,6 +1273,8 @@ class JarvisLive:
     def set_speaking(self, value: bool):
         with self._speaking_lock:
             self._is_speaking = value
+        if not value and getattr(self, "_aec", None) is not None:
+            self._aec.speaking_stopped()
         if value:
             self._tail_until = 0.0
         else:
@@ -1879,6 +1891,15 @@ class JarvisLive:
                     threading.Thread(target=self._barge_in_settings, daemon=True).start()
                 if not self._barge_enabled:
                     return
+                if self._aec is not None:
+                    try:
+                        if self._aec.barge(indata, self._barge_extra):
+                            print(f"[JARVIS] 🗣 Voice interrupt (echo-cancelled; room floor "
+                                  f"{self._aec.floor:.4f})")
+                            threading.Thread(target=self.interrupt, daemon=True).start()
+                    except Exception:
+                        pass
+                    return
                 try:
                     if self._echo.is_user_speech(indata, SEND_SAMPLE_RATE, _pcm_level(indata)):
                         self._barge_run += 1
@@ -1887,11 +1908,17 @@ class JarvisLive:
                             print("[JARVIS] 🗣 Voice interrupt")
                             threading.Thread(target=self.interrupt, daemon=True).start()
                     else:
-                        self._barge_run = 0
+                        # a pause between syllables lowers the count, it doesn't reset it
+                        self._barge_run = max(0, self._barge_run - 1)
                 except Exception:
                     self._barge_run = 0
                 return
             self._barge_run = 0
+            if self._aec is not None:
+                try:
+                    self._aec.observe_idle(indata)   # learns the room; keeps the canceller warm
+                except Exception:
+                    pass
 
             # ── Echo tail ────────────────────────────────────────────────────
             # The speaking flag has dropped but the speakers have not finished.
@@ -2091,6 +2118,22 @@ class JarvisLive:
                                 except Exception:
                                     pass
 
+                        # Gemini heard the user over its answer (we stream the mic
+                        # again after a local interrupt) and stopped that answer.
+                        # Whatever comes next is the reply to what they said, so
+                        # stop discarding — otherwise the new answer was dropped
+                        # too, and JARVIS went silent after being interrupted.
+                        if getattr(sc, "interrupted", False):
+                            self._interrupted = False
+                            q = self.audio_in_queue
+                            while q is not None and not q.empty():
+                                try:
+                                    q.get_nowait()
+                                except Exception:
+                                    break
+                            self.set_speaking(False)
+                            out_buf = []
+
                         if sc.turn_complete:
                             if self._turn_done_event:
                                 self._turn_done_event.set()
@@ -2211,6 +2254,10 @@ class JarvisLive:
             lat = float(getattr(stream, "latency", 0.0) or 0.0)
             if 0.0 < lat < 1.0:
                 self._out_latency = lat
+            if self._aec is not None:
+                # Early rather than late: the canceller copes with hearing about
+                # our audio before the echo arrives, not after.
+                self._aec.set_play_delay(self._out_latency * 0.5)
             print(f"[JARVIS] 🔊 Output latency {self._out_latency*1000:.0f} ms "
                   f"→ echo tail {(self._out_latency + _TAIL_MARGIN)*1000:.0f} ms")
         except Exception:
@@ -2295,6 +2342,8 @@ class JarvisLive:
                 except Exception:
                     pass
 
+                if self._aec is not None:
+                    self._aec.feed_far(bytes(batch), RECEIVE_SAMPLE_RATE)
                 self._spk_write_started = time.monotonic()   # core/audio_watch
                 try:
                     await asyncio.to_thread(stream.write, bytes(batch))

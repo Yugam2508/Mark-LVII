@@ -13,6 +13,9 @@
 PyQt6>=6.6,<6.10       # 6.10+ failed to load on a Windows laptop ("procedure could not be found")
 PyQt6-Qt6<6.10
 sounddevice>=0.4,<1
+# Echo cancellation (WebRTC's, prebuilt) so talking over JARVIS interrupts it —
+# core/aec.py. Optional at runtime: without it the older echo guard is used.
+livekit>=1.0,<2
 numpy>=1.24,<3
 google-genai>=2.8.0,<3
 # Declared even though google-genai already installs it. providers/ imports it

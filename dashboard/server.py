@@ -318,7 +318,22 @@ def _ensure_network_access(*ports: int) -> None:
                   "Private in Settings > Network & internet. JARVIS will not "
                   "change that for you — on public Wi-Fi it would expose this "
                   "computer.")
+        # Only the Tailscale adapter, never Wi-Fi: Windows often files Tailscale
+        # as an unidentified PUBLIC network, and the phone comes in through it.
+        # Making a café or office Wi-Fi "private" would open far more than this.
         need_private = False
+        try:
+            from core import tailnet
+            if tailnet.address():
+                prof = subprocess.run(
+                    ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                     "(Get-NetConnectionProfile -InterfaceAlias 'Tailscale*' "
+                     "-ErrorAction SilentlyContinue).NetworkCategory"],
+                    capture_output=True, text=True, timeout=8,
+                    creationflags=0x08000000)
+                need_private = "Public" in (prof.stdout or "")
+        except Exception:
+            need_private = False
 
         if blocked:
             print(f"[Dashboard] Windows is BLOCKING inbound connections to "
@@ -335,8 +350,7 @@ def _ensure_network_access(*ports: int) -> None:
         if need_private:
             bat_lines.append(
                 'powershell -NoProfile -NonInteractive -Command "'
-                'Get-NetConnectionProfile | '
-                "Where-Object {$_.NetworkCategory -eq 'Public'} | "
+                "Get-NetConnectionProfile -InterfaceAlias 'Tailscale*' | "
                 'Set-NetConnectionProfile -NetworkCategory Private"'
             )
         for pt in missing_ports:
