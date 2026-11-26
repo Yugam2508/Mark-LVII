@@ -127,6 +127,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["20", "45", "120"], "default": "45"},
         {"key": "welcome_back", "label": "When I'm back, tell me what I missed", "type": "toggle",
          "default": True},
+        {"key": "keep_transcript", "label": "Keep a full log of our conversations on this PC "
+         "(so Jarvis can look back at what you said)", "type": "toggle", "default": True},
         {"key": "hub_mode", "label": "This PC is my always-on hub (never sleeps while plugged in, "
          "stays in the tray; also switch on AUTO-START)", "type": "toggle", "default": False},
         {"key": "keep_awake_for_phone", "label": "Keep this PC awake while my phone is connected "

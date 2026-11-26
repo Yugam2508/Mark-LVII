@@ -2237,6 +2237,11 @@ class JarvisLive:
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
+                                try:
+                                    from core import transcript as _tr
+                                    _tr.append("You", full_in)
+                                except Exception:
+                                    pass
                                 self._log_last_at = time.time()
                                 self._publish_handoff()
                                 if self._dashboard:
@@ -2269,6 +2274,11 @@ class JarvisLive:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
+                                try:
+                                    from core import transcript as _tr
+                                    _tr.append(self._asst_name, full_out)
+                                except Exception:
+                                    pass
                                 self._log_last_at = time.time()
                                 self._publish_handoff()
                                 if self._dashboard:

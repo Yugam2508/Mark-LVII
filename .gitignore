@@ -31,6 +31,8 @@ memory/long_term.json
 # routines, and anything else the assistant saves next to its memory code
 memory/*.json
 memory/*.db
+# the word-for-word conversation log (core/transcript.py)
+memory/conversations/
 
 # ── Python build noise ────────────────────────────────────────────────────────
 __pycache__/

@@ -42,6 +42,9 @@ CHANGELOG = [
         "Jarvis may no longer say \"saved\" unless a tool said so; Notion notes longer than 100 lines used to be "
         "silently cut off and are now sent in full (or reported as failed); \"run a self-check\" tests screenshots, "
         "notes, Notion, dictation and the phone link for real and says exactly what is broken",
+        "Jarvis stops forgetting: every conversation is now kept word for word on this PC (memory/conversations), "
+        "and \"what did I tell you yesterday about…\" searches it; before, a whole session shrank to two "
+        "sentences when it ended. \"Take a screenshot\" now actually saves one to Pictures/Screenshots",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

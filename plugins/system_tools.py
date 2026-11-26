@@ -331,7 +331,46 @@ def _clean_temp(p: dict) -> str:
                            "Files in use are skipped.", go)
 
 
+# ── screenshot ───────────────────────────────────────────────────────────────
+
+def screenshot_folder() -> Path:
+    d = Path.home() / "Pictures" / "Screenshots"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _screenshot(p: dict) -> str:
+    """Save what is on screen as a PNG (all screens, or one), and say where. Optionally open it."""
+    import datetime as _dt
+    path = screenshot_folder() / f"Jarvis {_dt.datetime.now():%Y-%m-%d %H-%M-%S}.png"
+    which = str(p.get("screen") or "main").lower()
+    err = ""
+    try:
+        import mss
+        import mss.tools
+        with mss.mss() as sct:
+            mons = sct.monitors
+            mon = mons[0] if which == "all" or len(mons) < 2 else mons[1]
+            if which.isdigit() and int(which) < len(mons):
+                mon = mons[int(which)]
+            shot = sct.grab(mon)
+            mss.tools.to_png(shot.rgb, shot.size, output=str(path))
+    except Exception as e:
+        err = str(e)
+        try:
+            from PIL import ImageGrab
+            ImageGrab.grab(all_screens=(which == "all")).save(path)
+        except Exception as e2:
+            return outcome.failed("screenshot", f"{err or e2}"[:160])
+    if not path.exists() or path.stat().st_size < 1000:
+        return outcome.failed("screenshot", "the capture came back empty (a locked screen or a protected window)")
+    if p.get("open") and WINDOWS:
+        os.startfile(str(path))  # type: ignore[attr-defined]
+    return outcome.done("screenshot", saved=str(path))
+
+
 _ACTIONS = {
+    "screenshot": _screenshot,
     "power": _power,
     "clean_temp": _clean_temp,
     "bluetooth": _bluetooth,
@@ -346,7 +385,8 @@ _ACTIONS = {
 PLUGIN = {
     "name": "system_tools",
     "description": (
-        "Does things on this PC: turn Bluetooth on/off, list paired Bluetooth devices or open the "
+        "Does things on this PC: take a screenshot and save it to Pictures/Screenshots (screenshot; "
+        "for LOOKING at the screen to answer a question use screen_process instead); turn Bluetooth on/off, list paired Bluetooth devices or open the "
         "Bluetooth page to connect one (state: on/off/status/devices/settings); install or uninstall "
         "an app with winget (name); run a PowerShell command or script the user dictated (command; "
         "asks to confirm); organise a messy folder like Downloads into folders by file type "
@@ -362,6 +402,8 @@ PLUGIN = {
             "name": {"type": "STRING", "description": "For install/uninstall: the app, e.g. 'VLC'"},
             "command": {"type": "STRING", "description": "For run_command: the PowerShell to run"},
             "timeout": {"type": "INTEGER", "description": "For run_command: seconds before it is stopped (default 120)"},
+            "screen": {"type": "STRING", "description": "For screenshot: main (default), all, or a screen number"},
+            "open": {"type": "BOOLEAN", "description": "For screenshot: open it after saving"},
             "what": {"type": "STRING", "description": "For power: shutdown, restart, sleep, hibernate or cancel"},
             "minutes": {"type": "INTEGER", "description": "For power shutdown/restart: delay in minutes"},
             "folder": {"type": "STRING", "description": "For organise: downloads, desktop, documents or a path"},
