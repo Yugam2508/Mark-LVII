@@ -64,6 +64,18 @@
                 android:value="Keeps the connection to the user's own Jarvis PC open so it can ask this phone to call, text or ring" />
         </service>
 
+        <!-- The Jarvis tile in Quick Settings: listening on/off at a swipe -->
+        <service
+            android:name=".JarvisTile"
+            android:exported="true"
+            android:icon="@android:drawable/ic_btn_speak_now"
+            android:label="Jarvis"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- "Share → Jarvis" from any app sends text and links to the PC -->
         <activity
             android:name=".ShareActivity"

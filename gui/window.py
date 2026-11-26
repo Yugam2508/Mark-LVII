@@ -2958,6 +2958,12 @@ class MainWindow(QMainWindow):
         ov = ConfirmBanner(title, detail, parent=self.centralWidget(), fields=fields)
         ov.answered.connect(self._on_confirm_answered)
         self._centre_overlay(ov)
+        # Hidden in the tray or minimised: the banner can't be seen, so the tray says it.
+        if not self.isVisible() or self.isMinimized():
+            try:
+                self._tray.notify_confirm(title)
+            except Exception:
+                pass
         self._confirm_overlay = ov
 
     # ── Notices that stay ────────────────────────────────────────────────────

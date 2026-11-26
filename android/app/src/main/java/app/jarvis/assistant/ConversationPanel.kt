@@ -68,6 +68,12 @@ class ConversationPanel(
         holo.setOnLongClickListener { LiveAudio.sleepNow(); true }
 
         log.setTextColor(Color.rgb(220, 235, 245)); log.textSize = 15f
+        log.setOnLongClickListener {
+            val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+            cm?.setPrimaryClip(android.content.ClipData.newPlainText("Jarvis conversation", lines.toString().trim()))
+            android.widget.Toast.makeText(context, "Conversation copied", android.widget.Toast.LENGTH_SHORT).show()
+            true
+        }
         scroll.addView(log)
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -107,8 +113,25 @@ class ConversationPanel(
 
     override fun onConnection(connected: Boolean, detail: String) {
         if (!connected && !prefs.paired) onUnpaired?.let { post(it) }
-        status.text = if (connected) "● connected to your PC" else "○ $detail"
+        val vpnOff = !connected && !vpnUp()
+        status.text = when {
+            connected -> "● connected to your PC"
+            vpnOff -> "○ Tailscale looks off — tap here to open it"
+            else -> "○ $detail"
+        }
         status.setTextColor(if (connected) Color.rgb(0, 255, 136) else Color.rgb(255, 160, 60))
+        status.setOnClickListener(if (vpnOff) OnClickListener { openTailscale() } else null)
+    }
+
+    private fun vpnUp(): Boolean = try {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        cm?.allNetworks?.any { cm.getNetworkCapabilities(it)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true } == true
+    } catch (e: Exception) { true }
+
+    private fun openTailscale() {
+        val i = context.packageManager.getLaunchIntentForPackage("com.tailscale.ipn")
+            ?: android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=com.tailscale.ipn"))
+        try { context.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { }
     }
 
     override fun onEvent(event: Protocol.Event) {

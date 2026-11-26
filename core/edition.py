@@ -101,6 +101,11 @@ CHANGELOG = [
         "One Jarvis instead of a menu of agents: background work picks its own way of working (research with "
         "checked sources, price hunting, a study pack, a news digest, or general work) from what you ask — "
         "nobody has to choose a \"researcher\" or a \"general\" agent any more",
+        "Easier to drive: the tray icon has a Quick menu (diagnostics, what's running, stop everything, screenshot, "
+        "back up, what did I miss) and a wake-word switch, and a confirmation that goes up while Jarvis is hidden in "
+        "the tray pops up a notification. Phone: a Jarvis tile in the pull-down Quick Settings, Mute and Stop on the "
+        "listening notification (tap it to open the app), \"Tailscale looks off — tap to open it\" when the PC can't "
+        "be reached, and long-press the conversation to copy it",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

@@ -214,6 +214,15 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] While Jarvis talks, say "wait" → it stops and says nothing. "Go on" → it carries on where it stopped.
 - [ ] Phone: tap the orb while Jarvis is talking → silence at once, and it listens.
 
+## 7j. Driving it
+
+- [ ] Right-click the tray icon → Quick → Run diagnostics / What are you working on? → Jarvis answers.
+- [ ] Hide Jarvis in the tray, ask for something that needs confirming (from the phone) → a Windows notification says
+      "Jarvis needs your OK"; click it → the window opens on the banner.
+- [ ] Phone: pull down Quick Settings → edit → add the Jarvis tile. Tap it → listening off; tap again → the app opens
+      listening. The listening notification has Mute and Stop; tapping it opens the app.
+- [ ] Turn Tailscale off on the phone → the app says "Tailscale looks off — tap here"; tap → Tailscale opens.
+
 ## 7h. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.

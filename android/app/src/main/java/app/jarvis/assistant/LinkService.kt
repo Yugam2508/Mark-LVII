@@ -50,8 +50,16 @@ class LinkService : Service() {
             Prefs(this).openMic = false
             LiveAudio.stop()
         }
-        val listen = (intent?.getBooleanExtra(EXTRA_LISTEN, false) == true && Prefs(this).openMic) ||
-            (intent?.action == null && LiveAudio.running)
+        if (intent?.action == ACTION_MUTE) {
+            LiveAudio.muted = !LiveAudio.muted
+        }
+        // Whether the microphone stays part of this service. Mute keeps it (the mic is only paused);
+        // only "Stop listening" drops it.
+        val listen = when (intent?.action) {
+            ACTION_STOP_LISTEN -> false
+            ACTION_MUTE -> LiveAudio.running
+            else -> (intent?.getBooleanExtra(EXTRA_LISTEN, false) == true && Prefs(this).openMic) || LiveAudio.running
+        }
         val canMic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         val micOn = startForegroundCompat(listen && canMic)
         Hub.connect(this)
@@ -65,11 +73,25 @@ class LinkService : Service() {
             ?.createNotificationChannel(NotificationChannel("link", "Jarvis link", NotificationManager.IMPORTANCE_MIN))
         val stop = PendingIntent.getService(this, 1, Intent(this, LinkService::class.java).setAction(ACTION_STOP_LISTEN),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val mute = PendingIntent.getService(this, 2, Intent(this, LinkService::class.java).setAction(ACTION_MUTE),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val open = PendingIntent.getActivity(this, 4, Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE)
+        val waiting = mic && Prefs(this).wakeWord
         val b = Notification.Builder(this, "link")
-            .setContentTitle(if (mic) "Jarvis is listening" else "Jarvis is linked to your PC")
+            .setContentTitle(when {
+                !mic -> "Jarvis is linked to your PC"
+                LiveAudio.muted -> "Jarvis is muted"
+                waiting -> "Jarvis — say “Hey Jarvis”"
+                else -> "Jarvis is listening"
+            })
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentIntent(open)
             .setOngoing(true)
-        if (mic) b.addAction(Notification.Action.Builder(null, "Stop listening", stop).build())
+        if (mic) {
+            b.addAction(Notification.Action.Builder(null, if (LiveAudio.muted) "Unmute" else "Mute", mute).build())
+            b.addAction(Notification.Action.Builder(null, "Stop listening", stop).build())
+        }
         val note = b.build()
         try {
             when {
@@ -100,6 +122,7 @@ class LinkService : Service() {
 
     companion object {
         private const val ACTION_STOP_LISTEN = "app.jarvis.assistant.STOP_LISTEN"
+        private const val ACTION_MUTE = "app.jarvis.assistant.MUTE"
         private const val EXTRA_LISTEN = "listen"
 
         /** Start (or update) the link; `listen` also opens the microphone. */
