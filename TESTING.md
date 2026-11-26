@@ -80,9 +80,11 @@ Set up once: ⚙ → PLUGIN SETTINGS → CLAUDE CODE CONTROL → add a project
 
 Build and install it first: `android/README.md` has the steps (about 10 minutes in Android Studio).
 
-- [ ] Remote Control on the PC → in the app type the `100.x.x.x:8000` address and the key (or
-      paste the QR link) → **CONNECT** → the PC log says "Paired: <phone name>".
-- [ ] Use the same key a second time → it's refused (one-time use).
+- [ ] Tailscale on → in the app type the PC's `100.x.x.x:8000` address, **no key** → **CONNECT** →
+      the PC log says "Paired: <phone name>".
+- [ ] Restart Jarvis on the PC → the app reconnects by itself, no new pairing.
+- [ ] With "My own Tailscale devices can connect without a key" switched off → CONNECT asks for a key
+      from Remote Control; a key can be used only once.
 - [ ] Close and reopen the app → it logs straight back in without a key.
 - [ ] Type "what time is it" → the reply shows in the log and the phone reads it aloud
       (the PC speaks it too for now; that's expected).

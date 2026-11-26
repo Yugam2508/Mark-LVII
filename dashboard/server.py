@@ -622,6 +622,15 @@ def phone_link_setting() -> str:
         return "auto"
 
 
+def tailnet_trust_enabled() -> bool:
+    """Devices on the PC's own Tailscale account may pair without a key (default on)."""
+    try:
+        from memory.config_manager import get_plugin_setting
+        return bool(get_plugin_setting("device_link", "trust_tailnet", True))
+    except Exception:
+        return True
+
+
 def tailscale_https_wanted() -> bool:
     try:
         from memory.config_manager import get_plugin_setting
@@ -1112,11 +1121,22 @@ class DashboardServer:
                 return JSONResponse({"ok": False, "error": "Bad request"}, status_code=400)
             entered = str(body.get("pin", "")).strip().upper()
             now = time.time()
-            if entered not in self._pending_keys or self._pending_keys[entered] <= now:
+            trusted_name = ""
+            if not entered:
+                # No key: only a device on this PC's own Tailscale account may do that.
+                from core import tailnet
+                trusted_name = tailnet.owned_device(who) if tailnet_trust_enabled() else ""
+                if not trusted_name:
+                    return JSONResponse({"ok": False, "error": "This needs a key from Remote Control: this "
+                                         "device isn't on your Tailscale account (or trusting it is switched off)"},
+                                        status_code=401)
+                entered = ''.join(secrets.choice(_KEY_CHARS) for _ in range(8))   # a fresh session key
+            elif entered not in self._pending_keys or self._pending_keys[entered] <= now:
                 self._throttle.record_failure(who)
                 return JSONResponse({"ok": False, "error": "Invalid or expired key"}, status_code=401)
+            else:
+                del self._pending_keys[entered]                  # one-time use
             self._throttle.clear(who)
-            del self._pending_keys[entered]                      # one-time use
             tok, dev_tok = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
             self._tokens[tok] = time.time()
             self._token_keys[tok] = entered

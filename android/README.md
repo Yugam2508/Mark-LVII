@@ -39,9 +39,10 @@ Control on the PC and enter the new key: the address is kept.
 3. On the OnePlus: Settings → About → tap **Build number** 7 times → Developer options → **USB
    debugging** (or **Wireless debugging**). Connect it and pick it in Android Studio's device list.
 4. Press **Run ▶**. The app opens on the connect screen.
-5. Tailscale **on** on the phone. On the PC press **Remote Control** in Jarvis. In the app type the PC's
-   address (`100.x.x.x:8000`, the one under the QR code) and the 8-character key, or paste the whole
-   QR link into the address box. **CONNECT**.
+5. Tailscale **on** on the phone. In the app type the PC's Tailscale address (`100.x.x.x:8000`) and press
+   **CONNECT**. No key is needed when the phone is on the same Tailscale account as the PC. If the PC
+   asks for one (another account, or that setting is off), press **Remote Control** in Jarvis and type
+   the 8-character key shown there, or paste the whole QR link into the address box.
 6. Say or type "what time is it". Check the log fills in and the phone speaks.
 7. Make it the assistant: Settings → Apps → Default apps → **Digital assistant app** → **Jarvis** (the
    app's menu key also opens a shortcut to this). Allow the microphone when asked. Then long-press power.

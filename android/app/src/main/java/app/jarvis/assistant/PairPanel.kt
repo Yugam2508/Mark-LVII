@@ -18,8 +18,10 @@ class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayo
 
         fun label(t: String, size: Float, color: Int) = TextView(context).apply { text = t; textSize = size; setTextColor(color) }
         addView(label("JARVIS", 28f, Color.rgb(0, 212, 255)))
-        addView(label("Connect to your PC.\n\n1. Turn Tailscale on, on this phone.\n2. On the PC, press Remote Control in Jarvis.\n" +
-            "3. Type the address and the 8-character key shown there, or paste the whole link from the QR code.",
+        addView(label("Connect to your PC.\n\n1. Turn Tailscale on, on this phone.\n2. Type your PC's Tailscale address " +
+            "(for example 100.89.195.89:8000).\n3. Press CONNECT. No key is needed when this phone is on the same " +
+            "Tailscale account as the PC. If it asks for one, press Remote Control in Jarvis on the PC and type the " +
+            "8-character key shown there (or paste the whole QR link).",
             14f, Color.rgb(160, 190, 205)))
 
         val address = EditText(context).apply {
@@ -28,7 +30,7 @@ class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayo
             setText(Prefs(context).baseUrl)
         }
         val key = EditText(context).apply {
-            hint = "Key (8 characters)"; setHintTextColor(Color.rgb(80, 110, 125)); setTextColor(Color.WHITE)
+            hint = "Key (only if asked)"; setHintTextColor(Color.rgb(80, 110, 125)); setTextColor(Color.WHITE)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
         }
         val message = label("", 13f, Color.rgb(255, 160, 60))
@@ -38,7 +40,7 @@ class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayo
             val k = key.text.toString().trim().ifEmpty { parsed?.key.orEmpty() }
             when {
                 parsed == null -> message.text = "That doesn't look like an address."
-                !Protocol.isKey(k) -> message.text = "The key is 8 letters and numbers."
+                k.isNotEmpty() && !Protocol.isKey(k) -> message.text = "The key is 8 letters and numbers."
                 else -> {
                     go.isEnabled = false; message.text = "Connecting…"
                     Hub.pair(context, parsed.baseUrl, k) { ok, detail ->

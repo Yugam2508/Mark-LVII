@@ -41,6 +41,8 @@ CHANGELOG = [
         "\"how's my phone's battery\" — calls and texts always wait for your confirm",
         "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
         "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
+        "No more pairing code for your own devices: a phone on the same Tailscale account as the PC "
+        "connects with just the address (others still need the key from Remote Control)",
     ]},
     {"version": "1.8", "date": "2026-11-30", "items": [
         "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "
