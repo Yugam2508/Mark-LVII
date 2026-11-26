@@ -24,7 +24,7 @@ class MainActivity : Activity() {
         // Everything Jarvis may be asked to do on this phone, asked for once up front.
         val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS,
             Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_CALL_LOG)
+            Manifest.permission.READ_CALL_LOG, Manifest.permission.ACCESS_FINE_LOCATION)
         if (android.os.Build.VERSION.SDK_INT >= 33) wanted += Manifest.permission.POST_NOTIFICATIONS
         val missing = wanted.filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 1)

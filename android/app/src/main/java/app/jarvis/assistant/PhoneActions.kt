@@ -28,7 +28,8 @@ import org.json.JSONObject
 object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
-        "notifications", "reply_notification", "dismiss_notification", "recent_calls")
+        "notifications", "reply_notification", "dismiss_notification", "recent_calls",
+        "send_to_phone", "location", "dnd")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -55,6 +56,9 @@ object PhoneActions {
             "notifications" -> notifications(context, args.optString("app"), args.optInt("limit", 8))
             "reply_notification" -> replyNotification(context, args)
             "dismiss_notification" -> dismissNotification(args)
+            "send_to_phone" -> sendToPhone(context, args.optString("text"), args.optString("title"))
+            "location" -> location(context)
+            "dnd" -> dnd(context, args.optBoolean("on", true))
             "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
@@ -257,6 +261,48 @@ object PhoneActions {
         val e = NotifyService.find(a.optString("key"), a.optString("app"), a.optString("from"))
             ?: return Result(false, "Nothing like that to clear")
         return if (NotifyService.dismiss(e)) Result(true, "Cleared") else Result(false, "Notification access is off")
+    }
+
+    /** Text or a link from the PC: copied to the clipboard and shown as a notification (tap to open a link). */
+    private fun sendToPhone(context: Context, text: String, title: String): Result {
+        if (text.isBlank()) return Result(false, "Nothing to send")
+        val cm = service(context, android.content.ClipboardManager::class.java)
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("From Jarvis", text))
+        val nm = service(context, android.app.NotificationManager::class.java)
+        nm.createNotificationChannel(android.app.NotificationChannel("from_pc", "From your PC",
+            android.app.NotificationManager.IMPORTANCE_HIGH))
+        val link = Regex("https?://\\S+").find(text)?.value
+        val tap = if (link != null) Intent(Intent.ACTION_VIEW, Uri.parse(link)) else
+            Intent(context, MainActivity::class.java)
+        val pi = android.app.PendingIntent.getActivity(context, 7, tap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = android.app.Notification.Builder(context, "from_pc")
+            .setSmallIcon(android.R.drawable.ic_menu_send)
+            .setContentTitle(title.ifBlank { "From Jarvis" })
+            .setContentText(text.take(200))
+            .setStyle(android.app.Notification.BigTextStyle().bigText(text.take(2000)))
+            .setContentIntent(pi).setAutoCancel(true).build()
+        nm.notify(text.hashCode(), n)
+        return Result(true, "On the phone (copied, and in the notifications)")
+    }
+
+    private fun location(context: Context): Result {
+        val lm = service(context, android.location.LocationManager::class.java)
+        val best = lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }
+            ?: return Result(false, "The phone has no recent location (location off, or permission not given)")
+        val ageMin = (System.currentTimeMillis() - best.time) / 60000
+        val link = "https://maps.google.com/?q=${best.latitude},${best.longitude}"
+        return Result(true, "Within ${best.accuracy.toInt()} m, $ageMin min ago: $link",
+            JSONObject().put("lat", best.latitude).put("lon", best.longitude).put("accuracy_m", best.accuracy.toDouble())
+                .put("age_min", ageMin).put("map", link))
+    }
+
+    private fun dnd(context: Context, on: Boolean): Result {
+        val svc = NotifyService.instance
+            ?: return Result(false, "Turn on \"Let Jarvis read notifications\" in the app menu first")
+        svc.requestInterruptionFilter(if (on) android.service.notification.NotificationListenerService.INTERRUPTION_FILTER_PRIORITY
+            else android.service.notification.NotificationListenerService.INTERRUPTION_FILTER_ALL)
+        return Result(true, if (on) "Do Not Disturb on" else "Do Not Disturb off")
     }
 
     private fun recentCalls(context: Context, limit: Int): Result {

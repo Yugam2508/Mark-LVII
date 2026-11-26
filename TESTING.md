@@ -157,6 +157,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] ⚙ → PLUGIN SETTINGS → PHONE MESSAGES → switch announcements off → new messages are no longer announced,
       but "any messages?" still works.
 - [ ] "Shut down the PC in 10 minutes" → confirm → scheduled; "cancel the shutdown" → cancelled. "Clean my temp files".
+- [ ] Copy a link on the PC, "send that to my phone" → a notification on the phone; tap it → the link opens.
+- [ ] "Where's my phone?" → a map link (allow Location when the app asks). "Turn on Do Not Disturb on my phone".
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
 ## 7g. Notes, dictation and self-check

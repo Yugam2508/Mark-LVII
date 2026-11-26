@@ -191,6 +191,9 @@ PLUGIN = {
             "title": {"type": "STRING", "description": "For add: optional short heading"},
             "tidy": {"type": "BOOLEAN",
                      "description": "For add: clean rough dictation into bullet points first"},
+            "where": {"type": "STRING", "enum": ["notion", "google_doc", "knowledge"],
+                      "description": "Only when the user names a place ('in Notion', 'in my Google Doc'); "
+                                     "otherwise leave empty for their default"},
             "count": {"type": "INTEGER", "description": "For read: how many recent notes (default 5)"},
             "query": {"type": "STRING", "description": "For search"},
         },
@@ -213,6 +216,9 @@ PLUGIN_SETTINGS = {
 def run(parameters: dict, player=None, session_memory=None) -> str:
     action = str(parameters.get("action") or "add")
     backend = _backend()
+    want = str(parameters.get("where") or "").lower().replace(" ", "_")
+    if want in ("notion", "google_doc", "knowledge"):
+        backend = want                      # "save this to Notion" goes to Notion, whatever the default
     try:
         if action == "add":
             text = (parameters.get("text") or "").strip()
@@ -231,8 +237,10 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             entry = header + "\n" + text
             _ADD[backend](entry)
             _open_editor(backend, header, entry, text, player)
-            return outcome.done("notes_add", saved_in=backend if backend != "knowledge"
-                                else "JARVIS Notes.md in the knowledge folder")
+            where = {"notion": "Notion (home page)", "google_doc": "the JARVIS Notes Google Doc"}.get(
+                backend, f"JARVIS Notes.md in {_local_path().parent}")
+            return outcome.done("notes_add", saved_in=where, chars=len(text),
+                                note="say exactly where it was saved; do not name a different place")
 
         entries = _entries(_TEXT[backend]())
         if action == "search":

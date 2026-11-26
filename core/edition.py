@@ -48,6 +48,9 @@ CHANGELOG = [
         "Notion by name: \"add this to my Jarvis ideas page\" finds the page itself (no search-then-number step), "
         "and long pages are created in full. Remembering a fact now reports when it did NOT save, instead of "
         "always answering ok; session summaries keep every item of a list you gave",
+        "\"Save this to Notion\" now really goes to Notion (it used to follow the default notes place and could "
+        "still say Notion). Phone: \"send this to my phone\" (text, a link or the PC clipboard: copied there and "
+        "shown as a notification), \"where's my phone?\" with a map link, Do Not Disturb on/off",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
