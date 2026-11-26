@@ -76,6 +76,22 @@ Set up once: ⚙ → PLUGIN SETTINGS → CLAUDE CODE CONTROL → add a project
       "Secure phone link through Tailscale" → QR shows `https://….ts.net` → the phone
       mic button works.
 
+## 7b. The Android app (v1.8, `android/`)
+
+Build and install it first: `android/README.md` has the steps (about 10 minutes in Android Studio).
+
+- [ ] Remote Control on the PC → in the app type the `100.x.x.x:8000` address and the key (or
+      paste the QR link) → **CONNECT** → the PC log says "Paired: <phone name>".
+- [ ] Use the same key a second time → it's refused (one-time use).
+- [ ] Close and reopen the app → it logs straight back in without a key.
+- [ ] Type "what time is it" → the reply shows in the log and the phone reads it aloud
+      (the PC speaks it too for now; that's expected).
+- [ ] Tap **MIC**, say something → it's recognised and answered.
+- [ ] Settings → Apps → Default apps → Digital assistant app → **Jarvis** → long-press power
+      from another app → the panel opens over it and starts listening.
+- [ ] Not built yet, so don't expect them: wake word, calls and texts, the AC through the
+      IR blaster, and picking up a conversation from the PC (steps 2-5 in ANDROID.md).
+
 ## 8. Things from earlier versions still worth a run
 
 - [ ] Morning briefing (tomorrow morning), proactive email alerts with suggested replies.
