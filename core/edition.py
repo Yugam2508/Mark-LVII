@@ -39,6 +39,14 @@ CHANGELOG = [
         "the phone's assistant (long-press power); see android/README.md",
         "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
         "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+        "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
+        "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
+        "Deeper thinking on its own: when a question needs real reasoning, Jarvis isn't sure, or you "
+        "doubt it in any words, it hands the question (with the conversation and your memory boxes) to "
+        "a stronger model — your OpenAI keys (several, rotated when one runs out) or Claude through your "
+        "subscription — and brings back the analysis; \"use Claude\" / \"add this OpenAI key\" by voice",
+        "No more pairing code for your own devices: a phone on the same Tailscale account as the PC "
+        "connects with just the address (others still need the key from Remote Control)",
     ]},
     {"version": "1.8", "date": "2026-11-30", "items": [
         "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "

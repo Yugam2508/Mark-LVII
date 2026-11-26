@@ -477,6 +477,8 @@ PLUGIN_SETTINGS = {
          "type": "text", "placeholder": "desktop"},
         {"key": "phone_link", "label": "Phone dashboard QR code uses (auto = Tailscale when it's on)",
          "type": "choice", "options": ["auto", "tailscale", "home wi-fi"], "default": "auto"},
+        {"key": "trust_tailnet", "label": "My own Tailscale devices can connect without a key",
+         "type": "toggle", "default": True},
         {"key": "tailscale_https", "label": "Secure phone link through Tailscale (HTTPS, lets the phone mic work)",
          "type": "toggle", "default": False},
         {"key": "accept_remote", "label": "Accept commands from my phone and other PCs",

@@ -99,6 +99,7 @@ def status(refresh: bool = False) -> dict:
                     out["ip"] = ip
                     break
             out["dns"] = str(me.get("DNSName") or "").rstrip(".")
+            out["user"] = me.get("UserID")
         except ValueError:
             pass
     if not out["ip"]:
@@ -106,6 +107,40 @@ def status(refresh: bool = False) -> dict:
         out["running"] = out["running"] or bool(out["ip"])
     _cache.update(at=now, status=out)
     return out
+
+
+_CGNAT_NET = ipaddress.ip_network("100.64.0.0/10")
+
+
+def owned_device(ip: str) -> str:
+    """The device name if `ip` is another device on THIS PC's own Tailscale account, else ''.
+
+    Why this is safe to trust without a pairing code: a connection from a 100.x address can only
+    come from that device, because Tailscale encrypts and authenticates traffic device to device
+    (a spoofed source address cannot complete a TCP handshake through the tunnel). Asking
+    `tailscale whois` who owns that address, and requiring the same account as this PC, means only
+    your own phones and computers qualify — not other people's devices shared into your tailnet,
+    not tagged servers, and not anything on your home Wi-Fi."""
+    try:
+        addr = ipaddress.ip_address((ip or "").strip())
+    except ValueError:
+        return ""
+    if addr not in _CGNAT_NET:
+        return ""
+    s = status()
+    me = s.get("user")
+    if not s["running"] or me is None:
+        return ""
+    r = _run("whois", "--json", str(addr))
+    if r is None or r.returncode != 0 or not r.stdout.strip():
+        return ""
+    try:
+        node = (json.loads(r.stdout) or {}).get("Node") or {}
+    except ValueError:
+        return ""
+    if node.get("User") != me or node.get("Tags"):
+        return ""
+    return str(node.get("ComputedName") or node.get("Name") or "tailnet device").split(".")[0][:40]
 
 
 def address() -> str:

@@ -127,6 +127,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["20", "45", "120"], "default": "45"},
         {"key": "welcome_back", "label": "When I'm back, tell me what I missed", "type": "toggle",
          "default": True},
+        {"key": "keep_awake_for_phone", "label": "Keep this PC awake while my phone is connected "
+         "(on mains power only)", "type": "toggle", "default": True},
         {"key": "close_to_tray", "label": "Closing the window keeps Jarvis running in the tray "
          "(Ctrl+Alt+J brings it back)", "type": "toggle", "default": True},
         {"key": "follow_audio", "label": "Follow audio devices: switch when headphones or Bluetooth "

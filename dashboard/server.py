@@ -622,6 +622,15 @@ def phone_link_setting() -> str:
         return "auto"
 
 
+def tailnet_trust_enabled() -> bool:
+    """Devices on the PC's own Tailscale account may pair without a key (default on)."""
+    try:
+        from memory.config_manager import get_plugin_setting
+        return bool(get_plugin_setting("device_link", "trust_tailnet", True))
+    except Exception:
+        return True
+
+
 def tailscale_https_wanted() -> bool:
     try:
         from memory.config_manager import get_plugin_setting
@@ -794,7 +803,10 @@ class DashboardServer:
         self._connect_callback            = None
         self._pending_keys: dict[str, float] = {}
         self._throttle                    = _Throttle()
-        self._device_sessions: dict[str, dict] = {}  # device_token → {session_key}
+        # device_token → {session_key, name, at}. Kept on disk (config/devices.json): they used to
+        # live in memory only, so every Jarvis restart made every paired phone "unknown" and the
+        # Android app had to be paired again.
+        self._device_sessions: dict[str, dict] = self._load_devices()
         self._phone_audio_queue: asyncio.Queue    = asyncio.Queue(maxsize=200)
         self._uploads_dir                 = UPLOADS_DIR
         # Set by serve() when the port could not be taken, so the UI can say
@@ -803,6 +815,44 @@ class DashboardServer:
         self._login_html                  = _read("login.html")
         self._app_html                    = _read("app.html")
         self.app                          = self._build_app()
+
+    # ── paired devices survive restarts ───────────────────────────────────
+
+    _DEVICE_MAX = 20
+    _DEVICE_TTL = 180 * 86400
+
+    @staticmethod
+    def _devices_path() -> Path:
+        return BASE_DIR / "config" / "devices.json"
+
+    def _load_devices(self) -> dict:
+        import json as _json
+        try:
+            raw = _json.loads(self._devices_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        now = time.time()
+        return {t: d for t, d in raw.items()
+                if isinstance(d, dict) and d.get("session_key") and now - float(d.get("at", now)) < self._DEVICE_TTL}
+
+    def _save_devices(self) -> None:
+        import json as _json
+        import os as _os
+        if len(self._device_sessions) > self._DEVICE_MAX:      # keep the most recently used
+            keep = sorted(self._device_sessions.items(), key=lambda kv: kv[1].get("at", 0))[-self._DEVICE_MAX:]
+            self._device_sessions = dict(keep)
+        path = self._devices_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(_json.dumps(self._device_sessions), encoding="utf-8")
+            try:
+                _os.chmod(tmp, 0o600)                           # these are bearer secrets
+            except OSError:
+                pass
+            _os.replace(tmp, path)
+        except OSError as e:
+            print(f"[Dashboard] could not save paired devices: {e}")
 
     # ── the phone as a limb ───────────────────────────────────────────────
 
@@ -1071,17 +1121,29 @@ class DashboardServer:
                 return JSONResponse({"ok": False, "error": "Bad request"}, status_code=400)
             entered = str(body.get("pin", "")).strip().upper()
             now = time.time()
-            if entered not in self._pending_keys or self._pending_keys[entered] <= now:
+            trusted_name = ""
+            if not entered:
+                # No key: only a device on this PC's own Tailscale account may do that.
+                from core import tailnet
+                trusted_name = tailnet.owned_device(who) if tailnet_trust_enabled() else ""
+                if not trusted_name:
+                    return JSONResponse({"ok": False, "error": "This needs a key from Remote Control: this "
+                                         "device isn't on your Tailscale account (or trusting it is switched off)"},
+                                        status_code=401)
+                entered = ''.join(secrets.choice(_KEY_CHARS) for _ in range(8))   # a fresh session key
+            elif entered not in self._pending_keys or self._pending_keys[entered] <= now:
                 self._throttle.record_failure(who)
                 return JSONResponse({"ok": False, "error": "Invalid or expired key"}, status_code=401)
+            else:
+                del self._pending_keys[entered]                  # one-time use
             self._throttle.clear(who)
-            del self._pending_keys[entered]                      # one-time use
             tok, dev_tok = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
             self._tokens[tok] = time.time()
             self._token_keys[tok] = entered
             self._aes_key(entered)
-            self._device_sessions[dev_tok] = {"session_key": entered}
             name = re.sub(r"[^\w .-]", "", str(body.get("name", "")))[:40] or "phone"
+            self._device_sessions[dev_tok] = {"session_key": entered, "name": name, "at": time.time()}
+            self._save_devices()
             if self._connect_callback:
                 self._connect_callback()
             asyncio.create_task(self.broadcast({"type": "sys", "text": f"Paired: {name}."}))
@@ -1109,7 +1171,8 @@ class DashboardServer:
             self._tokens[tok] = time.time()
             self._token_keys[tok] = key
             self._aes_key(key)
-            self._device_sessions[dev_tok] = {"session_key": key}
+            self._device_sessions[dev_tok] = {"session_key": key, "name": "browser", "at": time.time()}
+            self._save_devices()
 
             if self._connect_callback:
                 self._connect_callback()
@@ -1145,6 +1208,8 @@ class DashboardServer:
             if not dev_tok or dev_tok not in self._device_sessions:
                 return JSONResponse({"ok": False}, status_code=401)
             session_key = self._device_sessions[dev_tok]["session_key"]
+            self._device_sessions[dev_tok]["at"] = time.time()      # last seen: keeps active phones past the cap
+            self._save_devices()
             tok = secrets.token_urlsafe(32)
             self._tokens[tok] = time.time()
             self._token_keys[tok] = session_key
@@ -1174,6 +1239,7 @@ class DashboardServer:
             count = len(self._device_sessions)
             live  = len(self._tokens) - (1 if mine in self._tokens else 0)
             self._device_sessions.clear()
+            self._save_devices()
             keep = self._tokens.get(mine)
             self._tokens.clear()
             self._token_keys = {k: v for k, v in self._token_keys.items() if k == mine}

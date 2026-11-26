@@ -80,9 +80,11 @@ Set up once: ⚙ → PLUGIN SETTINGS → CLAUDE CODE CONTROL → add a project
 
 Build and install it first: `android/README.md` has the steps (about 10 minutes in Android Studio).
 
-- [ ] Remote Control on the PC → in the app type the `100.x.x.x:8000` address and the key (or
-      paste the QR link) → **CONNECT** → the PC log says "Paired: <phone name>".
-- [ ] Use the same key a second time → it's refused (one-time use).
+- [ ] Tailscale on → in the app type the PC's `100.x.x.x:8000` address, **no key** → **CONNECT** →
+      the PC log says "Paired: <phone name>".
+- [ ] Restart Jarvis on the PC → the app reconnects by itself, no new pairing.
+- [ ] With "My own Tailscale devices can connect without a key" switched off → CONNECT asks for a key
+      from Remote Control; a key can be used only once.
 - [ ] Close and reopen the app → it logs straight back in without a key.
 - [ ] Type "what time is it" → the reply shows in the log and the phone reads it aloud
       (the PC speaks it too for now; that's expected).
@@ -99,6 +101,16 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Restart the phone → the link notification comes back by itself.
 - [ ] Not built yet, so don't expect them: wake word, the AC through the IR blaster, reading
       notifications, controlling other apps, and picking up a conversation from the PC.
+
+## 7c. Deeper thinking
+
+- [ ] Copy an OpenAI key, say "add this OpenAI key" → it confirms how many keys and which model.
+- [ ] Ask something that needs reasoning ("should I take the 9am swim or the 6pm one if I'm sleeping
+      badly and have a lecture at 10?") → it says it's getting the stronger model, then a card appears and
+      it summarises the answer, naming the model.
+- [ ] After a quick answer say "hmm, that doesn't sound right" → it goes deeper without being told to.
+- [ ] "Use Claude for deep thinking", ask again → the card says Claude. "Use OpenAI" → back.
+- [ ] "How much deep thinking have I used today?" → calls and tokens per model.
 
 ## 8. Things from earlier versions still worth a run
 

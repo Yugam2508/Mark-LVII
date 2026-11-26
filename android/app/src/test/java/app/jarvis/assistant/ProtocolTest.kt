@@ -51,6 +51,11 @@ class ProtocolTest {
         assertFalse(Protocol.parseAuth("<html>").ok)
     }
 
+    @Test fun pairingWithoutAKeyOnTailscale() {
+        assertEquals("""{"pin":"","name":"OnePlus 13"}""", Protocol.pairBody("", "OnePlus 13"))
+        assertEquals("""{"pin":"","name":"OnePlus 13"}""", Protocol.pairBody("  ", "OnePlus 13"))
+    }
+
     @Test fun bodiesAreValidJson() {
         assertEquals("""{"pin":"ABCD1234","name":"OnePlus 13"}""", Protocol.pairBody(" abcd1234", "OnePlus 13"))
         assertEquals("""{"type":"command","text":"what's \"up\""}""", Protocol.commandBody("what's \"up\""))

@@ -2939,6 +2939,11 @@ class JarvisLive:
             audio_watch.start()
         except Exception as e:
             print(f"[Audio] device watch not started: {e}")
+        try:
+            from core import keepawake
+            keepawake.start()
+        except Exception as e:
+            print(f"[KeepAwake] not started: {e}")
 
         # Start dashboard (optional — needs: pip install fastapi "uvicorn[standard]" cryptography)
         try:

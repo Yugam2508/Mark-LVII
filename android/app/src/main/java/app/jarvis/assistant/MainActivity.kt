@@ -34,7 +34,7 @@ class MainActivity : Activity() {
         root.removeAllViews()
         if (Prefs(this).paired) {
             LinkService.start(this)
-            root.addView(ConversationPanel(this, listenOnShow = intent?.action == Intent.ACTION_ASSIST))
+            root.addView(ConversationPanel(this, listenOnShow = intent?.action == Intent.ACTION_ASSIST, onUnpaired = { show() }))
         } else {
             root.addView(PairPanel(this) { show() })
         }
