@@ -27,7 +27,8 @@ import org.json.JSONObject
  */
 object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
-        "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp")
+        "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
+        "notifications", "reply_notification", "dismiss_notification", "recent_calls")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -51,6 +52,10 @@ object PhoneActions {
             "flashlight" -> flashlight(context, args.optBoolean("on", true))
             "timer" -> timer(context, args.optInt("seconds", 0), args.optString("label"))
             "media" -> media(context, args.optString("key"))
+            "notifications" -> notifications(context, args.optString("app"), args.optInt("limit", 8))
+            "reply_notification" -> replyNotification(context, args)
+            "dismiss_notification" -> dismissNotification(args)
+            "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
@@ -231,6 +236,47 @@ object PhoneActions {
         return Result(true, if (SendTapService.enabled) "WhatsApp opened and Send pressed"
             else "WhatsApp is open with the message typed in; it still needs a tap on Send",
             JSONObject().put("auto_send", SendTapService.enabled))
+    }
+
+    private fun notifications(context: Context, app: String, limit: Int): Result {
+        if (!NotifyService.enabled(context))
+            return Result(false, "Notification access is off. In the Jarvis app menu choose \"Let Jarvis read notifications\".")
+        val list = NotifyService.list(app, limit.coerceIn(1, 30))
+        return Result(true, "${list.length()} notification(s)", JSONObject().put("notifications", list))
+    }
+
+    private fun replyNotification(context: Context, a: JSONObject): Result {
+        val e = NotifyService.find(a.optString("key"), a.optString("app"), a.optString("from"))
+            ?: return Result(false, "I can't find that message on the phone any more")
+        if (a.optString("text").isBlank()) return Result(false, "What should the reply say?")
+        if (!NotifyService.reply(context, e, a.optString("text"))) return Result(false, "That notification has no reply button")
+        return Result(true, "Replied to ${e.title} in ${e.app}")
+    }
+
+    private fun dismissNotification(a: JSONObject): Result {
+        val e = NotifyService.find(a.optString("key"), a.optString("app"), a.optString("from"))
+            ?: return Result(false, "Nothing like that to clear")
+        return if (NotifyService.dismiss(e)) Result(true, "Cleared") else Result(false, "Notification access is off")
+    }
+
+    private fun recentCalls(context: Context, limit: Int): Result {
+        val out = JSONArray()
+        context.contentResolver.query(android.provider.CallLog.Calls.CONTENT_URI,
+            arrayOf(android.provider.CallLog.Calls.CACHED_NAME, android.provider.CallLog.Calls.NUMBER,
+                android.provider.CallLog.Calls.TYPE, android.provider.CallLog.Calls.DATE),
+            null, null, "${android.provider.CallLog.Calls.DATE} DESC")?.use { c ->
+            while (c.moveToNext() && out.length() < limit.coerceIn(1, 30)) {
+                val kind = when (c.getInt(2)) {
+                    android.provider.CallLog.Calls.MISSED_TYPE -> "missed"
+                    android.provider.CallLog.Calls.INCOMING_TYPE -> "incoming"
+                    android.provider.CallLog.Calls.OUTGOING_TYPE -> "outgoing"
+                    else -> "other"
+                }
+                out.put(JSONObject().put("who", c.getString(0) ?: c.getString(1)).put("type", kind)
+                    .put("age_min", (System.currentTimeMillis() - c.getLong(3)) / 60000))
+            }
+        }
+        return Result(true, "${out.length()} call(s)", JSONObject().put("calls", out))
     }
 
     private fun navigate(context: Context, where: String): Result {

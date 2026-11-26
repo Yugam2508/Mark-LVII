@@ -270,7 +270,70 @@ def _open_url(p: dict) -> str:
     return outcome.done("open_url", url=url)
 
 
+# ── power and housekeeping ───────────────────────────────────────────────────
+
+def _power(p: dict) -> str:
+    what = str(p.get("what") or "").lower()
+    delay = max(0, min(int(p.get("minutes") or 0), 600)) * 60
+    if what == "cancel":
+        rc, out = _run(["shutdown", "/a"] if WINDOWS else ["shutdown", "-c"], 15)
+        return outcome.done("power_cancel") if rc == 0 else outcome.failed("power_cancel", out[:120] or "nothing was scheduled")
+    cmds = {
+        "shutdown": (["shutdown", "/s", "/t", str(delay)], ["shutdown", "-h", f"+{delay // 60}"]),
+        "restart": (["shutdown", "/r", "/t", str(delay)], ["shutdown", "-r", f"+{delay // 60}"]),
+        "sleep": (["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], ["systemctl", "suspend"]),
+        "hibernate": (["shutdown", "/h"], ["systemctl", "hibernate"]),
+    }
+    if what not in cmds:
+        return outcome.ask("power", "Shut down, restart, sleep or hibernate?")
+    win, other = cmds[what]
+    when = f" in {delay // 60} minutes" if delay and what in ("shutdown", "restart") else " now"
+
+    def go() -> str:
+        rc, out = _run(win if WINDOWS else other, 30)
+        return outcome.done(f"power_{what}", when=when.strip()) if rc == 0 else outcome.failed(f"power_{what}", out[:120])
+
+    return confirm.request(f"power:{what}:{delay}", what.title() + " the PC",
+                           f"{what.title()} this PC{when}. Unsaved work in open programs may be lost.", go)
+
+
+def _dir_size(path: Path) -> int:
+    total = 0
+    for root, _, files in os.walk(path, onerror=lambda e: None):
+        for f in files:
+            try:
+                total += os.path.getsize(os.path.join(root, f))
+            except OSError:
+                pass
+    return total
+
+
+def _clean_temp(p: dict) -> str:
+    dirs = [Path(d) for d in {os.environ.get("TEMP", ""), os.environ.get("TMP", "")} if d and Path(d).is_dir()]
+    if not dirs:
+        return outcome.failed("clean_temp", "no temp folder found")
+    size = sum(_dir_size(d) for d in dirs)
+
+    def go() -> str:
+        freed = 0
+        for d in dirs:
+            for child in list(d.iterdir()):
+                try:
+                    n = _dir_size(child) if child.is_dir() else child.stat().st_size
+                    shutil.rmtree(child) if child.is_dir() else child.unlink()
+                    freed += n
+                except OSError:
+                    continue                      # in use by a program: leave it
+        return outcome.done("clean_temp", freed_mb=round(freed / 1e6, 1))
+
+    return confirm.request("clean_temp", "Clean temp files",
+                           f"Delete temporary files ({size / 1e6:.0f} MB) from {', '.join(str(d) for d in dirs)}. "
+                           "Files in use are skipped.", go)
+
+
 _ACTIONS = {
+    "power": _power,
+    "clean_temp": _clean_temp,
     "bluetooth": _bluetooth,
     "install": _install,
     "uninstall": lambda p: _install(p, remove=True),
@@ -287,7 +350,7 @@ PLUGIN = {
         "Bluetooth page to connect one (state: on/off/status/devices/settings); install or uninstall "
         "an app with winget (name); run a PowerShell command or script the user dictated (command; "
         "asks to confirm); organise a messy folder like Downloads into folders by file type "
-        "(folder; asks to confirm) and undo it; open a website or search (url). Use for 'install X', "
+        "(folder; asks to confirm) and undo it; shut down, restart, sleep or hibernate the PC, now or after N minutes, or cancel a scheduled shutdown (power; asks to confirm); delete temp files to free space (clean_temp; asks to confirm); open a website or search (url). Use for 'install X', "
         "'run this', 'tidy my downloads', 'turn on Bluetooth', 'open youtube.com'. For finding or "
         "deleting files use file_finder; for Spotify use spotify_control."
     ),
@@ -299,6 +362,8 @@ PLUGIN = {
             "name": {"type": "STRING", "description": "For install/uninstall: the app, e.g. 'VLC'"},
             "command": {"type": "STRING", "description": "For run_command: the PowerShell to run"},
             "timeout": {"type": "INTEGER", "description": "For run_command: seconds before it is stopped (default 120)"},
+            "what": {"type": "STRING", "description": "For power: shutdown, restart, sleep, hibernate or cancel"},
+            "minutes": {"type": "INTEGER", "description": "For power shutdown/restart: delay in minutes"},
             "folder": {"type": "STRING", "description": "For organise: downloads, desktop, documents or a path"},
             "url": {"type": "STRING", "description": "For open_url: a site, address or search words"},
         },

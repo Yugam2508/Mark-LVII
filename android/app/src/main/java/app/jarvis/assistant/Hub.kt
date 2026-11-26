@@ -191,6 +191,12 @@ object Hub {
 
     // ── sending ──────────────────────────────────────────────────────────────
 
+    /** A raw JSON message for the PC (a notification that just arrived). False when not connected. */
+    fun sendRaw(json: String): Boolean {
+        val s = socket ?: return false
+        return connected && s.send(json)
+    }
+
     /** Say something to Jarvis as text. Returns false when there is no connection. */
     fun send(text: String): Boolean {
         val s = socket ?: return false

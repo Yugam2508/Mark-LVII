@@ -16,6 +16,7 @@
     <!-- Lets Jarvis open apps and sites while it is in the background ("Display over other apps"). -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
     <queries>
         <intent>
@@ -68,6 +69,16 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/send_tap_service" />
+        </service>
+
+        <service
+            android:name=".NotifyService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
         <receiver

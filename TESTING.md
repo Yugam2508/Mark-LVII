@@ -147,6 +147,13 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       once and remembers it. WhatsApp Desktop must be installed and signed in.
 - [ ] "WhatsApp <a friend> hi, from my phone" → the chat opens on the phone with the text typed. Phone menu →
       "Let Jarvis tap Send in WhatsApp" → switch Jarvis on in Accessibility → repeat: Send is pressed for you.
+- [ ] Phone menu → "Let Jarvis read notifications" → switch Jarvis on (Android may warn; that is normal) and
+      allow Call log when asked. Have a friend WhatsApp you: Jarvis announces it (a card if you're busy).
+- [ ] "Any WhatsApp messages?" → lists them. "Reply to <them>: on my way" → shown to edit/confirm → "confirm" →
+      it arrives in the chat. "Clear that notification" → gone from the phone. "Did anyone call?" → the call log.
+- [ ] ⚙ → PLUGIN SETTINGS → PHONE MESSAGES → switch announcements off → new messages are no longer announced,
+      but "any messages?" still works.
+- [ ] "Shut down the PC in 10 minutes" → confirm → scheduled; "cancel the shutdown" → cancelled. "Clean my temp files".
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
 ## 8. Things from earlier versions still worth a run

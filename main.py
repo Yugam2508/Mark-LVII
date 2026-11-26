@@ -2982,6 +2982,11 @@ class JarvisLive:
             from dashboard.server import DashboardServer
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
+            try:
+                from plugins import phone_messages
+                self._dashboard.set_notification_callback(phone_messages.on_notification)
+            except Exception as _e:
+                print(f"[PhoneMessages] not wired: {_e}")
             # What Jarvis shows on this PC (cards, notices) also reaches connected phones.
             _loop = asyncio.get_running_loop()
             self.ui.set_mirror(lambda t, x, k: asyncio.run_coroutine_threadsafe(

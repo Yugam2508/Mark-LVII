@@ -1043,6 +1043,10 @@ class DashboardServer:
     def set_wake_callback(self, fn) -> None:
         self._wake_callback = fn
 
+    def set_notification_callback(self, cb) -> None:
+        """Called with each notification a linked phone reports (chat apps are filtered by the callee)."""
+        self._notification_cb = cb
+
     def set_connect_callback(self, fn) -> None:
         self._connect_callback = fn
 
@@ -1457,6 +1461,13 @@ class DashboardServer:
                         if fut is not None and not fut.done():
                             fut.set_result({"ok": bool(data.get("ok")), "text": str(data.get("text") or "")[:2000],
                                             "data": data.get("data")})
+                    elif data.get("type") == "notification":
+                        cb = getattr(self, "_notification_cb", None)
+                        if cb is not None and websocket in self._phones:
+                            try:
+                                cb({k: str(data.get(k) or "")[:600] for k in ("key", "pkg", "app", "title", "text")})
+                            except Exception:
+                                pass
                     elif data.get("type") == "command":
                         enc = data.get("enc", "")
                         t   = self._decrypt(tok, enc) if enc else (data.get("text") or "").strip()

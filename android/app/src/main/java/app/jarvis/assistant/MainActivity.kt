@@ -23,7 +23,8 @@ class MainActivity : Activity() {
         setContentView(root)
         // Everything Jarvis may be asked to do on this phone, asked for once up front.
         val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS,
-            Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS)
+            Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_CALL_LOG)
         if (android.os.Build.VERSION.SDK_INT >= 33) wanted += Manifest.permission.POST_NOTIFICATIONS
         val missing = wanted.filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 1)
@@ -60,6 +61,7 @@ class MainActivity : Activity() {
         menu.add(0, 4, 0, "Talk over Jarvis on/off")
         menu.add(0, 5, 0, "Let Jarvis open apps and sites")
         menu.add(0, 6, 0, "Let Jarvis tap Send in WhatsApp")
+        menu.add(0, 7, 0, "Let Jarvis read notifications")
         menu.add(0, 3, 0, "Forget this PC")
         return true
     }
@@ -74,6 +76,7 @@ class MainActivity : Activity() {
             4 -> Prefs(this).let { it.duplex = !it.duplex; LiveAudio.stop(); if (it.openMic) LinkService.start(this, listen = true) }
             5 -> startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")))
             6 -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            7 -> startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             3 -> { Hub.disconnect(); Prefs(this).forget(); show() }
         }
         return true

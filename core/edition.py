@@ -46,6 +46,10 @@ CHANGELOG = [
         "tidy a messy folder by file type (with undo), open websites, and \"play my liked songs\"; on the "
         "phone: open any app or link, Bluetooth/Wi-Fi settings pages, volume, flashlight, timers, media keys, "
         "navigation. Anything that changes the PC asks you to confirm first; disk-wiping commands are refused",
+        "Read and answer your phone's messages: \"any WhatsApp messages?\", \"reply to Aarav: on my way\" "
+        "(shown for edit/confirm, sent through the notification's own Reply button, so it works for WhatsApp, "
+        "Telegram, Messages and more), new chat messages announced as they arrive, \"did anyone call?\"; "
+        "plus shut down / restart / sleep the PC (with a delay, confirmed) and clearing temp files",
         "WhatsApp that works: \"WhatsApp Mum I'm late\" finds her number (from your phone's contacts), shows "
         "the message to edit or confirm, opens the right chat and sends, from the PC or from the phone",
         "When Jarvis can't reach Google it now says why on screen (usage limit, blocked or invalid key, "
