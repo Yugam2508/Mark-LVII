@@ -76,6 +76,9 @@ CHANGELOG = [
         "phone\" and \"lock my phone\"; the phone timer's label and the send-to-phone heading now reach the phone",
         "If Jarvis says \"saved\", \"noted\" or \"I've added it\" in a turn where no tool ran, it is told at once "
         "to do it properly or say it isn't saved — the \"it said it saved it and hadn't\" problem, caught as it happens",
+        "The always-listening phone no longer streams silence: it sends the microphone only while someone talks "
+        "(plus a moment either side), which saves roughly 100 MB of mobile data an hour and battery; the PC "
+        "microphone stays off the whole time the phone is your speaker (switch in ⋮ → Permissions & setup)",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

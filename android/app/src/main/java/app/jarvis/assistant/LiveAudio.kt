@@ -183,13 +183,20 @@ object LiveAudio {
         record = rec
         rec.startRecording()
         emit(State.LISTENING)
+        val gate = if (ctx?.let { Prefs(it).saveData } != false) SpeechGate() else null
         captureThread = Thread {
             val buf = ByteArray(IN_RATE / 1000 * 2 * 40)                // 40 ms frames
             while (wanted && !Thread.currentThread().isInterrupted) {
                 val n = rec.read(buf, 0, buf.size)
                 if (n <= 0) break
                 val level = Protocol.rms(buf, n)
-                if (!muted && socket === ws) ws.send(ByteString.of(*buf.copyOf(n)))
+                if (!muted && socket === ws) {
+                    val frame = buf.copyOf(n)
+                    // While Jarvis is talking, keep the line open so you can interrupt it.
+                    if (gate != null && System.currentTimeMillis() - lastVoiceAt < 400) gate.hold()
+                    val out = gate?.feed(frame, level) ?: listOf(frame)
+                    for (f in out) ws.send(ByteString.of(*f))
+                }
                 val speaking = System.currentTimeMillis() - lastVoiceAt < 400
                 emit(if (speaking) State.SPEAKING else State.LISTENING, if (speaking) 0.6f else (level * 4f).coerceAtMost(1f))
             }

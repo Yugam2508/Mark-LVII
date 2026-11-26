@@ -91,6 +91,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, tap ⋮ → Permissions &
       setup → turn "Talk over Jarvis" off).
 - [ ] Put on Bluetooth headphones → Jarvis's voice moves to them; take them off → back to the loudspeaker.
+- [ ] Leave the phone listening in a quiet room for 10 minutes → Settings → Network → Data usage for Jarvis barely
+      moves. Then talk → it answers as before. If it misses quiet words, turn "Save mobile data" off in ⋮.
 - [ ] Close the app, lock the screen, talk → it still answers (the notification stays).
 - [ ] Ask for something that shows a card on the PC (the weather, your calendar) → it also appears in the phone log.
 - [ ] Press **Stop listening** in the notification → the PC speaks again.

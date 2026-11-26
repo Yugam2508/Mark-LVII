@@ -95,6 +95,11 @@ class SetupPanel(private val activity: Activity, private val onClose: () -> Unit
                 if (prefs.openMic) LinkService.start(activity, listen = true) else LiveAudio.stop()
                 Toast.makeText(activity, if (prefs.openMic) "Listening all the time" else "Stopped listening", Toast.LENGTH_SHORT).show()
             },
+            Row("Save mobile data (send the mic only while you talk): ${if (prefs.saveData) "ON" else "OFF"}", true, "") {
+                prefs.saveData = !prefs.saveData
+                LiveAudio.stop(); if (prefs.openMic) LinkService.start(activity, listen = true)
+                Toast.makeText(activity, if (prefs.saveData) "Only speech is sent" else "The mic streams all the time (more data, never misses a quiet word)", Toast.LENGTH_LONG).show()
+            },
             Row("Talk over Jarvis while it speaks: ${if (prefs.duplex) "ON" else "OFF"}", true, "") {
                 prefs.duplex = !prefs.duplex
                 LiveAudio.stop(); if (prefs.openMic) LinkService.start(activity, listen = true)

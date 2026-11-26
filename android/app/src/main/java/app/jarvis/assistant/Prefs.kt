@@ -39,6 +39,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("duplex", true)
         set(v) = sp.edit().putBoolean("duplex", v).apply()
 
+    /** Send the microphone only while someone talks (saves mobile data and battery). */
+    var saveData: Boolean
+        get() = sp.getBoolean("saveData", true)
+        set(v) = sp.edit().putBoolean("saveData", v).apply()
+
     val paired: Boolean get() = baseUrl.isNotEmpty() && deviceToken.isNotEmpty()
 
     /** A first run that can connect by itself: an address is known and no phone token yet. */

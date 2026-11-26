@@ -2816,8 +2816,10 @@ class JarvisLive:
             try:
                 chunk = await asyncio.wait_for(q.get(), timeout=1.0)
             except asyncio.TimeoutError:
-                # No audio for 1 s → phone mic inactive, give PC mic back
-                self._phone_active = False
+                # No audio for 1 s. The phone sends sound only while someone talks (it saves data), so
+                # quiet doesn't mean it's gone: while it is still the speaker, the PC mic stays off;
+                # only when its audio link closes does the PC listen again.
+                self._phone_active = self._phone_audio_routed()
                 continue
             self._phone_active = True   # phone is streaming — silence PC mic
             with self._speaking_lock:
