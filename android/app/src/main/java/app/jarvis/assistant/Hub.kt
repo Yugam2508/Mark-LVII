@@ -120,10 +120,11 @@ object Hub {
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string().orEmpty()
                 if (response.code == 401) {
-                    // The PC forgot this phone (revoked, or Jarvis reinstalled): pair again.
+                    // The PC says it doesn't know this phone (revoked, or an older Jarvis that
+                    // forgot paired phones when it restarted): pair again with a new key.
                     wantConnected = false
-                    p.forget()
-                    emitConnection(false, "The PC no longer knows this phone — pair again")
+                    p.forgetDevice()
+                    emitConnection(false, "The PC no longer knows this phone. Press Remote Control on it and enter the new key.")
                     return
                 }
                 val reply = Protocol.parseAuth(body)

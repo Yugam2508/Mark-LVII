@@ -39,6 +39,8 @@ CHANGELOG = [
         "the phone's assistant (long-press power); see android/README.md",
         "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
         "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+        "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
+        "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
     ]},
     {"version": "1.8", "date": "2026-11-30", "items": [
         "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "

@@ -21,7 +21,12 @@ import android.widget.TextView
  * Talk with the mic button (or it starts listening by itself as the assistant), or type.
  * Replies appear here and are read aloud on the phone.
  */
-class ConversationPanel(context: Context, private val listenOnShow: Boolean = false) :
+class ConversationPanel(
+    context: Context,
+    private val listenOnShow: Boolean = false,
+    /** Called when the PC no longer knows this phone, so the app can go back to the connect screen. */
+    private val onUnpaired: (() -> Unit)? = null,
+) :
     LinearLayout(context), Hub.Listener, VoiceInput.Callback {
 
     private val prefs = Prefs(context)
@@ -84,6 +89,7 @@ class ConversationPanel(context: Context, private val listenOnShow: Boolean = fa
     // ── Hub ──────────────────────────────────────────────────────────────────
 
     override fun onConnection(connected: Boolean, detail: String) {
+        if (!connected && !prefs.paired) onUnpaired?.let { post(it) }
         status.text = if (connected) "● connected to your PC" else "○ $detail"
         status.setTextColor(if (connected) Color.rgb(0, 255, 136) else Color.rgb(255, 160, 60))
     }

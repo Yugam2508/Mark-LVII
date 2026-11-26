@@ -18,6 +18,12 @@ late", "find my phone", "what's my phone's battery?". The PC asks you to confirm
 (say "confirm"). The first time, the app asks for Contacts, Phone, SMS and Notifications permissions:
 allow them, or those actions say they lack permission.
 
+## Staying connected
+The PC remembers paired phones across restarts, and the app reconnects by itself with backoff. It
+keeps the link while the PC is on, awake and running Jarvis (Jarvis keeps a mains-powered PC awake
+while a phone is connected). If the app says "The PC no longer knows this phone", press Remote
+Control on the PC and enter the new key: the address is kept.
+
 ## What it does *not* do yet (so you aren't surprised)
 - **No wake word** (step 2) — you invoke it by long-press power or by opening the app.
 - **The PC still speaks the answer too**, because the request is handled by the Jarvis on the PC.

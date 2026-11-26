@@ -816,6 +816,14 @@ my phone's battery?"**, **"what's Aarav's number?"**. Calls and texts wait for y
 voice or on screen) and texts open for editing first; a name that matches two contacts is asked, not
 guessed. The phone must be connected (the app's quiet notification shows the link is up).
 
+**Staying connected.** A paired phone is remembered on the PC (`config/devices.json`, up to 20 phones,
+180 days) so it reconnects by itself, even after Jarvis restarts. While a phone is connected, Jarvis
+asks Windows not to put the PC to sleep (only on mains power; the screen can still turn off and the
+PC can lock; closing the lid still sleeps it). Switch that off in CONVERSATION & PRESENCE. If the PC
+does sleep or Jarvis is closed, the phone shows "not connected" and reconnects when it's back. If the
+app ever says the PC no longer knows the phone, press Remote Control and enter the new key (the address
+is kept).
+
 ---
 
 ## 44. When Claude Code or the phone link doesn't work

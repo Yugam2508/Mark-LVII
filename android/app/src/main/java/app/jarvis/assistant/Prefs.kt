@@ -20,5 +20,8 @@ class Prefs(context: Context) {
 
     val paired: Boolean get() = baseUrl.isNotEmpty() && deviceToken.isNotEmpty()
 
+    /** The PC forgot this phone: drop the token but keep the address, so only a new key is needed. */
+    fun forgetDevice() = sp.edit().remove("device").apply()
+
     fun forget() = sp.edit().remove("base").remove("device").apply()
 }
