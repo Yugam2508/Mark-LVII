@@ -10,10 +10,14 @@ When you add features, bump VERSION and put a new entry at the top of CHANGELOG.
 """
 from __future__ import annotations
 
-VERSION = "1.7"
-DATE = "2026-11-29"
+VERSION = "1.8"
+DATE = "2026-11-30"
 
 CHANGELOG = [
+    {"version": "1.8", "date": "2026-11-30", "items": [
+        "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "
+        "Control key and the phone is remembered",
+    ]},
     {"version": "1.7", "date": "2026-11-29", "items": [
         "Memory boxes: 'WHO YOU ARE' (Jarvis's own character and rules) and 'THE ESSENTIALS' "
         "(what matters most about you) are always in front of Jarvis, in full, every session, "

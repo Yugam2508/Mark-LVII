@@ -24,6 +24,11 @@ a specific wall appears.
 | Conversation handoff | App is a client of the hub (or a laptop meanwhile) and pulls recent turns | Same mechanism as `core/handoff.py` |
 | Talk to Jarvis | Gemini Live audio stream from the app, or the hub's voice gateway | Same personality, memory boxes and tools as the PC |
 
+## Status
+**Step 1 is written** (`android/`, with its own README): pairing, conversation screen, assistant
+registration. It compiles against the real Android 15 framework and its parsing logic is unit-tested;
+it has not yet been run on a phone.
+
 ## Build plan (Android Studio, Kotlin)
 1. **Skeleton + assistant role** — opens on long-press power, shows the holo display, text and push-to-talk
    voice to a laptop's dashboard. *Done when: long-press power opens it and "what time is it" works.*

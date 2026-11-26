@@ -1021,6 +1021,37 @@ class DashboardServer:
             return JSONResponse({"ok": False, "error": "Invalid or expired key"},
                                 status_code=401)
 
+        @app.post("/api/pair")
+        async def pair_ep(req: Request):
+            """Pairing for the Android app: the one-time key in, a session token and a
+            durable device token out (the QR page does the same inside HTML)."""
+            who  = _who(req)
+            wait = self._throttle.blocked_for(who)
+            if wait > 0:
+                return JSONResponse({"ok": False, "error": f"Too many attempts. Try again in "
+                                                           f"{int(wait) + 1} seconds."}, status_code=429)
+            try:
+                body = await req.json()
+            except Exception:
+                return JSONResponse({"ok": False, "error": "Bad request"}, status_code=400)
+            entered = str(body.get("pin", "")).strip().upper()
+            now = time.time()
+            if entered not in self._pending_keys or self._pending_keys[entered] <= now:
+                self._throttle.record_failure(who)
+                return JSONResponse({"ok": False, "error": "Invalid or expired key"}, status_code=401)
+            self._throttle.clear(who)
+            del self._pending_keys[entered]                      # one-time use
+            tok, dev_tok = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+            self._tokens[tok] = time.time()
+            self._token_keys[tok] = entered
+            self._aes_key(entered)
+            self._device_sessions[dev_tok] = {"session_key": entered}
+            name = re.sub(r"[^\w .-]", "", str(body.get("name", "")))[:40] or "phone"
+            if self._connect_callback:
+                self._connect_callback()
+            asyncio.create_task(self.broadcast({"type": "sys", "text": f"Paired: {name}."}))
+            return JSONResponse({"ok": True, "token": tok, "device_token": dev_tok})
+
         @app.get("/auto-login")
         async def auto_login(key: str = ""):
             """QR code target — validates one-time key, creates session, redirects phone."""
