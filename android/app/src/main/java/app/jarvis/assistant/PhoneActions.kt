@@ -29,7 +29,7 @@ object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
         "notifications", "reply_notification", "dismiss_notification", "recent_calls",
-        "send_to_phone", "location", "dnd", "texts")
+        "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -61,6 +61,9 @@ object PhoneActions {
             "dnd" -> dnd(context, args.optBoolean("on", true))
             "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
             "texts" -> texts(context, args.optString("from"), args.optInt("limit", 8))
+            "alarm" -> alarm(context, args.optInt("hour", -1), args.optInt("minute", 0), args.optString("label"))
+            "screenshot" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, "Screenshot taken (it's in the phone's gallery)")
+            "lock" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Phone locked")
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
@@ -368,6 +371,21 @@ object PhoneActions {
         }
         return Result(true, "${out.length()} call(s)", JSONObject().put("calls", out))
     }
+
+    private fun alarm(context: Context, hour: Int, minute: Int, label: String): Result {
+        if (hour !in 0..23 || minute !in 0..59) return Result(false, "What time? (hour 0-23)")
+        val i = Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
+            .putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour)
+            .putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute)
+            .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label.ifBlank { "Jarvis" })
+            .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
+        return guarded(context, i).let { if (it.ok) Result(true, "Alarm set for %02d:%02d".format(hour, minute)) else it }
+    }
+
+    private fun globalAction(action: Int, done: String): Result =
+        if (SendTapService.global(action)) Result(true, done)
+        else Result(false, "That needs Jarvis switched on in Accessibility: open Jarvis → ⋮ → Permissions & setup → " +
+            "\"Press Send in WhatsApp for you\" (the same switch allows screenshots and locking)")
 
     private fun navigate(context: Context, where: String): Result {
         if (where.isBlank()) return Result(false, "Where to?")

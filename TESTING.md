@@ -188,6 +188,10 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Phone: in Chrome, Share → "Jarvis (to my PC)" → the page opens on the PC and the link is on the clipboard.
 - [ ] "What did <someone> text me?" → reads the texts from them.
 - [ ] Confirm any action (a WhatsApp, an install) → Jarvis says afterwards whether it worked.
+- [ ] "Take a screenshot" → a PNG in Pictures\Screenshots (no snipping overlay). "Snip a region" → the overlay.
+- [ ] Start a study session, open YouTube for a minute → Jarvis nudges you once. Close it → quiet again.
+- [ ] "Set an alarm for 7:15 on my phone" → it's in the Clock app. With Accessibility on: "take a screenshot on my
+      phone" (in the gallery), "lock my phone".
 
 ## 7f. The PC as the hub
 

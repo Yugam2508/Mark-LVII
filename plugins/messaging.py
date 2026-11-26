@@ -90,17 +90,8 @@ def international(raw: str) -> str:
 
 
 def _foreground_title() -> str:
-    if not sys.platform.startswith("win"):
-        return ""
-    try:
-        import ctypes
-        user32 = ctypes.windll.user32
-        hwnd = user32.GetForegroundWindow()
-        buf = ctypes.create_unicode_buffer(512)
-        user32.GetWindowTextW(hwnd, buf, 512)
-        return buf.value
-    except Exception:
-        return ""
+    from core import foreground
+    return foreground.title()
 
 
 def _send_on_pc(digits: str, message: str) -> str:

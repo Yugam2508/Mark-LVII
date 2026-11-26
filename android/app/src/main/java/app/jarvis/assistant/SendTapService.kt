@@ -5,14 +5,15 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
 /**
- * Taps WhatsApp's Send button, and only that, only after Jarvis has just opened a chat with a message the
- * user confirmed on the PC. It never reads or stores anything: it looks for the Send button and presses it.
- * The user turns it on in Settings > Accessibility; without it Jarvis still opens the chat with the
- * message typed in and the user taps Send.
+ * Taps WhatsApp's Send button, only after Jarvis has just opened a chat with a message the user confirmed
+ * on the PC; and, when the user asks, takes a phone screenshot or locks the screen (system actions only an
+ * accessibility service may perform). It never reads or stores anything: it looks for the Send button and
+ * presses it. The user turns it on in Settings > Accessibility; without it Jarvis still opens the chat with
+ * the message typed in and the user taps Send.
  */
 class SendTapService : AccessibilityService() {
-    override fun onServiceConnected() { enabled = true }
-    override fun onUnbind(intent: android.content.Intent?): Boolean { enabled = false; return super.onUnbind(intent) }
+    override fun onServiceConnected() { enabled = true; instance = this }
+    override fun onUnbind(intent: android.content.Intent?): Boolean { enabled = false; instance = null; return super.onUnbind(intent) }
     override fun onInterrupt() {}
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -33,6 +34,10 @@ class SendTapService : AccessibilityService() {
 
     companion object {
         @Volatile var enabled = false
+        @Volatile var instance: SendTapService? = null
+
+        /** Phone-wide actions only an accessibility service may take: a screenshot, locking the screen. */
+        fun global(action: Int): Boolean = instance?.performGlobalAction(action) == true
         @Volatile private var armedUntil = 0L
         /** Called just before opening a confirmed chat: the next WhatsApp window may have Send pressed. */
         fun arm(seconds: Int = 15) { armedUntil = System.currentTimeMillis() + seconds * 1000L }

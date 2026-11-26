@@ -69,6 +69,11 @@ CHANGELOG = [
         "in front and adds your country code to local numbers; organising Downloads leaves files that are still "
         "downloading; \"sleep\" really sleeps; temp cleanup leaves anything used in the last day; a forgotten "
         "dictation saves itself after four quiet minutes",
+        "\"Take a screenshot\" was only opening the Snipping Tool and waiting for a drag, so nothing was ever "
+        "saved; it now saves the whole screen (\"snip\" still opens the tool). Study sessions have a focus guard: "
+        "if YouTube, a game or social media holds the screen for a minute during a block, Jarvis nudges you back",
+        "Phone: \"set an alarm for 7 on my phone\", and with the accessibility switch on, \"take a screenshot on my "
+        "phone\" and \"lock my phone\"; the phone timer's label and the send-to-phone heading now reach the phone",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
