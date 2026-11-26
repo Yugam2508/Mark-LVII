@@ -46,9 +46,9 @@ object Protocol {
         baseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/ws?token=" + token
 
     /** The audio socket: the phone's microphone goes up, Jarvis's voice comes down. */
-    fun audioUrl(baseUrl: String, token: String, duplex: Boolean): String =
+    fun audioUrl(baseUrl: String, token: String, duplex: Boolean, wake: Boolean = false): String =
         baseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") +
-            "/ws/phone-audio?token=$token&out=1&duplex=${if (duplex) 1 else 0}"
+            "/ws/phone-audio?token=$token&out=1&duplex=${if (duplex) 1 else 0}" + (if (wake) "&wake=1" else "")
 
     /** Loudness of 16-bit little-endian mono PCM, 0..1 (for the display). */
     fun rms(pcm: ByteArray, length: Int = pcm.size): Float {
@@ -87,6 +87,8 @@ object Protocol {
         data class Card(val title: String, val text: String, val kind: String) : Event()
         /** The PC asks this phone to do something (call, text, ...). Answered with resultBody. */
         class PhoneAction(val id: String, val action: String, val args: JSONObject) : Event()
+        /** The PC heard "Hey Jarvis" (awake) or went back to waiting; available=false: no wake word on the PC. */
+        data class Wake(val awake: Boolean, val available: Boolean) : Event()
     }
 
     fun parseEvent(json: String): Event? = try {
@@ -103,6 +105,7 @@ object Protocol {
                 if (o.optString("title").isEmpty() && text.isEmpty()) null
                 else Event.Card(o.optString("title"), text, o.optString("kind", "panel"))
             }
+            "phone_wake" -> Event.Wake(o.optBoolean("awake", false), o.optBoolean("available", true))
             "phone_action" -> {
                 val id = o.optString("id")
                 if (id.isEmpty()) null else Event.PhoneAction(id, o.optString("action"), o.optJSONObject("args") ?: JSONObject())

@@ -91,6 +91,11 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, tap ⋮ → Permissions &
       setup → turn "Talk over Jarvis" off).
 - [ ] Put on Bluetooth headphones → Jarvis's voice moves to them; take them off → back to the loudspeaker.
+- [ ] Open the app → under the orb it says "Say “Hey Jarvis” — or tap the orb". Say "Hey Jarvis, what time is it?"
+      → a chime and a buzz, and it answers the whole question. Keep talking → it keeps answering. Stay quiet ~45 s →
+      back to "Say “Hey Jarvis”". Talk without the phrase → nothing happens (it's for you only after the phrase).
+- [ ] Tap the orb → it listens without the phrase. Long-press it → back to waiting.
+- [ ] ⋮ → Permissions & setup → turn the wake word off → everything you say goes to Jarvis again.
 - [ ] Leave the phone listening in a quiet room for 10 minutes → Settings → Network → Data usage for Jarvis barely
       moves. Then talk → it answers as before. If it misses quiet words, turn "Save mobile data" off in ⋮.
 - [ ] Close the app, lock the screen, talk → it still answers (the notification stays).

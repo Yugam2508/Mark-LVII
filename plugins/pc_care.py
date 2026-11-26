@@ -140,8 +140,7 @@ def parse_upgrades(out: str) -> list[dict]:
     lines = [l.rstrip("\r") for l in out.splitlines()]
     for i, line in enumerate(lines):
         if re.search(r"\bName\b", line) and re.search(r"\bId\b", line) and re.search(r"\bAvailable\b", line):
-            id_at, ver_at, av_at = line.index("Id"), line.index("Version"), line.index("Available")
-            src_at = line.index("Source") if "Source" in line else len(line) + 40
+            id_at = line.index("Id")
             rows = []
             for row in lines[i + 1:]:
                 s = row.strip()

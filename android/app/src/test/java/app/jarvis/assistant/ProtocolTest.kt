@@ -82,6 +82,9 @@ class ProtocolTest {
     @Test fun audioSocketAndLoudness() {
         assertEquals("ws://100.1.2.3:8000/ws/phone-audio?token=T&out=1&duplex=1", Protocol.audioUrl("http://100.1.2.3:8000", "T", true))
         assertEquals("wss://x.ts.net:8000/ws/phone-audio?token=T&out=1&duplex=0", Protocol.audioUrl("https://x.ts.net:8000", "T", false))
+        assertEquals("ws://h:8000/ws/phone-audio?token=T&out=1&duplex=1&wake=1", Protocol.audioUrl("http://h:8000", "T", true, wake = true))
+        assertEquals(Protocol.Event.Wake(true, true), Protocol.parseEvent("""{"type":"phone_wake","awake":true,"available":true}"""))
+        assertEquals(Protocol.Event.Wake(false, false), Protocol.parseEvent("""{"type":"phone_wake","awake":false,"available":false}"""))
         assertEquals(0f, Protocol.rms(ByteArray(640)), 0f)
         val loud = ByteArray(640) { if (it % 2 == 1) 0x40 else 0 }        // samples of 0x4000 = half scale
         assertEquals(0.5f, Protocol.rms(loud), 0.01f)

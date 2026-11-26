@@ -2820,10 +2820,42 @@ class JarvisLive:
                 # quiet doesn't mean it's gone: while it is still the speaker, the PC mic stays off;
                 # only when its audio link closes does the PC listen again.
                 self._phone_active = self._phone_audio_routed()
+                pw = getattr(self, "_phone_wake", None)
+                if pw is not None:
+                    with self._speaking_lock:
+                        if self._is_speaking:
+                            pw.keep_awake()
+                    pw.tick()
+                    for held in pw.check_detected():
+                        self._forward_phone_audio(held)
+                continue
+            if "control" in chunk:                       # the phone's orb was tapped
+                pw = self._get_phone_wake()
+                pw.wake_now() if chunk["control"] == "wake_now" else pw.sleep_now()
                 continue
             self._phone_active = True   # phone is streaming — silence PC mic
             with self._speaking_lock:
                 speaking = self._is_speaking
+            pieces = [chunk["data"]]
+            try:
+                wake_wanted = self._dashboard.phone_wake_wanted()
+            except Exception:
+                wake_wanted = False
+            if wake_wanted:
+                pw = self._get_phone_wake()
+                if speaking:
+                    pw.keep_awake()
+                pieces = pw.check_detected() + pw.process(chunk["data"])
+                # Tell the phone once when the PC can't do the wake word (yet), so it doesn't
+                # say "Hey Jarvis" while in fact everything is going through.
+                if pw.available is False and not getattr(self, "_phone_wake_na_said", False):
+                    self._phone_wake_na_said = True
+                    asyncio.create_task(self._dashboard.broadcast(
+                        {"type": "phone_wake", "awake": False, "available": False}))
+                elif pw.available and getattr(self, "_phone_wake_na_said", False):
+                    self._phone_wake_na_said = False
+                    asyncio.create_task(self._dashboard.broadcast(
+                        {"type": "phone_wake", "awake": pw.awake, "available": True}))
             # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
             # over it exactly as on the PC (Gemini ends its own turn when it hears you).
             duplex = False
@@ -2832,10 +2864,52 @@ class JarvisLive:
             except Exception:
                 pass
             if (not speaking or duplex) and not self.ui.muted:
-                try:
-                    self.out_queue.put_nowait(chunk)
-                except asyncio.QueueFull:
-                    pass
+                for piece in pieces:
+                    self._forward_phone_audio(piece)
+
+    def _forward_phone_audio(self, data: bytes) -> None:
+        try:
+            self.out_queue.put_nowait({"data": data, "mime_type": "audio/pcm"})
+        except (asyncio.QueueFull, AttributeError):
+            pass
+
+    def _get_phone_wake(self):
+        """The phone's "Hey Jarvis" gate (core/phone_wake.py), made on first use."""
+        pw = getattr(self, "_phone_wake", None)
+        if pw is not None:
+            return pw
+        from core.phone_wake import PhoneWake
+        from core import wake_word as _ww
+
+        def factory(on_detect):
+            if not _ww.is_ready():
+                if not getattr(self, "_phone_wake_setup", False):
+                    self._phone_wake_setup = True
+                    self.ui.write_log("SYS: Setting up \"Hey Jarvis\" for your phone (one-time download)…")
+                    threading.Thread(target=lambda: _ww.install_and_download(
+                        lambda m: print(f"[PhoneWake] {m}")), daemon=True, name="phone_wake_setup").start()
+                raise RuntimeError("the wake word isn't set up on this PC yet")
+            d = _ww.WakeWordDetector(on_detect=on_detect, logger=lambda m: print(f"[PhoneWake] {m}"))
+            if not d.start():
+                raise RuntimeError("the wake word detector didn't start")
+            return d
+
+        loop = self._loop
+
+        def on_state(awake: bool) -> None:
+            self.ui.write_log("SYS: Phone: " + ("awake — listening." if awake else "waiting for \"Hey Jarvis\"."))
+            if self._dashboard is not None and loop is not None:
+                asyncio.run_coroutine_threadsafe(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": awake, "available": True}), loop)
+
+        try:
+            from memory.config_manager import get_plugin_setting
+            follow = float(get_plugin_setting("conversation", "followup_seconds", 45) or 45)
+        except Exception:
+            follow = 45.0
+        pw = PhoneWake(factory, on_state, follow_up=follow)
+        self._phone_wake = pw
+        return pw
 
     def _on_phone_connected(self) -> None:
         self.ui.write_log("SYS: Phone connected via Remote Dashboard.")

@@ -79,6 +79,11 @@ CHANGELOG = [
         "The always-listening phone no longer streams silence: it sends the microphone only while someone talks "
         "(plus a moment either side), which saves roughly 100 MB of mobile data an hour and battery; the PC "
         "microphone stays off the whole time the phone is your speaker (switch in ⋮ → Permissions & setup)",
+        "\"Hey Jarvis\" on the phone: the phone listens all the time once the app is open (no button), and nothing it "
+        "hears reaches Jarvis until the PC's wake-word detector hears \"Hey Jarvis\" in it — then the whole sentence "
+        "goes through, with a chime and a buzz, and the conversation flows until it's quiet for a while. Tap the orb "
+        "to talk without the phrase, long-press to send it back to waiting; the screen says which state it's in. "
+        "If the PC hasn't got the wake word yet it sets it up once and listens to everything meanwhile",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "

@@ -165,7 +165,11 @@ object Hub {
 
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             val e = Protocol.parseEvent(text) ?: return
-                            if (e is Protocol.Event.PhoneAction) handle(webSocket, e) else emit(e)
+                            when (e) {
+                                is Protocol.Event.PhoneAction -> handle(webSocket, e)
+                                is Protocol.Event.Wake -> { LiveAudio.onWake(e.awake, e.available); emit(e) }
+                                else -> emit(e)
+                            }
                         }
 
                         // A late "closed" from a socket that was already replaced must not take down the new one.

@@ -95,6 +95,14 @@ class SetupPanel(private val activity: Activity, private val onClose: () -> Unit
                 if (prefs.openMic) LinkService.start(activity, listen = true) else LiveAudio.stop()
                 Toast.makeText(activity, if (prefs.openMic) "Listening all the time" else "Stopped listening", Toast.LENGTH_SHORT).show()
             },
+            Row("Wake word “Hey Jarvis”: ${if (prefs.wakeWord) "ON" else "OFF (everything heard goes to Jarvis)"}", true, "") {
+                prefs.wakeWord = !prefs.wakeWord
+                LiveAudio.stop(); if (prefs.openMic) LinkService.start(activity, listen = true)
+                Toast.makeText(activity, if (prefs.wakeWord) "Say “Hey Jarvis” to start; tap the orb to skip it" else "Jarvis hears everything while listening", Toast.LENGTH_LONG).show()
+            },
+            Row("Chime and buzz when Jarvis wakes: ${if (prefs.chime) "ON" else "OFF"}", true, "") {
+                prefs.chime = !prefs.chime
+            },
             Row("Save mobile data (send the mic only while you talk): ${if (prefs.saveData) "ON" else "OFF"}", true, "") {
                 prefs.saveData = !prefs.saveData
                 LiveAudio.stop(); if (prefs.openMic) LinkService.start(activity, listen = true)

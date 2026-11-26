@@ -44,6 +44,13 @@ object LiveAudio {
     @Volatile var state = State.OFF
         private set
     @Volatile var muted = false
+    /** With the wake word on: true after "Hey Jarvis" until it goes back to waiting. */
+    @Volatile var awake = false
+        private set
+    /** False when the PC has no wake word set up (then everything heard goes through). */
+    @Volatile var wakeAvailable = true
+        private set
+    val wakeMode: Boolean get() = ctx?.let { Prefs(it).wakeWord } == true
 
     private var socket: WebSocket? = null
     private var record: AudioRecord? = null
@@ -100,6 +107,7 @@ object LiveAudio {
 
     fun stop() {
         wanted = false
+        awake = false
         teardown()
         audio?.let {
             if (Build.VERSION.SDK_INT >= 31) it.clearCommunicationDevice()
@@ -120,7 +128,7 @@ object LiveAudio {
         Hub.freshToken(c) { token ->
             if (!wanted) { connecting = false; return@freshToken }
             if (token == null) { connecting = false; schedule(); return@freshToken }
-            val url = Protocol.audioUrl(Prefs(c).baseUrl, token, Prefs(c).duplex)
+            val url = Protocol.audioUrl(Prefs(c).baseUrl, token, Prefs(c).duplex, Prefs(c).wakeWord)
             socket = Hub.client.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     if (socket != null && socket !== webSocket) { webSocket.close(1000, "replaced"); return }
@@ -223,6 +231,33 @@ object LiveAudio {
                 t.write(chunk, 0, chunk.size)
             }
         }.apply { name = "jarvis-play"; isDaemon = true; start() }
+    }
+
+    /** The PC heard "Hey Jarvis" (or went back to waiting): chime, buzz, and show it. */
+    fun onWake(nowAwake: Boolean, available: Boolean) {
+        val was = awake
+        awake = nowAwake
+        wakeAvailable = available
+        if (nowAwake && !was) cue()
+        emit(state)
+    }
+
+    /** Tap on the orb: wake Jarvis without saying the phrase. */
+    fun wakeNow() { socket?.send("""{"type":"wake_now"}""") }
+    fun sleepNow() { socket?.send("""{"type":"sleep_now"}""") }
+
+    private fun cue() {
+        val c = ctx ?: return
+        if (!Prefs(c).chime) return
+        try {
+            android.media.ToneGenerator(AudioManager.STREAM_VOICE_CALL, 60)
+                .startTone(android.media.ToneGenerator.TONE_PROP_ACK, 120)
+        } catch (e: Exception) { }
+        try {
+            val v = if (Build.VERSION.SDK_INT >= 31) c.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+                else @Suppress("DEPRECATION") c.getSystemService(android.os.Vibrator::class.java)
+            v?.vibrate(android.os.VibrationEffect.createOneShot(35, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } catch (e: Exception) { }
     }
 
     /** Jarvis was interrupted: drop everything queued and whatever the speaker still holds. */

@@ -28,6 +28,7 @@ class ConversationPanel(
     private val prefs = Prefs(context)
     private val holo = HoloView(context)
     private val status = TextView(context)
+    private val hint = TextView(context)
     private val log = TextView(context)
     private val scroll = ScrollView(context)
     private val input = EditText(context)
@@ -52,6 +53,13 @@ class ConversationPanel(
         }
         addView(top, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(holo, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.3f))
+        // What Jarvis is doing right now, in words: waiting for "Hey Jarvis", listening, speaking.
+        hint.setTextColor(Color.rgb(0, 212, 255)); hint.textSize = 14f; hint.gravity = Gravity.CENTER
+        hint.setPadding(0, dp(2), 0, dp(6))
+        addView(hint, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        // Tap the orb to talk without the wake word; long-press to send it back to waiting.
+        holo.setOnClickListener { if (LiveAudio.running) LiveAudio.wakeNow() else toggleMic() }
+        holo.setOnLongClickListener { LiveAudio.sleepNow(); true }
 
         log.setTextColor(Color.rgb(220, 235, 245)); log.textSize = 15f
         scroll.addView(log)
@@ -105,6 +113,7 @@ class ConversationPanel(
                 if (event.text.isNotEmpty()) lines.append("\n").append(event.text)
                 lines.append("\n\n"); render()
             }
+            is Protocol.Event.Wake -> onState(LiveAudio.state, 0f)
             is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
     }
@@ -112,8 +121,18 @@ class ConversationPanel(
     // ── the voice ────────────────────────────────────────────────────────────
 
     override fun onState(state: LiveAudio.State, level: Float) {
+        val waiting = LiveAudio.wakeMode && LiveAudio.wakeAvailable && !LiveAudio.awake
+        hint.text = when {
+            !LiveAudio.running -> "Not listening — tap the orb or LISTEN"
+            LiveAudio.muted -> "Muted — tap UNMUTE"
+            state == LiveAudio.State.CONNECTING -> "Connecting to your PC…"
+            state == LiveAudio.State.SPEAKING -> if (prefs.duplex) "Speaking — talk to interrupt" else "Speaking…"
+            waiting -> "Say “Hey Jarvis” — or tap the orb"
+            LiveAudio.wakeMode && !LiveAudio.wakeAvailable -> "Listening (the wake word isn't set up on the PC yet)"
+            else -> "Listening — just talk"
+        }
         holo.state = when (state) {
-            LiveAudio.State.LISTENING -> if (LiveAudio.muted) HoloView.State.IDLE else HoloView.State.LISTENING
+            LiveAudio.State.LISTENING -> if (LiveAudio.muted || waiting) HoloView.State.IDLE else HoloView.State.LISTENING
             LiveAudio.State.SPEAKING -> HoloView.State.SPEAKING
             LiveAudio.State.CONNECTING -> HoloView.State.THINKING
             LiveAudio.State.OFF -> HoloView.State.IDLE
