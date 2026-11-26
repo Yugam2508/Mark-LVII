@@ -22,7 +22,9 @@ class NotifyService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName == packageName) return
         val n = sbn.notification
-        if (n.flags and Notification.FLAG_ONGOING_EVENT != 0 || n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        val isCall = n.category == Notification.CATEGORY_CALL
+        // Ongoing notifications are music players, downloads, navigation… — except a ringing call.
+        if ((n.flags and Notification.FLAG_ONGOING_EVENT != 0 && !isCall) || n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val extras = n.extras
         var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         var text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
@@ -49,7 +51,8 @@ class NotifyService : NotificationListenerService() {
         val app = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
         } catch (e: Exception) { sbn.packageName }
-        val entry = Entry(sbn.key, sbn.packageName, app, title.take(120), text.take(600), sbn.postTime, reply)
+        val entry = Entry(sbn.key, sbn.packageName, app, title.take(120), text.take(600), sbn.postTime, reply,
+            n.category ?: "", n.actions?.toList() ?: emptyList())
         synchronized(recent) {
             recent.removeAll { it.key == entry.key }
             recent.add(entry)
@@ -57,11 +60,12 @@ class NotifyService : NotificationListenerService() {
         }
         Hub.sendRaw(JSONObject().put("type", "notification").put("key", entry.key).put("pkg", entry.pkg)
             .put("app", entry.app).put("title", entry.title).put("text", entry.text)
-            .put("can_reply", reply != null).toString())
+            .put("category", entry.category).put("can_reply", reply != null).toString())
     }
 
     class Entry(val key: String, val pkg: String, val app: String, val title: String, val text: String,
-                val time: Long, val reply: Notification.Action?)
+                val time: Long, val reply: Notification.Action?, val category: String = "",
+                val actions: List<Notification.Action> = emptyList())
 
     companion object {
         @Volatile var instance: NotifyService? = null
@@ -102,6 +106,15 @@ class NotifyService : NotificationListenerService() {
             RemoteInput.addResultsToIntent(action.remoteInputs, intent, bundle)
             action.actionIntent.send(context, 0, intent)
             return true
+        }
+
+        /** The ringing call's own Answer / Decline button (from the phone app's notification). */
+        fun callButton(answer: Boolean): Notification.Action? {
+            val words = if (answer) Regex("(?i)answer|accept|pick up|receive") else Regex("(?i)decline|reject|hang ?up|dismiss|end")
+            val call = synchronized(recent) {
+                recent.asReversed().firstOrNull { it.category == Notification.CATEGORY_CALL && System.currentTimeMillis() - it.time < 120_000 }
+            } ?: return null
+            return call.actions.firstOrNull { words.containsMatchIn(it.title?.toString() ?: "") }
         }
 
         fun dismiss(e: Entry): Boolean {

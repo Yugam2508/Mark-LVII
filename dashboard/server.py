@@ -1498,7 +1498,7 @@ class DashboardServer:
                         cb = getattr(self, "_notification_cb", None)
                         if cb is not None and websocket in self._phones:
                             try:
-                                cb({k: str(data.get(k) or "")[:600] for k in ("key", "pkg", "app", "title", "text")})
+                                cb({k: str(data.get(k) or "")[:600] for k in ("key", "pkg", "app", "title", "text", "category")})
                             except Exception:
                                 pass
                     elif data.get("type") == "command":
