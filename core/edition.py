@@ -18,8 +18,8 @@ CHANGELOG = [
         "Memory boxes: 'WHO YOU ARE' (Jarvis's own character and rules) and 'THE ESSENTIALS' "
         "(what matters most about you) are always in front of Jarvis, in full, every session, "
         "and steer what it says. Tell it \"remember this always\" or \"this is who you are to me\"",
-        "Claude on the web: opens your Chrome profile straight to your Jarvis session, pastes "
-        "requests into it, and sends on your 'send it'. \"Add X to yourself\" drafts a proper "
+        "Claude on the web: opens your Chrome profile straight to your Jarvis session (or the "
+        "Claude desktop app on a work laptop), pastes requests into it, and sends on your 'send it'. \"Add X to yourself\" drafts a proper "
         "feature request for Claude Code to build and open a pull request for",
         "'Diagnose Claude Code' and a phone-link check tell you exactly which step is broken "
         "and the one command that fixes it",

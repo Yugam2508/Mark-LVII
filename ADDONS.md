@@ -739,11 +739,19 @@ session and hand it requests — including "add this feature to yourself".
 **One-time setup (2 minutes)**
 1. On the laptop, open Chrome with your **yugamsmart** profile, go to
    **claude.ai/code** and open (or start) the session for Jarvis — name it
-   "personal jarvis assistant" and point it at the repo `Yugam2508/Mark-LVII`.
-2. Copy that page's address from the browser bar.
-3. In Jarvis: ⚙ → PLUGIN SETTINGS → **CLAUDE ON THE WEB** → paste it into *Address of the
-   Jarvis session*, check the profile name reads `yugamsmart` (spelled as Chrome's profile
-   menu shows it), press SAVE, then **OPEN NOW** to test: Chrome should open on that session.
+   "personal jarvis assistant" and point it at the repo `Yugam2508/Mark-LVII`. Leave it in front.
+2. Say **"remember this as my Jarvis session"**. Jarvis copies the address from the browser
+   bar and saves it (or paste it by hand in ⚙ → PLUGIN SETTINGS → **CLAUDE ON THE WEB**).
+3. Check it: say **"check Claude on the web"** (or, in PowerShell,
+   `.\.venv\Scripts\python.exe -m plugins.claude_web`). It says whether Chrome, the profile
+   name `yugamsmart` (spelled as Chrome's profile menu shows it), the session address and the
+   clipboard/keyboard pieces are all there, with a fix for anything that isn't.
+4. Say **"open Claude"**: Chrome should open on that session.
+
+**At work (Claude desktop app):** say **"use the desktop app"** (or set *Open Claude in* to
+desktop). Jarvis then starts the Claude app the way Windows starts any app, pastes into its
+window, and presses Enter only when that window is in front. Open the Code tab and your Jarvis
+session once yourself so it's the one showing; say **"use Chrome"** to switch back at home.
 
 **Using it**
 - "Open Claude" / "open my Jarvis session" — opens the page.

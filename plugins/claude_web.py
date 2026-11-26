@@ -22,8 +22,16 @@ it must follow (AGENTS.md, one plugin per feature, tests, docs). It shows it for
 and confirmation first. Claude then works in that session as usual; when a pull request
 is ready, you say "merge it" there.
 
-Windows only for the Chrome part (the profile lookup and window check); elsewhere it
-opens the default browser.
+WORK LAPTOP: set "Open Claude in" to the desktop app (or say "use the desktop app") and
+the same things work in the Claude desktop app instead of Chrome: it is started the way
+Windows starts any app (Start menu entry), the message is pasted into its window, and
+Enter is pressed only when that window is in front.
+
+SETTING IT UP BY VOICE: with your Jarvis session open in Chrome, say "remember this as my
+Jarvis session" — Jarvis copies the page address from the browser bar and saves it.
+
+Windows only for the Chrome/desktop part (profile lookup, app start, window check);
+elsewhere it opens the default browser.
 """
 from __future__ import annotations
 
@@ -96,8 +104,47 @@ def find_profile(name: str) -> tuple[str, str] | None:
     return None
 
 
+def desktop_app_id() -> str:
+    """The Start-menu AppID of the Claude desktop app ('' if not installed). Works for
+    both the Store/MSIX and the classic installer, which `Get-StartApps` lists alike."""
+    if sys.platform != "win32":
+        return ""
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                            "Get-StartApps | Where-Object { $_.Name -eq 'Claude' } | "
+                            "Select-Object -First 1 -ExpandProperty AppID"],
+                           capture_output=True, text=True, timeout=20, creationflags=0x08000000)
+        return (r.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def target() -> str:
+    t = str(_s("open_in", "chrome")).lower()
+    return "desktop" if t.startswith("desktop") else "chrome"
+
+
+def open_desktop() -> tuple[bool, str]:
+    app = desktop_app_id()
+    try:
+        if app:
+            subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{app}"], close_fds=True)
+            _state["opened_at"] = time.time()
+            return True, "opened the Claude desktop app (use its Code tab for sessions)"
+        if sys.platform == "win32":
+            os.startfile("claude://")            # the app registers this link type
+            _state["opened_at"] = time.time()
+            return True, "asked Windows to open the Claude desktop app"
+    except Exception as e:
+        return False, f"could not start the Claude desktop app: {e}"
+    return False, "the Claude desktop app was not found (install it from claude.ai/download)"
+
+
 def open_page(url: str) -> tuple[bool, str]:
-    """Open `url` in the configured Chrome profile. (ok, message)."""
+    """Open `url` in the configured Chrome profile — or the desktop app, when that is
+    where the user works. (ok, message)."""
+    if target() == "desktop":
+        return open_desktop()
     name = str(_s("chrome_profile", "yugamsmart"))
     exe = chrome_exe()
     if not exe:
@@ -143,7 +190,41 @@ def foreground_title() -> str:
 
 def claude_in_front() -> bool:
     t = foreground_title().lower()
+    if target() == "desktop":
+        return t.strip().startswith("claude") and "chrome" not in t
     return "claude" in t and ("chrome" in t or "google" in t)
+
+
+def learn_session_url() -> tuple[bool, str]:
+    """Copy the address of the Claude page in front and keep it as the Jarvis session."""
+    import pyautogui
+    import pyperclip
+    if sys.platform == "win32" and not ("claude" in foreground_title().lower()
+                                         and "chrome" in foreground_title().lower()):
+        return False, "open your Jarvis session in Chrome and leave it in front first"
+    old = ""
+    try:
+        old = pyperclip.paste()
+    except Exception:
+        pass
+    pyperclip.copy("")
+    pyautogui.hotkey("ctrl", "l")
+    time.sleep(0.3)
+    pyautogui.hotkey("ctrl", "c")
+    time.sleep(0.4)
+    url = (pyperclip.paste() or "").strip()
+    pyautogui.press("escape")
+    try:
+        pyperclip.copy(old)
+    except Exception:
+        pass
+    if not url.startswith("https://claude.ai/code/"):
+        return False, "that page isn't a Claude Code session (its address starts claude.ai/code/…)"
+    from memory.config_manager import get_plugin_config, save_plugin_config
+    cfg = get_plugin_config(NAMESPACE)
+    cfg["session_url"] = url
+    save_plugin_config(NAMESPACE, cfg)
+    return True, url
 
 
 def paste_message(text: str) -> tuple[bool, str]:
@@ -191,6 +272,44 @@ def improvement_request(wish: str) -> str:
     )
 
 
+# ── self-check ────────────────────────────────────────────────────────────────
+
+def check() -> list[str]:
+    """What this PC has for Claude on the web. Also: python -m plugins.claude_web"""
+    out: list[str] = []
+    ok = lambda m: out.append("OK    " + m)
+    bad = lambda m, fix="": out.append("FAIL  " + m + (f"\n      FIX: {fix}" if fix else ""))
+    for mod in ("pyautogui", "pyperclip"):
+        try:
+            __import__(mod); ok(f"{mod} is installed")
+        except Exception:
+            bad(f"{mod} is missing", "run the installer again (it installs requirements.txt)")
+    ok(f"Claude opens in: {target()}")
+    if target() == "chrome":
+        exe = chrome_exe()
+        (ok if exe else bad)(f"Chrome: {exe}" if exe else "Chrome was not found")
+        name = str(_s("chrome_profile", "yugamsmart"))
+        prof = find_profile(name)
+        if prof:
+            ok(f"Chrome profile '{prof[0]}' found")
+        else:
+            bad(f"no Chrome profile named '{name}'. Profiles seen: {', '.join(sorted(profiles())) or 'none'}",
+                "set the exact profile name in settings → CLAUDE ON THE WEB")
+        if str(_s("session_url", "")).startswith("https://claude.ai/"):
+            ok("Jarvis session address is saved")
+        else:
+            bad("no Jarvis session address saved yet (it will open claude.ai/code instead)",
+                "open the session in that Chrome profile and say: 'remember this as my Jarvis session'")
+    else:
+        app = desktop_app_id()
+        if app:
+            ok(f"Claude desktop app found ({app})")
+        else:
+            bad("the Claude desktop app was not found in the Start menu",
+                "install it from claude.ai/download, sign in, then run this check again")
+    return out
+
+
 # ── the tool ──────────────────────────────────────────────────────────────────
 
 PLUGIN = {
@@ -207,7 +326,9 @@ PLUGIN = {
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["open", "send", "submit", "improve", "status"]},
+            "action": {"type": "STRING", "enum": ["open", "send", "submit", "improve", "status", "learn_session", "use"]},
+            "where": {"type": "STRING", "enum": ["chrome", "desktop"],
+                      "description": "For 'use': open Claude in Chrome (home) or the desktop app (work)"},
             "message": {"type": "STRING", "description": "For send: the text to paste"},
             "wish": {"type": "STRING", "description": "For improve: what to add or change, in the user's words"},
         },
@@ -225,6 +346,8 @@ PLUGIN_SETTINGS = {
          "type": "text", "placeholder": "yugamsmart"},
         {"key": "session_url", "label": "Address of the Jarvis session (copy it from the browser bar)",
          "type": "text", "placeholder": "https://claude.ai/code/session_…"},
+        {"key": "open_in", "label": "Open Claude in (chrome = your profile, desktop = the Claude app)",
+         "type": "choice", "options": ["chrome", "desktop"], "default": "chrome"},
         {"key": "repo", "label": "Jarvis's repository", "type": "text", "placeholder": "Yugam2508/Mark-LVII"},
         {"key": "wait_seconds", "label": "Seconds to wait for the page to load before pasting",
          "type": "choice", "options": ["4", "6", "10", "15"], "default": "6"},
@@ -263,11 +386,19 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
     action = str(parameters.get("action") or "status")
     try:
         if action == "status":
-            prof = find_profile(str(_s("chrome_profile", "yugamsmart")))
-            return outcome.done("claude_web_status", chrome=bool(chrome_exe()),
-                                profile=prof[0] if prof else None,
-                                profiles_seen=", ".join(sorted(profiles())) or None,
-                                session=session_url())
+            lines = check()
+            addons.show("CLAUDE ON THE WEB — CHECK", "\n".join(lines))
+            return outcome.done("claude_web_check", failures=sum(l.startswith("FAIL") for l in lines)) + \
+                "\n" + outcome.untrusted("claude_web", "\n".join(lines)) + \
+                "\nIn two sentences tell the user what works and what to fix."
+        if action == "use":
+            where = "desktop" if str(parameters.get("where") or "").lower().startswith("desk") else "chrome"
+            from memory.config_manager import get_plugin_config, save_plugin_config
+            cfg = get_plugin_config(NAMESPACE); cfg["open_in"] = where; save_plugin_config(NAMESPACE, cfg)
+            return outcome.done("claude_web_use", now=where)
+        if action == "learn_session":
+            ok, msg = learn_session_url()
+            return outcome.done("claude_web_learn", saved=msg) if ok else outcome.failed("claude_web_learn", msg)
         if action == "open":
             ok, msg = open_page(session_url())
             return outcome.done("claude_web_open", result=msg) if ok else outcome.failed("claude_web_open", msg)
@@ -314,3 +445,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         return outcome.failed("claude_web", f"unknown action {action}")
     except Exception as e:
         return outcome.failed(f"claude_web_{action}", str(e)[:200])
+
+
+if __name__ == "__main__":      # python -m plugins.claude_web
+    print("\n".join(check()))
