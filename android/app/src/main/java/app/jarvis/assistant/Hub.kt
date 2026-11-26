@@ -67,6 +67,23 @@ object Hub {
         main.post { listeners.forEach { it.onEvent(e) } }
     }
 
+    /** The shared HTTP client (the audio socket uses it too). */
+    val client: OkHttpClient get() = http
+
+    /** A fresh session token for this paired phone, or null (unreachable, or the PC forgot the phone). */
+    fun freshToken(context: Context, done: (String?) -> Unit) {
+        val p = Prefs(context)
+        if (!p.paired) { done(null); return }
+        val login = Request.Builder().url("${p.baseUrl}/api/device-login")
+            .post("""{"device_token":"${p.deviceToken}"}""".toRequestBody(JSON)).build()
+        http.newCall(login).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) = done(null)
+            override fun onResponse(call: Call, response: Response) {
+                done(Protocol.parseAuth(response.body?.string().orEmpty()).token)
+            }
+        })
+    }
+
     // ── pairing ──────────────────────────────────────────────────────────────
 
     /** Trade the one-time key shown on the PC for a durable device token. */

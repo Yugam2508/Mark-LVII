@@ -39,6 +39,13 @@ CHANGELOG = [
         "the phone's assistant (long-press power); see android/README.md",
         "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
         "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+        "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
+        "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
+        "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
+        "When Jarvis can't reach Google it now says why on screen (usage limit, blocked or invalid key, "
+        "billing, Google overloaded, no network) instead of silently looking frozen",
+        "The window footer credits you instead of the original author (the original credit stays in "
+        "the README and LICENSE, as the licence requires)",
         "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
         "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
         "Jarvis can see inside the computer and act on it: which programs use the GPU/CPU/memory/disk/"

@@ -78,4 +78,20 @@ class ProtocolTest {
         assertTrue(r.getBoolean("ok")); assertEquals(1, r.getJSONObject("data").getInt("n"))
         assertFalse(org.json.JSONObject(Protocol.resultBody("x", false, "no")).has("data"))
     }
+
+    @Test fun audioSocketAndLoudness() {
+        assertEquals("ws://100.1.2.3:8000/ws/phone-audio?token=T&out=1&duplex=1", Protocol.audioUrl("http://100.1.2.3:8000", "T", true))
+        assertEquals("wss://x.ts.net:8000/ws/phone-audio?token=T&out=1&duplex=0", Protocol.audioUrl("https://x.ts.net:8000", "T", false))
+        assertEquals(0f, Protocol.rms(ByteArray(640)), 0f)
+        val loud = ByteArray(640) { if (it % 2 == 1) 0x40 else 0 }        // samples of 0x4000 = half scale
+        assertEquals(0.5f, Protocol.rms(loud), 0.01f)
+        assertEquals(0f, Protocol.rms(ByteArray(0)), 0f)
+    }
+
+    @Test fun cardsFromThePc() {
+        assertEquals(Protocol.Event.Card("WEATHER — London", "12°C, rain", "panel"),
+            Protocol.parseEvent("""{"type":"card","title":"WEATHER — London","text":"12°C, rain","kind":"panel"}"""))
+        assertEquals(Protocol.Event.Card("New email", "", "email"), Protocol.parseEvent("""{"type":"card","title":"New email","text":"","kind":"email"}"""))
+        assertNull(Protocol.parseEvent("""{"type":"card","title":"","text":""}"""))
+    }
 }

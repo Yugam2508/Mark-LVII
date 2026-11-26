@@ -4,10 +4,26 @@ An Android app that connects to your Jarvis PC over Tailscale, shows the hologra
 typed or spoken requests, shows and reads the replies, and registers as the phone's **default
 digital assistant** so long-press power opens it. Design and later steps: `../ANDROID.md`.
 
+## The phone is Jarvis's microphone and speaker
+One Jarvis, not two. While the app is paired and listening:
+- **Your microphone is open all the time** (no button), using the phone's own echo cancellation, so you
+  can talk over Jarvis just as on the PC. A quiet "Jarvis is listening" notification (with a Stop button)
+  keeps it going when the app is closed or the screen is off.
+- **Jarvis's voice plays on the phone**: the same voice and accent as the PC, because it is the PC's
+  Jarvis (same brain, memory, personality and tools). The PC mutes its own speakers and microphone while
+  the phone is doing this, so only one device answers.
+- **What Jarvis shows on the PC** (calendar, weather, results, alerts) also appears in the phone's log.
+- The app's menu (the phone's menu button or gesture) has *Always listening* and *Talk over Jarvis*
+  switches. If Jarvis seems to hear itself, turn *Talk over Jarvis* off.
+- Listening uses battery. *Stop listening* in the notification (or the menu) pauses it, and **MUTE** on
+  the screen stops sending your voice without hanging up.
+- Android only lets a listening service start while the app is open: after a phone restart the link
+  comes back by itself, but open the app once to start listening again.
+
 ## What it does now
 - Pairs with a PC (address + the key from **Remote Control**), and remembers the phone.
 - Conversation screen: holo display, live log, type or tap **MIC** (Android's speech recogniser).
-- Replies appear on the phone and are read aloud on the phone.
+- Replies are Jarvis's own voice, played on the phone (see above), and shown as text.
 - Registers as an assistant: Settings → Apps → Default apps → **Digital assistant app** → Jarvis.
   Long-press power (or your assist gesture) then opens it over whatever you're doing and starts listening.
 
@@ -38,8 +54,6 @@ Control on the PC and enter the new key: the address is kept.
 
 ## What it does *not* do yet (so you aren't surprised)
 - **No wake word** (step 2) — you invoke it by long-press power or by opening the app.
-- **The PC still speaks the answer too**, because the request is handled by the Jarvis on the PC.
-  Mute the PC's speakers, or say it's fine; step 5 (the hub) fixes this properly.
 - No notifications reading, other-app control or IR yet.
 - The PC has to be on and running Jarvis (the hub removes that).
 

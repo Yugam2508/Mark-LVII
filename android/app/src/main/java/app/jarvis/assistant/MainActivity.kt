@@ -43,6 +43,11 @@ class MainActivity : Activity() {
         window.statusBarColor = android.graphics.Color.rgb(2, 8, 12)
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        show()                                   // the microphone may just have been allowed: start listening
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -51,7 +56,8 @@ class MainActivity : Activity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1, 0, "Make Jarvis my assistant")
-        menu.add(0, 2, 0, "Speak replies on/off")
+        menu.add(0, 2, 0, "Always listening on/off")
+        menu.add(0, 4, 0, "Talk over Jarvis on/off")
         menu.add(0, 3, 0, "Forget this PC")
         return true
     }
@@ -59,7 +65,11 @@ class MainActivity : Activity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             1 -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
-            2 -> Prefs(this).let { it.speakReplies = !it.speakReplies }
+            2 -> Prefs(this).let {
+                it.openMic = !it.openMic
+                if (it.openMic) LinkService.start(this, listen = true) else LiveAudio.stop()
+            }
+            4 -> Prefs(this).let { it.duplex = !it.duplex; LiveAudio.stop(); if (it.openMic) LinkService.start(this, listen = true) }
             3 -> { Hub.disconnect(); Prefs(this).forget(); show() }
         }
         return true

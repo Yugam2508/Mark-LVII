@@ -86,9 +86,13 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] With "My own Tailscale devices can connect without a key" switched off → CONNECT asks for a key
       from Remote Control; a key can be used only once.
 - [ ] Close and reopen the app → it logs straight back in without a key.
-- [ ] Type "what time is it" → the reply shows in the log and the phone reads it aloud
-      (the PC speaks it too for now; that's expected).
-- [ ] Tap **MIC**, say something → it's recognised and answered.
+- [ ] Open the app → it starts listening by itself (a "Jarvis is listening" notification). Just talk: the
+      answer plays on the PHONE in the same voice as the PC, and the PC stays silent.
+- [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, turn off "Talk over
+      Jarvis" in the app menu).
+- [ ] Close the app, lock the screen, talk → it still answers (the notification stays).
+- [ ] Ask for something that shows a card on the PC (the weather, your calendar) → it also appears in the phone log.
+- [ ] Press **Stop listening** in the notification → the PC speaks again.
 - [ ] Settings → Apps → Default apps → Digital assistant app → **Jarvis** → long-press power
       from another app → the panel opens over it and starts listening.
 - [ ] Allow the permission prompts (Microphone, Contacts, Phone, SMS, Notifications). A quiet

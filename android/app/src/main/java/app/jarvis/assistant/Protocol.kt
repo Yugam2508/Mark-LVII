@@ -45,6 +45,23 @@ object Protocol {
     fun wsUrl(baseUrl: String, token: String): String =
         baseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") + "/ws?token=" + token
 
+    /** The audio socket: the phone's microphone goes up, Jarvis's voice comes down. */
+    fun audioUrl(baseUrl: String, token: String, duplex: Boolean): String =
+        baseUrl.replaceFirst("https://", "wss://").replaceFirst("http://", "ws://") +
+            "/ws/phone-audio?token=$token&out=1&duplex=${if (duplex) 1 else 0}"
+
+    /** Loudness of 16-bit little-endian mono PCM, 0..1 (for the display). */
+    fun rms(pcm: ByteArray, length: Int = pcm.size): Float {
+        val n = length / 2
+        if (n == 0) return 0f
+        var sum = 0.0
+        for (i in 0 until n) {
+            val v = ((pcm[2 * i + 1].toInt() shl 8) or (pcm[2 * i].toInt() and 0xFF)).toShort().toInt()
+            sum += v.toDouble() * v
+        }
+        return (Math.sqrt(sum / n) / 32768.0).toFloat().coerceIn(0f, 1f)
+    }
+
     fun pairBody(key: String, deviceName: String): String =
         JSONObject().put("pin", key.trim().uppercase()).put("name", deviceName).toString()
 
@@ -66,6 +83,8 @@ object Protocol {
         data class Said(val speaker: String, val text: String) : Event()   // speaker: "user" | "jarvis"
         data class System(val text: String) : Event()
         data class Status(val state: String) : Event()                     // "active" | "sleeping"
+        /** Something Jarvis showed on the PC (a panel, or a notice that stays): shown here too. */
+        data class Card(val title: String, val text: String, val kind: String) : Event()
         /** The PC asks this phone to do something (call, text, ...). Answered with resultBody. */
         class PhoneAction(val id: String, val action: String, val args: JSONObject) : Event()
     }
@@ -79,6 +98,11 @@ object Protocol {
             }
             "sys" -> Event.System(o.optString("text"))
             "status" -> Event.Status(o.optString("state"))
+            "card" -> {
+                val text = o.optString("text").trim()
+                if (o.optString("title").isEmpty() && text.isEmpty()) null
+                else Event.Card(o.optString("title"), text, o.optString("kind", "panel"))
+            }
             "phone_action" -> {
                 val id = o.optString("id")
                 if (id.isEmpty()) null else Event.PhoneAction(id, o.optString("action"), o.optJSONObject("args") ?: JSONObject())

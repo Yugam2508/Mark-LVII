@@ -29,9 +29,15 @@ class Prefs(context: Context) {
         get() = sp.getString("device", "") ?: ""
         set(v) = sp.edit().putString("device", v).apply()
 
-    var speakReplies: Boolean
-        get() = sp.getBoolean("speak", true)
-        set(v) = sp.edit().putBoolean("speak", v).apply()
+    /** Keep the microphone open and listening (no button). */
+    var openMic: Boolean
+        get() = sp.getBoolean("openMic", true)
+        set(v) = sp.edit().putBoolean("openMic", v).apply()
+
+    /** Let Jarvis hear you while it speaks (needs the phone's echo cancellation; turn off if it hears itself). */
+    var duplex: Boolean
+        get() = sp.getBoolean("duplex", true)
+        set(v) = sp.edit().putBoolean("duplex", v).apply()
 
     val paired: Boolean get() = baseUrl.isNotEmpty() && deviceToken.isNotEmpty()
 

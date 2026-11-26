@@ -1,10 +1,7 @@
 package app.jarvis.assistant
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.Typeface
 import android.text.InputType
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
@@ -15,19 +12,18 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * The conversation screen, built in code so the same panel is the app's main screen AND the
- * overlay that opens when Jarvis is the phone's assistant (long-press power).
+ * The conversation screen, built in code so the same panel is the app's main screen AND the overlay
+ * that opens when Jarvis is the phone's assistant (long-press power).
  *
- * Talk with the mic button (or it starts listening by itself as the assistant), or type.
- * Replies appear here and are read aloud on the phone.
+ * The microphone is open (see LiveAudio): just talk. Jarvis's voice plays here, the same voice as on the
+ * PC. Everything said and everything Jarvis shows on the PC (cards, notices) is listed below the display.
  */
 class ConversationPanel(
     context: Context,
     private val listenOnShow: Boolean = false,
     /** Called when the PC no longer knows this phone, so the app can go back to the connect screen. */
     private val onUnpaired: (() -> Unit)? = null,
-) :
-    LinearLayout(context), Hub.Listener, VoiceInput.Callback {
+) : LinearLayout(context), Hub.Listener, LiveAudio.Listener {
 
     private val prefs = Prefs(context)
     private val holo = HoloView(context)
@@ -36,11 +32,6 @@ class ConversationPanel(
     private val scroll = ScrollView(context)
     private val input = EditText(context)
     private val mic = Button(context)
-    private val speaker = Speaker(context) { speaking ->
-        post { holo.state = if (speaking) HoloView.State.SPEAKING else HoloView.State.IDLE; if (speaking) holo.level = 0.7f }
-    }
-    private val voice = VoiceInput(context, this)
-    private var awaitingReply = false
     private val lines = StringBuilder()
 
     init {
@@ -57,17 +48,18 @@ class ConversationPanel(
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        input.hint = "Type, or tap the mic"; input.setHintTextColor(Color.rgb(80, 110, 125))
+        input.hint = "Just talk, or type here"; input.setHintTextColor(Color.rgb(80, 110, 125))
         input.setTextColor(Color.WHITE); input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         input.imeOptions = EditorInfo.IME_ACTION_SEND; input.maxLines = 3
         input.setOnEditorActionListener { _, _, _ -> sendTyped(); true }
         row.addView(input, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-        mic.text = "MIC"; mic.setOnClickListener { toggleMic() }
+        mic.setOnClickListener { toggleMic() }
         row.addView(mic, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
         addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         Hub.history.forEach { append(it.speaker, it.text) }
         render()
+        refreshMic()
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -76,13 +68,14 @@ class ConversationPanel(
         super.onAttachedToWindow()
         Hub.add(this)
         Hub.connect(context)
-        if (listenOnShow) post { startListening() }
+        LiveAudio.add(this)
+        // Listening is the default: the app and the assistant overlay both open the microphone.
+        if (prefs.openMic || listenOnShow) LinkService.start(context, listen = true)
     }
 
     override fun onDetachedFromWindow() {
         Hub.remove(this)
-        stopAll()
-        speaker.shutdown()
+        LiveAudio.remove(this)
         super.onDetachedFromWindow()
     }
 
@@ -96,62 +89,57 @@ class ConversationPanel(
 
     override fun onEvent(event: Protocol.Event) {
         when (event) {
-            is Protocol.Event.Said -> {
-                append(event.speaker, event.text); render()
-                if (event.speaker == "jarvis") {
-                    if (awaitingReply) {
-                        awaitingReply = false
-                        if (prefs.speakReplies) speaker.say(event.text) else holo.state = HoloView.State.IDLE
-                    }
-                }
+            is Protocol.Event.Said -> { append(event.speaker, event.text); render() }
+            is Protocol.Event.Card -> {
+                lines.append("▣ ").append(event.title.uppercase())
+                if (event.text.isNotEmpty()) lines.append("\n").append(event.text)
+                lines.append("\n\n"); render()
             }
             is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
     }
 
-    // ── mic ──────────────────────────────────────────────────────────────────
+    // ── the voice ────────────────────────────────────────────────────────────
 
-    fun startListening() {
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            append("jarvis", "Open Jarvis once and allow the microphone."); render(); return
+    override fun onState(state: LiveAudio.State, level: Float) {
+        holo.state = when (state) {
+            LiveAudio.State.LISTENING -> if (LiveAudio.muted) HoloView.State.IDLE else HoloView.State.LISTENING
+            LiveAudio.State.SPEAKING -> HoloView.State.SPEAKING
+            LiveAudio.State.CONNECTING -> HoloView.State.THINKING
+            LiveAudio.State.OFF -> HoloView.State.IDLE
         }
-        speaker.stop()
-        holo.state = HoloView.State.LISTENING
-        mic.text = "STOP"
-        voice.start()
+        holo.level = maxOf(holo.level, level)
+        refreshMic()
     }
 
-    fun stopAll() {
-        voice.stop()
-        speaker.stop()
-        mic.text = "MIC"
-        holo.state = HoloView.State.IDLE
+    private fun refreshMic() {
+        mic.text = when {
+            !LiveAudio.running -> "LISTEN"
+            LiveAudio.muted -> "UNMUTE"
+            else -> "MUTE"
+        }
     }
 
-    private fun toggleMic() { if (voice.listening) stopAll() else startListening() }
-
-    override fun onPartial(text: String) { input.setText(text); input.setSelection(text.length) }
-    override fun onLevel(level: Float) { holo.level = maxOf(holo.level, level) }
-    override fun onFinal(text: String) { mic.text = "MIC"; input.setText(""); say(text) }
-    override fun onError(message: String) {
-        mic.text = "MIC"; holo.state = HoloView.State.IDLE
-        append("jarvis", message); render()
+    /** LISTEN starts the open microphone; MUTE/UNMUTE pauses sending without hanging up. */
+    private fun toggleMic() {
+        when {
+            !LiveAudio.running -> { prefs.openMic = true; LinkService.start(context, listen = true) }
+            else -> { LiveAudio.muted = !LiveAudio.muted; refreshMic(); onState(LiveAudio.state, 0f) }
+        }
     }
 
-    // ── sending ──────────────────────────────────────────────────────────────
+    fun startListening() { if (!LiveAudio.running) LinkService.start(context, listen = true) }
+
+    /** The assistant overlay was dismissed: stop talking, but leave the link up. */
+    fun stopAll() { /* the microphone stays open in the background service until you stop it */ }
+
+    // ── typing ───────────────────────────────────────────────────────────────
 
     private fun sendTyped() {
         val t = input.text.toString().trim()
-        if (t.isNotEmpty()) { input.setText(""); say(t) }
-    }
-
-    private fun say(text: String) {
-        if (Hub.send(text)) {
-            awaitingReply = true
-            holo.state = HoloView.State.THINKING
-        } else {
-            append("jarvis", "Not connected to your PC."); render()
-        }
+        if (t.isEmpty()) return
+        input.setText("")
+        if (Hub.send(t)) holo.state = HoloView.State.THINKING else { append("jarvis", "Not connected to your PC."); render() }
     }
 
     // ── the log ──────────────────────────────────────────────────────────────

@@ -1,7 +1,8 @@
-# ⚙️ MARK LVII (57)
-### The Ultimate Cross-Platform Personal AI Assistant — By FatihMakes
+# ⚙️ JARVIS — Yugam Edition
+### A personal, real-time voice AI assistant — built on Mark LVII
 
-> 📺 **[Watch the full setup video on YouTube](https://www.youtube.com/@FatihMakes)**
+> A personal fork by **Yugam**, extended with a phone app, deeper thinking, computer control and more.
+> It started from *Mark LVII* by FatihMakes; see [Credits and licence](#-credits-and-licence).
 
 A real-time voice AI that can hear, see, speak, and control your computer — on any OS. Supports Windows, macOS, and Linux. Built on the Gemini Live API for native audio streaming, delivering zero subscriptions and total digital autonomy.
 
@@ -802,7 +803,7 @@ It is held in memory only, deliberately: writing it to disk would make a fresh l
 ## ⚡ Quick Start
 
 ```bash
-git clone https://github.com/FatihMakes/Mark-LVII.git
+git clone https://github.com/Yugam2508/Mark-LVII.git
 cd Mark-LVII
 python setup.py        # installs deps for YOUR OS + the browser automation engine
 python main.py
@@ -1014,12 +1015,10 @@ Licensed under **[Creative Commons BY-NC 4.0](https://creativecommons.org/licens
 
 ---
 
-## 👤 Connect with the Creator
+## 📜 Credits and licence
 
-Engineered by a developer building a real-world JARVIS-style assistant.
-⭐ **Star the repository to support the journey to Mark 100.**
-
-| Platform | Link |
-| --- | --- |
-| YouTube | [@FatihMakes](https://www.youtube.com/@FatihMakes) |
-| Instagram | [@fatihmakes](https://www.instagram.com/fatihmakes) |
+This project is a modified version of **Mark LVII** by **FatihMakes**, which is licensed under
+[Creative Commons BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) and credited to him in `LICENSE`.
+Changes in this fork (the phone app, the add-ons described in `ADDONS.md`, the holographic and immersive
+interface, computer and phone control, and more) are by **Yugam** and are released under the same licence:
+personal and non-commercial use only.

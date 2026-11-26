@@ -3075,6 +3075,11 @@ class JarvisLive:
                     self._interrupted          = False
 
                     print("[JARVIS] Connected.")
+                    try:
+                        from core import apihealth
+                        apihealth.reset()
+                    except Exception:
+                        pass
                     if _resumed_with:
                         # Say it plainly: the difference between "it reconnected"
                         # and "it reconnected and still knows what we were doing"
@@ -3210,6 +3215,18 @@ class JarvisLive:
                 err_str = str(e)
                 print(f"[JARVIS] Error ({type(e).__name__}): {e}")
                 traceback.print_exc()
+
+                # Say what is wrong on screen, in words, whatever the error was.
+                # Otherwise a blocked key or an exhausted quota looks like a
+                # frozen assistant.
+                try:
+                    from core import apihealth
+                    _kind, _msg = apihealth.diagnose(err_str)
+                    if apihealth.should_announce(_kind):
+                        self.ui.write_log(f"ERR: {_msg}")
+                        self.ui.show_notice("Jarvis can't connect", _msg, "error")
+                except Exception as _e2:
+                    print(f"[APIHealth] {_e2}")
 
                 # Out of quota, or this model is not available to this key —
                 # step down the ladder and reconnect straight away. This is the

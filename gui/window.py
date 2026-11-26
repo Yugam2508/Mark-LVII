@@ -2411,10 +2411,21 @@ class MainWindow(QMainWindow):
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(msg,), daemon=True).start()
 
+    @staticmethod
+    def _footer_text() -> str:
+        """The shortcut hints and, at the end, whose Jarvis this is: the name given at first launch."""
+        try:
+            from memory.config_manager import get_user_name
+            first = (get_user_name() or "").strip().split()[0].upper()
+            if first.lower() in ("sir", "madam", "boss"):
+                first = ""
+        except Exception:
+            first = ""
+        return "F4 MUTE   ·   F11 FULLSCREEN   ·   ESC INTERRUPT" + (f"   ·   BY {first}" if first else "")
+
     def _build_footer(self) -> QWidget:
         self._status_strip = StatusStrip()
-        self._status_strip.set_right(
-            "F4 MUTE   ·   F11 FULLSCREEN   ·   ESC INTERRUPT   ·   BY FATIHMAKES")
+        self._status_strip.set_right(self._footer_text())
         self._refresh_status_strip()
         return self._status_strip
 
@@ -2854,6 +2865,7 @@ class MainWindow(QMainWindow):
             try:  # "YUGAM EDITION" follows the name you give yourself
                 from core import edition
                 self._sub_lbl.setText(f"{APP_VERSION}  ·  {edition.label()}")
+                self._status_strip.set_right(self._footer_text())
             except Exception:
                 pass
             self._log.append_log(f"SYS: Identity updated — {display}")
