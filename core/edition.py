@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """58 -> 'LVIII'."""
+    """59 -> 'LIX'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,19 +26,13 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 58                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LVIII"
+MARK_NUMBER = 59                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LIX"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-30"
 
 CHANGELOG = [
-    {"version": "LVIII", "date": "2026-11-30", "items": [
-        "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
-        "the next will be Mark LIX (no more v1.x)",
-        "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
-        "the phone's assistant (long-press power); see android/README.md",
-        "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
-        "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+    {"version": "LIX", "date": "2026-11-30", "items": [
         "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
         "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
         "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
@@ -56,12 +50,23 @@ CHANGELOG = [
         "billing, Google overloaded, no network) instead of silently looking frozen",
         "The window footer credits you instead of the original author (the original credit stays in "
         "the README and LICENSE, as the licence requires)",
-        "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
-        "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
         "Jarvis can see inside the computer and act on it: which programs use the GPU/CPU/memory/disk/"
         "network/a port, find files on every drive (instant, from an index), what's taking disk space, "
         "delete to the Recycle Bin and close programs (always confirmed), and hand whole-computer jobs "
         "(\"clean up my D: drive\") to Claude Code, which proposes a plan first and runs it only on your confirm",
+        "Hub mode: tell Jarvis \"this PC is my hub\" (or tick it in CONVERSATION & PRESENCE) and it stays awake "
+        "while plugged in, starts at login and lives in the tray, so your phone can always reach it; ask "
+        "\"hub status\" to see which phones are linked, the Tailscale address and what's holding it awake",
+    ]},
+    {"version": "LVIII", "date": "2026-11-30", "items": [
+        "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
+        "the next will be Mark LIX (no more v1.x)",
+        "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
+        "the phone's assistant (long-press power); see android/README.md",
+        "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
+        "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+        "Paired phones are remembered across Jarvis restarts (they used to be forgotten, which made "
+        "the app ask to pair again); the PC stays awake on mains power while a phone is connected",
         "Deeper thinking on its own: when a question needs real reasoning, Jarvis isn't sure, or you "
         "doubt it in any words, it hands the question (with the conversation and your memory boxes) to "
         "a stronger model — your OpenAI keys (several, rotated when one runs out) or Claude through your "

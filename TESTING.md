@@ -156,6 +156,14 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Shut down the PC in 10 minutes" → confirm → scheduled; "cancel the shutdown" → cancelled. "Clean my temp files".
 - [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
 
+## 7f. The PC as the hub
+
+- [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.
+- [ ] "Hub status" → hub mode on, phones linked, the Tailscale address, holding awake, starts at login.
+- [ ] Leave the PC plugged in and idle for an hour (screen off is fine) → the phone still connects and answers.
+- [ ] Reboot the PC → Jarvis comes back in the tray by itself and the phone relinks without touching anything.
+- [ ] Unplug it → the log/status says it can sleep again (it only stays awake on mains power).
+
 ## 8. Things from earlier versions still worth a run
 
 - [ ] Morning briefing (tomorrow morning), proactive email alerts with suggested replies.

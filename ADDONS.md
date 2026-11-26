@@ -583,8 +583,8 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVIII · YUGAM EDITION** (your name, from first launch) and
-the status bar says **EDITION · MARK LVIII**. Releases are numbered by Mark: each update raises it
+The header reads **MARK LIX · YUGAM EDITION** (your name, from first launch) and
+the status bar says **EDITION · MARK LIX**. Releases are numbered by Mark: each update raises it
 (LVIII, LIX, LX…), no more v1.x. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.

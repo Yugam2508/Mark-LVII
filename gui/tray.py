@@ -70,7 +70,8 @@ class TrayIntegration(QObject):
             return False
         try:
             from memory.config_manager import get_plugin_setting
-            return bool(get_plugin_setting("conversation", "close_to_tray", True))
+            return bool(get_plugin_setting("conversation", "close_to_tray", True)
+                        or get_plugin_setting("conversation", "hub_mode", False))
         except Exception:
             return True
 

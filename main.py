@@ -2983,6 +2983,11 @@ class JarvisLive:
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
             try:
+                from plugins import hub as _hub
+                _hub.startup_check(self.ui)
+            except Exception as _e:
+                print(f"[Hub] startup check skipped: {_e}")
+            try:
                 from plugins import phone_messages
                 self._dashboard.set_notification_callback(phone_messages.on_notification)
             except Exception as _e:
