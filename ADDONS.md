@@ -808,7 +808,17 @@ The bigger plan — one always-on Jarvis that every device reaches — is in `HU
 
 ---
 
-## 43. When Claude Code or the phone link doesn't work
+## 43. Your phone as part of Jarvis
+
+With the Android app (`android/README.md`) paired, Jarvis on the PC can use the phone: **"call Mum"**,
+**"text Aarav I'm running ten minutes late"**, **"find my phone"** (rings at full volume), **"what's
+my phone's battery?"**, **"what's Aarav's number?"**. Calls and texts wait for your **confirm** (by
+voice or on screen) and texts open for editing first; a name that matches two contacts is asked, not
+guessed. The phone must be connected (the app's quiet notification shows the link is up).
+
+---
+
+## 44. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 

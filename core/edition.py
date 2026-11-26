@@ -37,6 +37,8 @@ CHANGELOG = [
         "the next will be Mark LIX (no more v1.x)",
         "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
         "the phone's assistant (long-press power); see android/README.md",
+        "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
+        "\"how's my phone's battery\" — calls and texts always wait for your confirm",
     ]},
     {"version": "1.8", "date": "2026-11-30", "items": [
         "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "

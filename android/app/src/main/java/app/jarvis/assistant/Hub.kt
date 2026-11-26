@@ -42,6 +42,8 @@ object Hub {
     private var wantConnected = false
     private var retry = 2000L
     private var prefs: Prefs? = null
+    private var appContext: Context? = null
+    private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     /** The last lines of conversation, so a screen that opens late is not blank. */
     val history = ArrayDeque<Protocol.Event.Said>()
@@ -93,6 +95,7 @@ object Hub {
     // ── connection ───────────────────────────────────────────────────────────
 
     fun connect(context: Context) {
+        appContext = context.applicationContext
         prefs = Prefs(context)
         if (prefs?.paired != true) { emitConnection(false, "Not paired yet"); return }
         if (wantConnected && socket != null) return
@@ -131,10 +134,13 @@ object Hub {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             retry = 2000L
                             emitConnection(true, "Connected")
+                            // Tell the PC this phone is here and what it can do.
+                            webSocket.send(Protocol.helloBody(Build.MODEL, PhoneActions.abilities))
                         }
 
                         override fun onMessage(webSocket: WebSocket, text: String) {
-                            Protocol.parseEvent(text)?.let { emit(it) }
+                            val e = Protocol.parseEvent(text) ?: return
+                            if (e is Protocol.Event.PhoneAction) handle(webSocket, e) else emit(e)
                         }
 
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -147,6 +153,15 @@ object Hub {
                     })
             }
         })
+    }
+
+    /** The PC asked this phone to do something: do it off the main thread and answer. */
+    private fun handle(ws: WebSocket, a: Protocol.Event.PhoneAction) {
+        val ctx = appContext ?: return
+        worker.execute {
+            val r = PhoneActions.run(ctx, a.action, a.args)
+            ws.send(Protocol.resultBody(a.id, r.ok, r.text, r.data))
+        }
     }
 
     private fun scheduleRetry(why: String) {

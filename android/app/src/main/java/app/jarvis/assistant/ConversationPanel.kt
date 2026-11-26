@@ -99,7 +99,7 @@ class ConversationPanel(context: Context, private val listenOnShow: Boolean = fa
                     }
                 }
             }
-            is Protocol.Event.System, is Protocol.Event.Status -> Unit
+            is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
     }
 

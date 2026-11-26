@@ -783,6 +783,11 @@ class DashboardServer:
         self._token_keys: dict[str, str]  = {}   # auth_token → session_key
         self._aes_cache:  dict[str, bytes]= {}   # session_key → AES bytes
         self._clients: set[WebSocket]     = set()
+        # The Android app registers itself over the same socket ("hello") so the PC can ask the
+        # phone to do things (plugins/phone_control.py) and get an answer ("result").
+        self._phones: dict[WebSocket, dict] = {}
+        self._pending_calls: dict[str, "asyncio.Future"] = {}
+        self._loop = None
         self._history: list[dict]         = []
         self._command_queue               = asyncio.Queue()
         self._wake_callback               = None
@@ -798,6 +803,36 @@ class DashboardServer:
         self._login_html                  = _read("login.html")
         self._app_html                    = _read("app.html")
         self.app                          = self._build_app()
+
+    # ── the phone as a limb ───────────────────────────────────────────────
+
+    def phone_info(self) -> dict | None:
+        """The most recently connected phone ({'name', 'abilities'}) or None."""
+        return list(self._phones.values())[-1] if self._phones else None
+
+    async def call_phone(self, action: str, args: dict | None = None, timeout: float = 25.0) -> dict:
+        """Ask the connected phone to do something; returns its {'ok', 'text', ...} answer."""
+        if not self._phones:
+            raise RuntimeError("no phone is connected — open the Jarvis app on it")
+        ws = list(self._phones)[-1]
+        cid = secrets.token_hex(4)
+        fut = asyncio.get_running_loop().create_future()
+        self._pending_calls[cid] = fut
+        try:
+            await ws.send_json({"type": "phone_action", "id": cid, "action": action, "args": args or {}})
+            return await asyncio.wait_for(fut, timeout)
+        except asyncio.TimeoutError:
+            raise RuntimeError("the phone didn't answer in time")
+        finally:
+            self._pending_calls.pop(cid, None)
+
+    def call_phone_sync(self, action: str, args: dict | None = None, timeout: float = 25.0) -> dict:
+        """The same, from a worker thread (a plugin)."""
+        loop = self._loop
+        if loop is None:
+            raise RuntimeError("the phone link isn't running")
+        fut = asyncio.run_coroutine_threadsafe(self.call_phone(action, args, timeout), loop)
+        return fut.result(timeout + 3)
 
     # ── one-time key management ───────────────────────────────────────────
 
@@ -1297,6 +1332,7 @@ class DashboardServer:
                 return
             await websocket.accept()
             self._clients.add(websocket)
+            self._loop = asyncio.get_running_loop()
             for entry in self._history[-50:]:
                 try:
                     await websocket.send_json(entry)
@@ -1305,7 +1341,16 @@ class DashboardServer:
             try:
                 while True:
                     data = await websocket.receive_json()
-                    if data.get("type") == "command":
+                    if data.get("type") == "hello":
+                        self._phones[websocket] = {"name": str(data.get("name") or "phone")[:40],
+                                                   "abilities": [str(a)[:30] for a in (data.get("abilities") or [])][:30]}
+                        await self.broadcast({"type": "sys", "text": f"Phone linked: {self._phones[websocket]['name']}."})
+                    elif data.get("type") == "result":
+                        fut = self._pending_calls.get(str(data.get("id") or ""))
+                        if fut is not None and not fut.done():
+                            fut.set_result({"ok": bool(data.get("ok")), "text": str(data.get("text") or "")[:2000],
+                                            "data": data.get("data")})
+                    elif data.get("type") == "command":
                         enc = data.get("enc", "")
                         t   = self._decrypt(tok, enc) if enc else (data.get("text") or "").strip()
                         if t:
@@ -1316,6 +1361,7 @@ class DashboardServer:
                 pass
             finally:
                 self._clients.discard(websocket)
+                self._phones.pop(websocket, None)
 
         return app
 

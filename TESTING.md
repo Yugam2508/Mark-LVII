@@ -89,8 +89,16 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Tap **MIC**, say something → it's recognised and answered.
 - [ ] Settings → Apps → Default apps → Digital assistant app → **Jarvis** → long-press power
       from another app → the panel opens over it and starts listening.
-- [ ] Not built yet, so don't expect them: wake word, calls and texts, the AC through the
-      IR blaster, and picking up a conversation from the PC (steps 2-5 in ANDROID.md).
+- [ ] Allow the permission prompts (Microphone, Contacts, Phone, SMS, Notifications). A quiet
+      "Jarvis is linked to your PC" notification appears, and the PC log says "Phone linked".
+- [ ] Say to Jarvis on the PC: "what's my phone's battery?" → it answers from the phone.
+- [ ] "Find my phone" (with the app closed) → rings loudly for 30 s; opening the app stops it.
+- [ ] "Call <a contact>" → a confirmation on the PC → say "confirm" → the phone dials. Say
+      "cancel" the next time → nothing happens. Try a name that matches two contacts → it asks which.
+- [ ] "Text <yourself or a friend> hello from Jarvis" → shown for edit/confirm → the text arrives.
+- [ ] Restart the phone → the link notification comes back by itself.
+- [ ] Not built yet, so don't expect them: wake word, the AC through the IR blaster, reading
+      notifications, controlling other apps, and picking up a conversation from the PC.
 
 ## 8. Things from earlier versions still worth a run
 
