@@ -24,6 +24,10 @@ CHANGELOG = [
         "'Diagnose Claude Code' and a phone-link check tell you exactly which step is broken "
         "and the one command that fixes it",
         "'Set up Notion' walks the setup step by step and takes the secret from your clipboard",
+        "Jarvis lives in the system tray: closing the window keeps it listening, Ctrl+Alt+J brings "
+        "it forward from any window, and Quit really quits",
+        "Conversation handoff: the last turns follow you between devices (needs device sync); "
+        "ask \"where were we on the desktop?\" any time",
         "'Send it' brings the Claude window forward itself, so it works from any window",
     ]},
     {"version": "1.6", "date": "2026-11-28", "items": [

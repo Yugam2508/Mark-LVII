@@ -791,7 +791,23 @@ connection.
 
 ---
 
-## 42. When Claude Code or the phone link doesn't work
+## 42. In the system: tray, hotkey, handoff
+
+- **Tray icon.** Closing the window now hides Jarvis to the notification area and it keeps
+  listening (a bubble tells you once). Click the icon to show or hide it; right-click for mute,
+  stop talking, layout and **Quit**. Turn off in CONVERSATION & PRESENCE → *Closing the window
+  keeps Jarvis running in the tray*.
+- **Ctrl+Alt+J** brings Jarvis to the front from any window (Windows; on other systems it works
+  while Jarvis has focus). Start at login is ⚙ → CONTROLS → AUTO-START.
+- **Handoff.** With device sync on, each Jarvis leaves its last few turns in the sync folder. Move
+  to another device and it knows what you were just discussing; "where were we on the desktop?"
+  pulls it on demand. Turns are kept for 30 minutes and overwritten.
+
+The bigger plan — one always-on Jarvis that every device reaches — is in `HUB.md`.
+
+---
+
+## 43. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 

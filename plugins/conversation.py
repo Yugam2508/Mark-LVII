@@ -95,13 +95,15 @@ PLUGIN = {
         "Controls when the assistant speaks up. Use 'pause' when the user says they're "
         "talking to someone, on a call, busy, or asks you to give them some minutes; "
         "'back' when they say they're back or free (then mention anything they missed); "
-        "'status' when they ask if you're listening. While paused, say nothing unless "
-        "they use your name."
+        "'status' when they ask if you're listening; 'handoff' for 'where were we on my "
+        "desktop/laptop', 'continue what I was saying on the other computer' (it returns the "
+        "last turns another device had with them). While paused, say nothing unless they use "
+        "your name."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["pause", "back", "status"]},
+            "action": {"type": "STRING", "enum": ["pause", "back", "status", "handoff"]},
             "minutes": {"type": "NUMBER", "description": "For pause: how long, default from settings"},
             "reason": {"type": "STRING", "description": "For pause: e.g. 'talking to someone', 'on a call'"},
         },
@@ -125,6 +127,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["20", "45", "120"], "default": "45"},
         {"key": "welcome_back", "label": "When I'm back, tell me what I missed", "type": "toggle",
          "default": True},
+        {"key": "close_to_tray", "label": "Closing the window keeps Jarvis running in the tray "
+         "(Ctrl+Alt+J brings it back)", "type": "toggle", "default": True},
         {"key": "follow_audio", "label": "Follow audio devices: switch when headphones or Bluetooth "
          "connect or disconnect", "type": "toggle", "default": True},
     ],
@@ -145,6 +149,16 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             missed = back()
             return outcome.done("conversation_back", missed=len(missed)) + \
                 ("\n" + outcome.untrusted("missed", "\n".join(missed)) if missed else "")
+        if action == "handoff":
+            from core import handoff
+            other = handoff.latest_other()
+            if not other:
+                return outcome.failed("conversation_handoff", "no other device has talked to you in the "
+                                      "last 30 minutes (or device sync is off)")
+            return outcome.done("conversation_handoff", device=other["device"],
+                                minutes_ago=int((time.time() - other["at"]) // 60),
+                                note="carry on from this naturally") + "\n" + \
+                outcome.untrusted("conversation", "\n".join(other["turns"]))
         where, why = presence.state()
         return outcome.done("conversation_status", state=where, reason=why or None)
     except Exception as e:

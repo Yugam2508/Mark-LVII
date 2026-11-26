@@ -15,9 +15,10 @@ smarter. What makes it feel like JARVIS is that it is **one mind that is always 
 are**. That is a hub plus integration, in this order:
 
 1. **The hub (the Aftershock desktop, always on).** One Jarvis brain that holds memory, agents,
-   schedules, proactive checks and the local model (RTX 5070) — the thing that already half-exists
-   as the headless server (`core/cloud.py`), device sync and ntfy. Laptops and phone stop being
-   separate Jarvises and become windows into this one.
+   schedules, proactive checks and the local model (RTX 5070). Note: `core/cloud.py` is a Linux
+   server body that isn't connected to this fork, so it is a starting point only. Full design,
+   phases and open decisions: **HUB.md**. Laptops and phone stop being separate Jarvises and become
+   windows into this one.
 2. **Thin clients that reach the hub** over Tailscale: the laptop app (mic, speakers, screen), the
    phone (installable PWA first, then a real Android app set as the default assistant on the
    OnePlus: long-press power, lock-screen, notifications), and the browser.
