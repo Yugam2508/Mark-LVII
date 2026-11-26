@@ -106,3 +106,7 @@ a small built-in fallback — instead of crashing.
 - Settings and keys live in `config/api_keys.json` through
   `memory/config_manager.py`; never write that file directly.
 - Keep to the libraries already in `requirements.txt`.
+- **Releases are numbered by Mark, not v1.x.** Each update raises `MARK_NUMBER` in
+  `core/edition.py` by one (LVII → LVIII → LIX …), sets `DATE`, and adds a CHANGELOG
+  entry at the top with `"version"` set to the new Mark in Roman numerals. The header,
+  window title, status bar and What's new panel all follow from that one number.

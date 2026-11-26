@@ -49,10 +49,10 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
     try:
         if action == "capabilities":
             if player:
-                player.show_content(f"WHAT I CAN DO · v{edition.VERSION}", CAPABILITIES)
-            return outcome.done("capabilities", version=edition.VERSION) + "\n" + CAPABILITIES
+                player.show_content(f"WHAT I CAN DO · {edition.tag()}", CAPABILITIES)
+            return outcome.done("capabilities", version=edition.tag()) + "\n" + CAPABILITIES
         if action == "version":
-            return outcome.done("version", version=edition.VERSION, date=edition.DATE,
+            return outcome.done("version", version=edition.tag(), date=edition.DATE,
                                 edition=edition.edition_name())
         if player:
             player.show_content(f"WHAT'S NEW · v{edition.VERSION}", edition.whats_new_text())

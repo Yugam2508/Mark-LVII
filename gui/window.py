@@ -102,7 +102,7 @@ from gui.widgets import (ArcLogo, CommandFrame, DataRow, HeaderBar, HoloPanel, I
 def _edition_version() -> str:
     try:
         from core import edition
-        return edition.VERSION
+        return edition.tag()
     except Exception:
         return "?"
 
@@ -1420,7 +1420,7 @@ class MainWindow(QMainWindow):
             (f"ENGINE · {getattr(self, '_engine_label', 'GEMINI LIVE')}", "GREEN"),
             mic,
             (f"PROTOCOL · {APP_PROTOCOL}", "PRI"),
-            (f"EDITION · v{_edition_version()}", "PRI"),
+            (f"EDITION · {_edition_version()}", "PRI"),
         ])
 
     def _build_left_panel(self) -> QWidget:

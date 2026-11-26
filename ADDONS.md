@@ -30,7 +30,7 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
 | Memory boxes | Always-on "who you are" and "the essentials" — steer every reply (§39) | `memory/memory_manager.py` |
 | Claude on the web | Opens your Jarvis session in your Chrome profile; "add X to yourself" (§40) | `plugins/claude_web.py` |
-| Version & what's new | "YOUR NAME EDITION · v1.7" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Version & what's new | "MARK LVIII · YOUR NAME EDITION" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
 | Holographic HUD | Rings, live spectrum and satellites showing what Jarvis is doing (§34) | `gui/holo.py` |
 | Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
 | Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
@@ -583,8 +583,9 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVII · YUGAM EDITION · v1.7** (your name, from first launch) and
-the status bar says **EDITION · v1.7**. After each update a **What's new** panel opens
+The header reads **MARK LVIII · YUGAM EDITION** (your name, from first launch) and
+the status bar says **EDITION · MARK LVIII**. Releases are numbered by Mark: each update raises it
+(LVIII, LIX, LX…), no more v1.x. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.
 

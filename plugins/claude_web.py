@@ -306,7 +306,7 @@ def improvement_request(wish: str) -> str:
         f"code public-safe (nothing personal in the repo).\n\n"
         f"What I want added or changed:\n{wish.strip()}\n\n"
         f"Please: plan briefly, implement it, add or update an offline test, document it in "
-        f"ADDONS.md and the changelog in core/edition.py (bump the version), run the existing "
+        f"ADDONS.md and the changelog in core/edition.py (bump MARK_NUMBER by one — releases are numbered by Mark: LVIII, LIX, …), run the existing "
         f"tests, and open a pull request against main on my fork. I'll say 'merge it' when I've "
         f"seen it. After it merges I'll tell Jarvis to 'update yourself'."
     )
