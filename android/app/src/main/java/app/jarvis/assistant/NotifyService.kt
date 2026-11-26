@@ -24,8 +24,26 @@ class NotifyService : NotificationListenerService() {
         val n = sbn.notification
         if (n.flags and Notification.FLAG_ONGOING_EVENT != 0 || n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val extras = n.extras
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
+        var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+        var text = (extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: extras.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
+        // Chat apps (WhatsApp, Telegram, Messages) keep the conversation in MessagingStyle: the last
+        // message there is the new one, where EXTRA_TEXT may only say "3 new messages".
+        @Suppress("DEPRECATION")
+        val msgs = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+        val last = msgs?.lastOrNull() as? android.os.Bundle
+        if (last != null) {
+            val body = last.getCharSequence("text")?.toString().orEmpty()
+            val sender = last.getCharSequence("sender")?.toString().orEmpty()
+            val convo = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString().orEmpty()
+            if (body.isNotBlank()) {
+                text = body
+                title = when {
+                    convo.isNotBlank() && sender.isNotBlank() -> "$sender in $convo"
+                    sender.isNotBlank() -> sender
+                    else -> title
+                }
+            }
+        }
         if (title.isBlank() && text.isBlank()) return
         val reply = n.actions?.firstOrNull { a -> a.remoteInputs?.isNotEmpty() == true }
         val app = try {

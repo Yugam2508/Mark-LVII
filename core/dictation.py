@@ -18,6 +18,8 @@ from pathlib import Path
 
 _lock = threading.Lock()
 _state: dict = {"on": False, "path": None, "title": "", "words": 0, "started": None, "last": None}
+_tail = ""                      # the end of the previous chunk: "end" + "dictation" can arrive apart
+SILENCE_LIMIT = 240.0           # seconds of nothing heard before it ends by itself
 _STOP = re.compile(r"\b(end|stop|finish|finished|close)\s+(the\s+)?dictation\b|\bthat'?s\s+(all|everything|it)\s+for\s+(the\s+)?dictation\b|\bdictation\s+(over|done|complete)\b", re.I)
 _stop_cb = None
 
@@ -51,7 +53,36 @@ def start(title: str = "", on_stop=None) -> Path:
         _write(path, head, "w")
         _state.update(on=True, path=path, title=title, words=0, started=dt.datetime.now(), last=dt.datetime.now())
         _stop_cb = on_stop
-        return path
+        global _tail
+        _tail = ""
+    threading.Thread(target=_watch, args=(path,), daemon=True, name="dictation-watch").start()
+    try:
+        from core import addons
+        addons.notice("DICTATING", "Everything you say is being written down word for word. "
+                      "Say \"end dictation\" when you're done.", "info")
+    except Exception:
+        pass
+    return path
+
+
+def _watch(path: Path) -> None:
+    """End a dictation nobody ended: after SILENCE_LIMIT with nothing heard, save it as if told to."""
+    import time as _t
+    while True:
+        _t.sleep(5)
+        with _lock:
+            if not _state["on"] or _state["path"] != path:
+                return
+            idle = (dt.datetime.now() - _state["last"]).total_seconds()
+        if idle >= SILENCE_LIMIT:
+            cb = _stop_cb
+            stop_now()
+            if cb:
+                try:
+                    cb()
+                except Exception:
+                    pass
+            return
 
 
 def _write(path: Path, text: str, mode: str = "a") -> None:
@@ -63,10 +94,14 @@ def _write(path: Path, text: str, mode: str = "a") -> None:
 
 def feed(text: str) -> bool:
     """Called with each chunk of recognised speech. True if it ended the dictation."""
+    global _tail
     if not _state["on"] or not text.strip():
         return False
-    stop = bool(_STOP.search(text))
+    stop = bool(_STOP.search(text)) or bool(_STOP.search((_tail + " " + text).strip()))
+    _tail = text[-40:]
     body = _STOP.sub("", text).strip(" ,.")
+    if stop and not _STOP.search(text):
+        body = re.sub(r"\s*\b(dictation|for( the)? dictation)\b\W*$", "", body, flags=re.I).strip(" ,.")
     with _lock:
         if body:
             _write(_state["path"], body + " ")

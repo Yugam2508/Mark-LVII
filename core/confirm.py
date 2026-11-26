@@ -244,10 +244,28 @@ def resolve(accepted: bool, values: Optional[dict] = None) -> None:
             result = (p.run_edited(edited) if edited is not None else p.run()) or "Done."
             _log(f"SYS: Confirmed — {p.title}. {result}")
         except Exception as e:
+            result = f"status=failed action={p.key.split(':')[0]} reason={str(e)[:160]!r}"
             _log(f"ERR: {p.title} failed — {e}")
+        _report(p.title, result)
 
     threading.Thread(target=_worker, daemon=True,
                      name=f"confirm-{p.key}").start()
+
+
+def _report(title: str, result: str) -> None:
+    """Tell the assistant how a confirmed action ended, so it can say so out loud.
+
+    It used to go to the log only: the model never learned whether the message
+    was sent or the file moved, and would answer "did it work?" with a guess —
+    one way "it said it saved it, and it hadn't" happened."""
+    try:
+        from core import addons
+        addons.say(
+            f"The action the user just confirmed ('{title}') has finished. In ONE short sentence, "
+            "tell them what happened, truthfully and only from this result (if it failed or is "
+            "unverified, say so plainly): " + str(result)[:1500])
+    except Exception:
+        pass
 
 
 def pending_title() -> str:

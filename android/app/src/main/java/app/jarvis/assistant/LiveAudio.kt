@@ -11,6 +11,7 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import okhttp3.Request
@@ -78,16 +79,30 @@ object LiveAudio {
         audio?.let {
             savedMode = it.mode
             it.mode = AudioManager.MODE_IN_COMMUNICATION          // enables the phone's echo cancellation path
-            @Suppress("DEPRECATION")
-            it.isSpeakerphoneOn = true                               // the loudspeaker, not the earpiece
+            route(it)
         }
         connect()
+    }
+
+    /** Headphones or a Bluetooth headset when one is connected, else the loudspeaker (never the earpiece). */
+    private fun route(am: AudioManager) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val prefer = listOf(android.media.AudioDeviceInfo.TYPE_BLE_HEADSET, android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET, android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+                android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
+            val devices = am.availableCommunicationDevices
+            val pick = prefer.firstNotNullOfOrNull { t -> devices.firstOrNull { it.type == t } }
+            if (pick != null && am.setCommunicationDevice(pick)) return
+        }
+        @Suppress("DEPRECATION")
+        am.isSpeakerphoneOn = !(am.isWiredHeadsetOn || am.isBluetoothScoOn || am.isBluetoothA2dpOn)
     }
 
     fun stop() {
         wanted = false
         teardown()
         audio?.let {
+            if (Build.VERSION.SDK_INT >= 31) it.clearCommunicationDevice()
             @Suppress("DEPRECATION")
             it.isSpeakerphoneOn = false
             it.mode = savedMode
@@ -95,32 +110,40 @@ object LiveAudio {
         emit(State.OFF)
     }
 
+    @Volatile private var connecting = false
+
     private fun connect() {
         val c = ctx ?: return
+        if (connecting) return
+        connecting = true
         emit(State.CONNECTING)
         Hub.freshToken(c) { token ->
-            if (!wanted) return@freshToken
-            if (token == null) { schedule(); return@freshToken }
+            if (!wanted) { connecting = false; return@freshToken }
+            if (token == null) { connecting = false; schedule(); return@freshToken }
             val url = Protocol.audioUrl(Prefs(c).baseUrl, token, Prefs(c).duplex)
             socket = Hub.client.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    if (socket != null && socket !== webSocket) { webSocket.close(1000, "replaced"); return }
                     retry = 2000L
                     startPlayback()
                     startCapture(webSocket)
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    if (socket !== webSocket) return
                     lastVoiceAt = System.currentTimeMillis()
                     playQueue.offer(bytes.toByteArray())
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    if (text.contains("\"flush\"")) flush()
+                    if (socket === webSocket && text.contains("\"flush\"")) flush()
                 }
 
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { dropped() }
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { dropped() }
+                // Only the current socket's end matters: an old one closing late must not stop the new one.
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { if (socket == null || socket === webSocket) dropped() }
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { if (socket == null || socket === webSocket) dropped() }
             })
+            connecting = false
         }
     }
 

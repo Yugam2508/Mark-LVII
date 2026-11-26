@@ -67,8 +67,18 @@ def read(when: str = "today", last: int = 80) -> str:
     return "\n".join(lines[-last:])
 
 
+_SUFFIX = re.compile(r"(ings?|ed|es|s)$")
+
+
+def _stem(word: str) -> str:
+    """'features' -> 'feature', 'planned' -> 'plann': close enough to find a line by its words."""
+    w = word.lower()
+    return _SUFFIX.sub("", w) if len(w) > 4 else w
+
+
 def search(query: str, days: int = 30, limit: int = 40) -> list[str]:
-    words = [w for w in re.findall(r"\w+", (query or "").lower()) if len(w) > 2]
+    stop = {"the", "and", "for", "you", "what", "did", "about", "that", "this", "with", "told", "said", "tell"}
+    words = [_stem(w) for w in re.findall(r"\w+", (query or "").lower()) if len(w) > 2 and w not in stop]
     if not words:
         return []
     hits = []

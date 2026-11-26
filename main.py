@@ -2853,6 +2853,12 @@ class JarvisLive:
                         turn_complete=True,
                     )
                     self.ui.write_log(f"[Web]: {text}")
+                    self._session_log.append(f"User: {text}")
+                    try:
+                        from core import transcript as _tr
+                        _tr.append("You (typed)", text)
+                    except Exception:
+                        pass
                 else:
                     print(f"[Dashboard] Dropped command (no session): {text}")
             except asyncio.TimeoutError:

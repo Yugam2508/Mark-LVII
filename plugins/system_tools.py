@@ -46,6 +46,10 @@ _DANGEROUS = [re.compile(p, re.I) for p in (
     r"\bmkfs\b", r"\bdd\s+if=", r"\brm\s+(-\w+\s+)*-?\w*r\w*\s+/(\s|$|\*)", r"rd\s+/s\s+/q\s+[a-z]:\\\s*$",
     r"\bdel\s+/[sfq]+.*\\windows", r"remove-item.*(-recurse).*[a-z]:\\(windows|users)?\s*$",
     r"\bbcdedit\b", r"\bcipher\s+/w", r"reg\s+delete\s+hk(lm|cr)", r":\(\)\s*\{", r"shutdown\s+/[rsp]",
+    # any delete aimed at a drive root or at Windows / Users / Program Files / ProgramData themselves
+    r"(remove-item|\brm\b|\brmdir\b|\brd\b|\bdel\b|\berase\b|\bri\b)[^|;&]*?\s['\"]?[a-z]:\\"
+    r"(windows|users|program files( \(x86\))?|programdata|system32)?\\?\*?['\"]?(\s|$)",
+    r"\$env:(systemroot|windir)", r"\bset-executionpolicy\b.*\bunrestricted\b.*-scope\s+localmachine",
 )]
 
 
@@ -99,11 +103,18 @@ def _bluetooth(p: dict) -> str:
         rc, out = _ps(_BT_SET % (what, "On" if what == "on" else "Off"), 30)
         if "NO_RADIO" in out:
             return outcome.failed("bluetooth", "this PC has no Bluetooth radio")
-        return outcome.done("bluetooth", state=what) if "STATE=" in out else outcome.failed("bluetooth", out[:160] or "no answer")
+        m = re.search(r"STATE=(\w+)", out)
+        if not m:
+            return outcome.failed("bluetooth", out[:160] or "no answer")
+        if m.group(1).lower() != what:
+            _open_settings("bluetooth")
+            return outcome.failed("bluetooth", f"Windows kept it {m.group(1).lower()} (switched off in "
+                                  "airplane mode, or not allowed); I opened the Bluetooth page")
+        return outcome.done("bluetooth", state=what)
     if what == "devices":
-        rc, out = _ps("Get-PnpDevice -Class Bluetooth | ? { $_.FriendlyName -and $_.Status -eq 'OK' } | "
-                      "Select -Expand FriendlyName | Sort -Unique")
-        return outcome.done("bluetooth_devices") + "\n" + outcome.untrusted("bluetooth", out or "none found")
+        rc, out = _ps("Get-PnpDevice -Class Bluetooth | ? { $_.InstanceId -match '^(BTHENUM|BTHLE)\\\\DEV_' -and "
+                      "$_.FriendlyName } | Select -Expand FriendlyName | Sort -Unique")
+        return outcome.done("bluetooth_devices") + "\n" + outcome.untrusted("bluetooth", out or "no paired devices")
     rc, out = _ps(_BT_SET % ("status", "On"), 30)
     m = re.search(r"STATE=(\w+)", out)
     return outcome.done("bluetooth", state=(m.group(1).lower() if m else "unknown"))
@@ -120,11 +131,33 @@ def _winget_find(query: str) -> tuple[str, str]:
     rc, out = _run(["winget", "search", query, "--accept-source-agreements"], 60)
     if rc == 127:
         return "", "winget isn't installed on this PC (it comes with the App Installer from the Microsoft Store)"
-    for line in out.splitlines():
+    pkg, label = parse_winget(out)
+    return (pkg, label) if pkg else ("", f"winget found nothing called {query}")
+
+
+def parse_winget(out: str) -> tuple[str, str]:
+    """(id, name) of the first result in `winget search` output."""
+    lines = [l.rstrip("\r") for l in out.splitlines()]
+    for i, line in enumerate(lines):
+        if re.search(r"\bName\b", line) and re.search(r"\bId\b", line) and re.search(r"\bVersion\b", line):
+            id_at, ver_at = line.index("Id"), line.index("Version")
+            for row in lines[i + 1:]:
+                if not row.strip() or set(row.strip()) <= {"-"}:
+                    continue
+                # The id is the dotted word nearest the Id column (a long name can push it right,
+                # and names themselves can contain dots, like Paint.NET).
+                cands = [m for m in re.finditer(r"\S+", row)
+                         if m.start() > 0 and re.match(r"^[\w.+-]+\.[\w.+-]+$", m.group()) and m.start() < ver_at + 40]
+                if not cands:
+                    continue
+                best = min(cands, key=lambda m: abs(m.start() - id_at))
+                return best.group(), row[:best.start()].strip() or best.group()
+            break
+    for line in lines:                                   # no header recognised: split on wide gaps
         parts = re.split(r"\s{2,}", line.strip())
         if len(parts) >= 2 and re.match(r"^[\w.+-]+\.[\w.+-]+$", parts[1]):
             return parts[1], parts[0]
-    return "", f"winget found nothing called {query}"
+    return "", ""
 
 
 def _install(p: dict, remove: bool = False) -> str:
@@ -186,10 +219,19 @@ def _category(path: Path) -> str:
     return "Other"
 
 
+_PARTIAL = (".crdownload", ".part", ".partial", ".download", ".tmp", ".opdownload", ".!ut")
+
+
 def plan_organise(folder: Path) -> list[tuple[Path, Path]]:
     moves = []
+    now = time.time()
     for f in sorted(folder.iterdir()):
-        if not f.is_file() or f.name.startswith(".") or f.suffix.lower() in (".lnk", ".ini"):
+        if not f.is_file() or f.name.startswith((".", "~$")) or f.suffix.lower() in (".lnk", ".ini") + _PARTIAL:
+            continue
+        try:
+            if now - f.stat().st_mtime < 120:        # probably still being written
+                continue
+        except OSError:
             continue
         dest = folder / _category(f) / f.name
         if not dest.exists():
@@ -281,7 +323,9 @@ def _power(p: dict) -> str:
     cmds = {
         "shutdown": (["shutdown", "/s", "/t", str(delay)], ["shutdown", "-h", f"+{delay // 60}"]),
         "restart": (["shutdown", "/r", "/t", str(delay)], ["shutdown", "-r", f"+{delay // 60}"]),
-        "sleep": (["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], ["systemctl", "suspend"]),
+        "sleep": (["powershell", "-NoProfile", "-Command", "Add-Type -AssemblyName System.Windows.Forms; "
+                   "[System.Windows.Forms.Application]::SetSuspendState('Suspend', $false, $false)"],
+                  ["systemctl", "suspend"]),
         "hibernate": (["shutdown", "/h"], ["systemctl", "hibernate"]),
     }
     if what not in cmds:
@@ -312,23 +356,41 @@ def _clean_temp(p: dict) -> str:
     dirs = [Path(d) for d in {os.environ.get("TEMP", ""), os.environ.get("TMP", "")} if d and Path(d).is_dir()]
     if not dirs:
         return outcome.failed("clean_temp", "no temp folder found")
-    size = sum(_dir_size(d) for d in dirs)
+    cutoff = time.time() - 24 * 3600
+
+    def old_items(d: Path) -> list[Path]:
+        out = []
+        for child in d.iterdir():
+            try:
+                if child.stat().st_mtime < cutoff:
+                    out.append(child)
+            except OSError:
+                pass
+        return out
+
+    items = [c for d in dirs for c in old_items(d)]
+    size = sum((_dir_size(c) if c.is_dir() else c.stat().st_size) for c in items if c.exists())
 
     def go() -> str:
         freed = 0
-        for d in dirs:
-            for child in list(d.iterdir()):
-                try:
-                    n = _dir_size(child) if child.is_dir() else child.stat().st_size
-                    shutil.rmtree(child) if child.is_dir() else child.unlink()
-                    freed += n
-                except OSError:
-                    continue                      # in use by a program: leave it
+        for child in items:
+            try:
+                n = _dir_size(child) if child.is_dir() else child.stat().st_size
+                if child.is_dir():
+                    shutil.rmtree(child, ignore_errors=True)
+                    n -= _dir_size(child) if child.exists() else 0
+                else:
+                    child.unlink()
+                freed += max(0, n)
+            except OSError:
+                continue                      # in use by a program: leave it
         return outcome.done("clean_temp", freed_mb=round(freed / 1e6, 1))
 
+    if not items:
+        return outcome.done("clean_temp", freed_mb=0, note="nothing older than a day in the temp folder")
     return confirm.request("clean_temp", "Clean temp files",
-                           f"Delete temporary files ({size / 1e6:.0f} MB) from {', '.join(str(d) for d in dirs)}. "
-                           "Files in use are skipped.", go)
+                           f"Delete {len(items)} temporary items older than a day ({size / 1e6:.0f} MB) from "
+                           f"{', '.join(str(d) for d in dirs)}. Files in use are skipped.", go)
 
 
 # ── screenshot ───────────────────────────────────────────────────────────────

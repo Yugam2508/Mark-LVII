@@ -29,7 +29,7 @@ object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
         "notifications", "reply_notification", "dismiss_notification", "recent_calls",
-        "send_to_phone", "location", "dnd")
+        "send_to_phone", "location", "dnd", "texts")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -60,6 +60,7 @@ object PhoneActions {
             "location" -> location(context)
             "dnd" -> dnd(context, args.optBoolean("on", true))
             "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
+            "texts" -> texts(context, args.optString("from"), args.optInt("limit", 8))
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
@@ -113,7 +114,9 @@ object PhoneActions {
 
     private fun text(context: Context, number: String, message: String): Result {
         if (number.isBlank() || message.isBlank()) return Result(false, "I need a number and a message")
-        val sms = service(context, SmsManager::class.java)
+        // SmsManager is a system service only from Android 12; before that it is SmsManager.getDefault().
+        val sms = if (android.os.Build.VERSION.SDK_INT >= 31) service(context, SmsManager::class.java)
+            else @Suppress("DEPRECATION") SmsManager.getDefault()
         sms.sendMultipartTextMessage(number, null, sms.divideMessage(message), null, null)
         return Result(true, "Text sent to $number")
     }
@@ -140,12 +143,22 @@ object PhoneActions {
         return Result(true, "Opened")
     }
 
-    private val overlayHint = "Allow \"Let Jarvis open apps and sites\" in the app's menu first"
+    private val overlayHint = "On the phone, open Jarvis → ⋮ → Permissions & setup and switch on \"Open apps and sites when asked\""
 
-    private fun guarded(context: Context, intent: Intent): Result =
-        try { launch(context, intent) } catch (e: Exception) {
-            Result(false, "The phone wouldn't open it. $overlayHint")
+    /**
+     * Android quietly ignores an app that opens something while it is in the background (no error comes
+     * back), so "opened" would be a lie. It is allowed while Jarvis is on screen, or with "Display over
+     * other apps" switched on; otherwise say what to switch on instead of pretending.
+     */
+    private fun guarded(context: Context, intent: Intent): Result {
+        if (!android.provider.Settings.canDrawOverlays(context) && !MainActivity.visible)
+            return Result(false, "Android won't let Jarvis open things from the background yet. $overlayHint")
+        return try { launch(context, intent) } catch (e: android.content.ActivityNotFoundException) {
+            Result(false, "No app on the phone can open that")
+        } catch (e: Exception) {
+            Result(false, "The phone wouldn't open it (${e.message})")
         }
+    }
 
     private fun openApp(context: Context, name: String): Result {
         if (name.isBlank()) return Result(false, "Which app?")
@@ -304,6 +317,35 @@ object PhoneActions {
             else android.service.notification.NotificationListenerService.INTERRUPTION_FILTER_ALL)
         return Result(true, if (on) "Do Not Disturb on" else "Do Not Disturb off")
     }
+
+    /** The latest texts in the inbox, optionally only from one person (a name or part of a number). */
+    private fun texts(context: Context, from: String, limit: Int): Result {
+        val out = JSONArray()
+        val uri = android.provider.Telephony.Sms.Inbox.CONTENT_URI
+        val cols = arrayOf(android.provider.Telephony.Sms.ADDRESS, android.provider.Telephony.Sms.BODY,
+            android.provider.Telephony.Sms.DATE)
+        val want = from.trim().lowercase()
+        val names = HashMap<String, String>()
+        context.contentResolver.query(uri, cols, null, null, "${android.provider.Telephony.Sms.DATE} DESC")?.use { c ->
+            var scanned = 0
+            while (c.moveToNext() && out.length() < limit.coerceIn(1, 30) && scanned < 500) {
+                scanned++
+                val addr = c.getString(0) ?: continue
+                val name = names.getOrPut(addr) { contactName(context, addr) ?: addr }
+                if (want.isNotEmpty() && !name.lowercase().contains(want) && !addr.filter { it.isDigit() }.contains(want.filter { it.isDigit() }.ifEmpty { "\u0000" })) continue
+                out.put(JSONObject().put("from", name).put("text", (c.getString(1) ?: "").take(500))
+                    .put("age_min", (System.currentTimeMillis() - c.getLong(2)) / 60000))
+            }
+        }
+        return Result(true, "${out.length()} text(s)", JSONObject().put("texts", out))
+    }
+
+    private fun contactName(context: Context, number: String): String? = try {
+        val u = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+        context.contentResolver.query(u, arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)?.use {
+            if (it.moveToFirst()) it.getString(0) else null
+        }
+    } catch (e: Exception) { null }
 
     private fun recentCalls(context: Context, limit: Int): Result {
         val out = JSONArray()

@@ -39,6 +39,7 @@ object Hub {
     private val listeners = CopyOnWriteArraySet<Listener>()
 
     private var socket: WebSocket? = null
+    @Volatile private var opening = false        // a login + socket is on its way: don't start a second one
     private var wantConnected = false
     private var retry = 2000L
     private var prefs: Prefs? = null
@@ -60,11 +61,13 @@ object Hub {
     }
 
     private fun emit(e: Protocol.Event) {
-        if (e is Protocol.Event.Said) {
-            history.addLast(e)
-            while (history.size > 60) history.removeFirst()
+        main.post {
+            if (e is Protocol.Event.Said) {
+                history.addLast(e)
+                while (history.size > 60) history.removeFirst()
+            }
+            listeners.forEach { it.onEvent(e) }
         }
-        main.post { listeners.forEach { it.onEvent(e) } }
     }
 
     /** The shared HTTP client (the audio socket uses it too). */
@@ -129,13 +132,16 @@ object Hub {
 
     private fun openSocket() {
         val p = prefs ?: return
+        if (opening) return
+        opening = true
         val login = Request.Builder().url("${p.baseUrl}/api/device-login")
             .post("""{"device_token":"${p.deviceToken}"}""".toRequestBody(JSON)).build()
         http.newCall(login).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = scheduleRetry("Can't reach the PC")
+            override fun onFailure(call: Call, e: IOException) { opening = false; scheduleRetry("Can't reach the PC") }
 
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string().orEmpty()
+                opening = false
                 if (response.code == 401) {
                     // The PC says it doesn't know this phone (revoked, or an older Jarvis that
                     // forgot paired phones when it restarted): pair again with a new key.
@@ -161,11 +167,14 @@ object Hub {
                             if (e is Protocol.Event.PhoneAction) handle(webSocket, e) else emit(e)
                         }
 
+                        // A late "closed" from a socket that was already replaced must not take down the new one.
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                            if (socket != null && socket !== webSocket) return
                             socket = null; scheduleRetry("Connection closed")
                         }
 
                         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                            if (socket != null && socket !== webSocket) return
                             socket = null; scheduleRetry("Connection lost")
                         }
                     })

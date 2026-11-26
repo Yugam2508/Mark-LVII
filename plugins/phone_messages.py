@@ -64,14 +64,15 @@ PLUGIN = {
     "description": (
         "Reads and answers notifications and messages on the user's Android phone: what arrived "
         "(action read; optional app like 'WhatsApp'), reply to a message (reply; who it is from and "
-        "the text; asks the user to confirm and edit first), clear one (dismiss), and the recent or "
-        "missed calls (calls). Use for 'any new messages', 'what did Aarav say', 'reply to him: ok', "
+        "the text; asks the user to confirm and edit first), clear one (dismiss), the recent or "
+        "missed calls (calls), and the text messages (SMS) in the phone's inbox, optionally from one "
+        "person (texts, with who) — use texts for 'what did Mum text me', 'read my last texts'. Use for 'any new messages', 'what did Aarav say', 'reply to him: ok', "
         "'did anyone call'. For starting a new WhatsApp chat use whatsapp_message."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["read", "reply", "dismiss", "calls"]},
+            "action": {"type": "STRING", "enum": ["read", "reply", "dismiss", "calls", "texts"]},
             "app": {"type": "STRING", "description": "Filter by app, e.g. WhatsApp, Messages"},
             "who": {"type": "STRING", "description": "For reply/dismiss: the sender as shown on the notification"},
             "message": {"type": "STRING", "description": "For reply: what to answer, in the user's words"},
@@ -118,6 +119,16 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                 return outcome.failed("phone_calls", r.get("text") or "no answer")
             text = "\n".join(f"{c['type']}: {c['who']} ({_fmt_age(int(c.get('age_min', 0)) * 60)})" for c in calls)
             return outcome.done("phone_calls", count=len(calls)) + "\n" + outcome.untrusted("call log", text or "none")
+        if action == "texts":
+            r = phone("texts", {"from": who, "limit": 8})
+            if not r.get("ok"):
+                return outcome.failed("phone_texts", r.get("text") or "no answer")
+            items = (r.get("data") or {}).get("texts", [])
+            if not items:
+                return outcome.done("phone_texts", count=0, note=f"no texts{' from ' + who if who else ''}")
+            text = "\n".join(f"{i}. {t['from']}: {t['text']} ({_fmt_age(int(t.get('age_min', 0)) * 60)})"
+                             for i, t in enumerate(items, 1))
+            return outcome.done("phone_texts", count=len(items)) + "\n" + outcome.untrusted("text messages", text)
         if action == "dismiss":
             r = phone("dismiss_notification", {"app": app, "from": who})
             return outcome.done("phone_dismiss") if r.get("ok") else outcome.failed("phone_dismiss", r.get("text") or "no answer")

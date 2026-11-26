@@ -40,7 +40,17 @@ class ConversationPanel(
         setPadding(dp(14), dp(10), dp(14), dp(10))
 
         status.setTextColor(Color.rgb(90, 140, 160)); status.textSize = 12f; status.gravity = Gravity.CENTER
-        addView(status, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        val top = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(status, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        // Every switch lives behind this button (phones have no menu key). Not in the assistant overlay.
+        (context as? MainActivity)?.let { act ->
+            top.addView(Button(context).apply {
+                text = "⋮"; textSize = 20f; setBackgroundColor(Color.TRANSPARENT); setTextColor(Color.rgb(0, 212, 255))
+                contentDescription = "Permissions and setup"
+                setOnClickListener { act.showSetup() }
+            }, LayoutParams(dp(48), dp(48)))
+        }
+        addView(top, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(holo, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.3f))
 
         log.setTextColor(Color.rgb(220, 235, 245)); log.textSize = 15f

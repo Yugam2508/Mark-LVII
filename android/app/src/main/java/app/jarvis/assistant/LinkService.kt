@@ -27,13 +27,14 @@ class LinkService : Service() {
         val listen = (intent?.getBooleanExtra(EXTRA_LISTEN, false) == true && Prefs(this).openMic) ||
             (intent?.action == null && LiveAudio.running)
         val canMic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        startForegroundCompat(listen && canMic)
+        val micOn = startForegroundCompat(listen && canMic)
         Hub.connect(this)
-        if (listen && canMic) LiveAudio.start(this)
+        if (micOn) LiveAudio.start(this)
         return START_STICKY
     }
 
-    private fun startForegroundCompat(mic: Boolean) {
+    /** Runs as a foreground service; true when it could include the microphone. */
+    private fun startForegroundCompat(mic: Boolean): Boolean {
         getSystemService(NotificationManager::class.java)
             ?.createNotificationChannel(NotificationChannel("link", "Jarvis link", NotificationManager.IMPORTANCE_MIN))
         val stop = PendingIntent.getService(this, 1, Intent(this, LinkService::class.java).setAction(ACTION_STOP_LISTEN),
@@ -51,9 +52,21 @@ class LinkService : Service() {
                 Build.VERSION.SDK_INT >= 30 && mic -> startForeground(1, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
                 else -> startForeground(1, note)
             }
-        } catch (e: SecurityException) {
-            // Android refused a microphone service (e.g. started from the background): stay linked, without the mic.
-            if (Build.VERSION.SDK_INT >= 34) startForeground(1, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(1, note)
+            return mic
+        } catch (e: Exception) {
+            // Android refused a microphone service (started from the background, or after a reboot):
+            // stay linked without the mic; opening the app turns listening back on.
+            return try {
+                val linkOnly = Notification.Builder(this, "link").setContentTitle("Jarvis is linked to your PC")
+                    .setContentText("Open Jarvis to start listening").setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setOngoing(true).build()
+                if (Build.VERSION.SDK_INT >= 34) startForeground(1, linkOnly, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                else startForeground(1, linkOnly)
+                false
+            } catch (e2: Exception) {
+                stopSelf()
+                false
+            }
         }
     }
 
