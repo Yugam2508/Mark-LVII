@@ -30,7 +30,7 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
 | Memory boxes | Always-on "who you are" and "the essentials" — steer every reply (§39) | `memory/memory_manager.py` |
 | Claude on the web | Opens your Jarvis session in your Chrome profile; "add X to yourself" (§40) | `plugins/claude_web.py` |
-| Version & what's new | "YOUR NAME EDITION · v1.7" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Version & what's new | "MARK LVIII · YOUR NAME EDITION" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
 | Holographic HUD | Rings, live spectrum and satellites showing what Jarvis is doing (§34) | `gui/holo.py` |
 | Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
 | Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
@@ -583,8 +583,9 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVII · YUGAM EDITION · v1.7** (your name, from first launch) and
-the status bar says **EDITION · v1.7**. After each update a **What's new** panel opens
+The header reads **MARK LVIII · YUGAM EDITION** (your name, from first launch) and
+the status bar says **EDITION · MARK LVIII**. Releases are numbered by Mark: each update raises it
+(LVIII, LIX, LX…), no more v1.x. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.
 
@@ -807,7 +808,17 @@ The bigger plan — one always-on Jarvis that every device reaches — is in `HU
 
 ---
 
-## 43. When Claude Code or the phone link doesn't work
+## 43. Your phone as part of Jarvis
+
+With the Android app (`android/README.md`) paired, Jarvis on the PC can use the phone: **"call Mum"**,
+**"text Aarav I'm running ten minutes late"**, **"find my phone"** (rings at full volume), **"what's
+my phone's battery?"**, **"what's Aarav's number?"**. Calls and texts wait for your **confirm** (by
+voice or on screen) and texts open for editing first; a name that matches two contacts is asked, not
+guessed. The phone must be connected (the app's quiet notification shows the link is up).
+
+---
+
+## 44. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 

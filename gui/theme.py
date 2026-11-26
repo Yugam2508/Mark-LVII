@@ -85,7 +85,11 @@ def _read_full_config() -> dict:
 
 # Single source of truth for the release name — the window title, the header
 # badge and the readme must never disagree again.
-APP_VERSION  = "MARK LVII"
+try:                      # the Mark is the release number — set in core/edition.py
+    from core import edition as _edition
+    APP_VERSION = f"MARK {_edition.MARK}"
+except Exception:
+    APP_VERSION = "MARK LVII"
 APP_PROTOCOL = APP_VERSION.split()[-1]
 
 _DEFAULT_W, _DEFAULT_H = 980, 700

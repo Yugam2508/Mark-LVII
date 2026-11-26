@@ -11,11 +11,18 @@ digital assistant** so long-press power opens it. Design and later steps: `../AN
 - Registers as an assistant: Settings → Apps → Default apps → **Digital assistant app** → Jarvis.
   Long-press power (or your assist gesture) then opens it over whatever you're doing and starts listening.
 
+## The phone as a limb (PC → phone)
+Once paired, a small notification "Jarvis is linked to your PC" keeps the link alive (it restarts
+after a reboot). Then you can say to Jarvis **on the PC**: "call Mum", "text Aarav that I'm running
+late", "find my phone", "what's my phone's battery?". The PC asks you to confirm every call and text
+(say "confirm"). The first time, the app asks for Contacts, Phone, SMS and Notifications permissions:
+allow them, or those actions say they lack permission.
+
 ## What it does *not* do yet (so you aren't surprised)
 - **No wake word** (step 2) — you invoke it by long-press power or by opening the app.
 - **The PC still speaks the answer too**, because the request is handled by the Jarvis on the PC.
   Mute the PC's speakers, or say it's fine; step 5 (the hub) fixes this properly.
-- No calls, texts, other-app control or IR yet (steps 3-4).
+- No notifications reading, other-app control or IR yet.
 - The PC has to be on and running Jarvis (the hub removes that).
 
 ## Build and run (about 10 minutes)

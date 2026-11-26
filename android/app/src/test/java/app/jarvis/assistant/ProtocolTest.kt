@@ -55,4 +55,22 @@ class ProtocolTest {
         assertEquals("""{"pin":"ABCD1234","name":"OnePlus 13"}""", Protocol.pairBody(" abcd1234", "OnePlus 13"))
         assertEquals("""{"type":"command","text":"what's \"up\""}""", Protocol.commandBody("what's \"up\""))
     }
+
+    @Test fun phoneActionsFromThePc() {
+        val e = Protocol.parseEvent("""{"type":"phone_action","id":"ab12","action":"call","args":{"number":"+447700900111"}}""")
+            as Protocol.Event.PhoneAction
+        assertEquals("ab12", e.id); assertEquals("call", e.action); assertEquals("+447700900111", e.args.getString("number"))
+        val noArgs = Protocol.parseEvent("""{"type":"phone_action","id":"c","action":"status"}""") as Protocol.Event.PhoneAction
+        assertEquals(0, noArgs.args.length())
+        assertNull(Protocol.parseEvent("""{"type":"phone_action","action":"call"}"""))     // no id: nothing to answer
+    }
+
+    @Test fun helloAndResultBodies() {
+        assertEquals("""{"type":"hello","name":"OnePlus 13","abilities":["call","text"]}""",
+            Protocol.helloBody("OnePlus 13", listOf("call", "text")))
+        val r = org.json.JSONObject(Protocol.resultBody("ab12", true, "Calling", org.json.JSONObject().put("n", 1)))
+        assertEquals("result", r.getString("type")); assertEquals("ab12", r.getString("id"))
+        assertTrue(r.getBoolean("ok")); assertEquals(1, r.getJSONObject("data").getInt("n"))
+        assertFalse(org.json.JSONObject(Protocol.resultBody("x", false, "no")).has("data"))
+    }
 }

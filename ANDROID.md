@@ -25,9 +25,11 @@ a specific wall appears.
 | Talk to Jarvis | Gemini Live audio stream from the app, or the hub's voice gateway | Same personality, memory boxes and tools as the PC |
 
 ## Status
-**Step 1 is written** (`android/`, with its own README): pairing, conversation screen, assistant
-registration. It compiles against the real Android 15 framework and its parsing logic is unit-tested;
-it has not yet been run on a phone.
+**Steps 1 and part of 3 are written** (`android/`, with its own README): pairing, conversation
+screen, assistant registration; and the phone doing things when the PC asks — contacts, calls, texts,
+find-my-phone, status — through a foreground link service that restarts after a reboot. It compiles
+against the real Android 15 framework and its parsing logic is unit-tested; it has not yet been run on
+a phone. Still to come: wake word (step 2), notifications and the IR blaster, control of other apps.
 
 ## Build plan (Android Studio, Kotlin)
 1. **Skeleton + assistant role** — opens on long-press power, shows the holo display, text and push-to-talk

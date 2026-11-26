@@ -963,7 +963,7 @@ class WhatsNewOverlay(_HudOverlay):
         lay.setContentsMargins(22, 16, 22, 16)
         lay.setSpacing(8)
 
-        hdr = QLabel(f"✦  WHAT'S NEW  ·  v{edition.VERSION}")
+        hdr = QLabel(f"✦  WHAT'S NEW  ·  {edition.tag()}")
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
@@ -978,7 +978,7 @@ class WhatsNewOverlay(_HudOverlay):
         bl.setContentsMargins(0, 4, 6, 4)
         bl.setSpacing(4)
         for i, entry in enumerate(edition.CHANGELOG):
-            head = QLabel(f"v{entry['version']}  —  {entry['date']}" + ("   (this version)" if i == 0 else ""))
+            head = QLabel(f"{edition.entry_tag(entry['version'])}  —  {entry['date']}" + ("   (this version)" if i == 0 else ""))
             head.setFont(hud_font(9, QFont.Weight.Bold))
             head.setStyleSheet(f"color: {C.PRI if i == 0 else C.TEXT_MED}; background: transparent;"
                                "margin-top: 6px;")

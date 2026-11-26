@@ -50,11 +50,24 @@ object Protocol {
 
     fun commandBody(text: String): String = JSONObject().put("type", "command").put("text", text).toString()
 
+    /** Tells the PC this phone is here and what it can do. */
+    fun helloBody(name: String, abilities: List<String>): String =
+        JSONObject().put("type", "hello").put("name", name).put("abilities", org.json.JSONArray(abilities)).toString()
+
+    /** The phone's answer to an action the PC asked for. */
+    fun resultBody(id: String, ok: Boolean, text: String, data: JSONObject? = null): String {
+        val o = JSONObject().put("type", "result").put("id", id).put("ok", ok).put("text", text)
+        if (data != null) o.put("data", data)
+        return o.toString()
+    }
+
     /** What the server can send down the socket. */
     sealed class Event {
         data class Said(val speaker: String, val text: String) : Event()   // speaker: "user" | "jarvis"
         data class System(val text: String) : Event()
         data class Status(val state: String) : Event()                     // "active" | "sleeping"
+        /** The PC asks this phone to do something (call, text, ...). Answered with resultBody. */
+        class PhoneAction(val id: String, val action: String, val args: JSONObject) : Event()
     }
 
     fun parseEvent(json: String): Event? = try {
@@ -66,6 +79,10 @@ object Protocol {
             }
             "sys" -> Event.System(o.optString("text"))
             "status" -> Event.Status(o.optString("state"))
+            "phone_action" -> {
+                val id = o.optString("id")
+                if (id.isEmpty()) null else Event.PhoneAction(id, o.optString("action"), o.optJSONObject("args") ?: JSONObject())
+            }
             else -> null
         }
     } catch (e: Exception) {

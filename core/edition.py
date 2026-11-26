@@ -1,19 +1,45 @@
 """
-core/edition.py — which version of this fork is running, and what changed.
+core/edition.py — which release of this fork is running, and what changed.
 
-Shown in the header ("MARK LVII · YUGAM EDITION · v1.4"), in the status bar, in
-the WHAT'S NEW panel that opens once after each update (and when the version
-label is clicked), and to the assistant itself through plugins/about_jarvis.py,
-so "what's new?" has a real answer.
+RELEASES ARE NUMBERED BY MARK. Fatih's project counts its generations in Roman
+numerals (Mark LVII); this fork now does too, instead of v1.x: every update
+bumps the Mark — LVIII, LIX, LX… — and says so in the header ("MARK LVIII ·
+YUGAM EDITION"), the status bar, the WHAT'S NEW panel that opens once after each
+update (and when the header label is clicked), and to the assistant itself
+through plugins/about_jarvis.py, so "what's new?" has a real answer.
 
-When you add features, bump VERSION and put a new entry at the top of CHANGELOG.
+To release: raise MARK_NUMBER by one, set DATE, and put a new entry at the top
+of CHANGELOG with "version": MARK. (Entries before Mark LVIII keep their old
+"1.x" numbers.)
 """
 from __future__ import annotations
 
-VERSION = "1.8"
+
+def roman(n: int) -> str:
+    """58 -> 'LVIII'."""
+    out = ""
+    for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
+                       (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
+        while n >= value:
+            out += sym
+            n -= value
+    return out
+
+
+MARK_NUMBER = 58                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LVIII"
+VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-30"
 
 CHANGELOG = [
+    {"version": "LVIII", "date": "2026-11-30", "items": [
+        "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
+        "the next will be Mark LIX (no more v1.x)",
+        "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
+        "the phone's assistant (long-press power); see android/README.md",
+        "Jarvis can use your phone: \"call Mum\", \"text Aarav I'm running late\", \"find my phone\", "
+        "\"how's my phone's battery\" — calls and texts always wait for your confirm",
+    ]},
     {"version": "1.8", "date": "2026-11-30", "items": [
         "Phone pairing endpoint for the new Android app (android/): pair once with the Remote "
         "Control key and the phone is remembered",
@@ -114,15 +140,26 @@ def edition_name() -> str:
     return f"{first} EDITION" if first and first.lower() not in ("sir", "madam", "boss") else "PERSONAL EDITION"
 
 
+def entry_tag(version: str) -> str:
+    """'LVIII' -> 'MARK LVIII'; the older '1.8' -> 'v1.8'."""
+    return f"v{version}" if version[:1].isdigit() else f"MARK {version}"
+
+
+def tag() -> str:
+    """This release, for display: 'MARK LVIII'."""
+    return entry_tag(VERSION)
+
+
 def label() -> str:
-    return f"{edition_name()}  ·  v{VERSION}"
+    """The edition line; the Mark itself is shown beside it by the header."""
+    return edition_name()
 
 
 def whats_new_text(all_versions: bool = False) -> str:
     entries = CHANGELOG if all_versions else CHANGELOG[:1]
     out = []
     for e in entries:
-        out.append(f"v{e['version']} — {e['date']}")
+        out.append(f"{entry_tag(e['version'])} — {e['date']}")
         out += [f"  • {i}" for i in e["items"]]
         out.append("")
     return "\n".join(out).strip()
