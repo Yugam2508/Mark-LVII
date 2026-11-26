@@ -227,6 +227,45 @@ def learn_session_url() -> tuple[bool, str]:
     return True, url
 
 
+def focus_claude() -> bool:
+    """Bring the Claude window (Chrome tab or desktop app) to the front. True when it is."""
+    if claude_in_front():
+        return True
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        want_desktop = target() == "desktop"
+        found = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def each(hwnd, _):
+            if user32.IsWindowVisible(hwnd):
+                n = user32.GetWindowTextLengthW(hwnd)
+                if n:
+                    buf = ctypes.create_unicode_buffer(n + 1)
+                    user32.GetWindowTextW(hwnd, buf, n + 1)
+                    t = buf.value.lower()
+                    if "claude" in t and (("chrome" not in t) if want_desktop else ("chrome" in t)):
+                        found.append(hwnd)
+            return True
+        user32.EnumWindows(each, 0)
+        if not found:
+            return False
+        hwnd = found[0]
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)                       # SW_RESTORE
+        user32.keybd_event(0x12, 0, 0, 0)                    # a tap of Alt lets us take focus
+        user32.keybd_event(0x12, 0, 2, 0)
+        user32.SetForegroundWindow(hwnd)
+        time.sleep(0.6)
+        return claude_in_front()
+    except Exception:
+        return False
+
+
 def paste_message(text: str) -> tuple[bool, str]:
     """Put `text` in the clipboard and paste it into the focused Claude page."""
     import pyautogui
@@ -238,13 +277,14 @@ def paste_message(text: str) -> tuple[bool, str]:
         pass
     pyperclip.copy(text)
     if sys.platform == "win32" and not claude_in_front():
-        # give a slow page a few more seconds to come to the front
-        for _ in range(20):
-            if claude_in_front():
+        # a slow page may still be coming up; then take the window to the front
+        for _ in range(8):
+            if claude_in_front() or focus_claude():
                 break
             time.sleep(0.5)
         if not claude_in_front():
-            return False, "the Claude page isn't in front, so I didn't paste (it's on your clipboard)"
+            return False, ("I couldn't find the Claude window to paste into (the text is on your "
+                           "clipboard)")
     pyautogui.hotkey("ctrl", "v")
     time.sleep(0.4)
     try:
@@ -406,9 +446,9 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         if action == "submit":
             if not _state["last_message"]:
                 return outcome.failed("claude_web_submit", "nothing has been pasted yet")
-            if sys.platform == "win32" and not claude_in_front():
-                return outcome.failed("claude_web_submit", "the Claude page isn't the window in front, "
-                                      "so I didn't press Enter. Click the page and try again.")
+            if sys.platform == "win32" and not focus_claude():
+                return outcome.failed("claude_web_submit", "I couldn't find the Claude window to send "
+                                      "from, so I didn't press Enter (nothing was sent anywhere else).")
             import pyautogui
             pyautogui.press("enter")
             _state["last_message"] = ""

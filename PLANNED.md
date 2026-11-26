@@ -5,7 +5,32 @@ bottom of their section; finished items move to **Done** with the date.
 
 ## To build
 
-- [ ] *(nothing queued — add ideas here)*
+- [ ] **The bigger picture: a home hub plus thin clients** (see "Roadmap" below).
+- [ ] *(add ideas here)*
+
+## Roadmap: toward the movie JARVIS
+
+An operating system per device isn't the way: it's years of drivers and still wouldn't make Jarvis
+smarter. What makes it feel like JARVIS is that it is **one mind that is always on, everywhere you
+are**. That is a hub plus integration, in this order:
+
+1. **The hub (the Aftershock desktop, always on).** One Jarvis brain that holds memory, agents,
+   schedules, proactive checks and the local model (RTX 5070) — the thing that already half-exists
+   as the headless server (`core/cloud.py`), device sync and ntfy. Laptops and phone stop being
+   separate Jarvises and become windows into this one.
+2. **Thin clients that reach the hub** over Tailscale: the laptop app (mic, speakers, screen), the
+   phone (installable PWA first, then a real Android app set as the default assistant on the
+   OnePlus: long-press power, lock-screen, notifications), and the browser.
+3. **Integration, not an OS:** start at login with a tray icon and a global hotkey on Windows;
+   Android assistant role; Home Assistant for the room; shortcuts and widgets.
+4. **Handoff:** the conversation follows you — start on the desktop, carry on on the phone, the
+   laptop knows what the desktop was doing.
+5. **A local brain** on the hub for privacy, speed and no quota: a local model answering most
+   things, Gemini/Claude for the hard ones.
+6. **Room presence:** a cheap always-on microphone and speaker node (Raspberry Pi or ESP32) at home,
+   so "Jarvis" works from the sofa without a laptop open.
+
+Build step 1 first: nearly everything else gets simpler once there is one brain.
 
 ## To set up / test
 

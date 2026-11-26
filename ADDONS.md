@@ -749,8 +749,8 @@ session and hand it requests — including "add this feature to yourself".
 4. Say **"open Claude"**: Chrome should open on that session.
 
 **At work (Claude desktop app):** say **"use the desktop app"** (or set *Open Claude in* to
-desktop). Jarvis then starts the Claude app the way Windows starts any app, pastes into its
-window, and presses Enter only when that window is in front. Open the Code tab and your Jarvis
+desktop). Jarvis then starts the Claude app the way Windows starts any app, brings its window
+forward, pastes, and presses Enter on "send it". Open the Code tab and your Jarvis
 session once yourself so it's the one showing; say **"use Chrome"** to switch back at home.
 
 **Using it**
@@ -759,8 +759,9 @@ session once yourself so it's the one showing; say **"use Chrome"** to switch ba
   full request (what you want, the repo, the rules in AGENTS.md, tests, docs, a pull
   request) and shows it for **EDIT / CONFIRM** (say "confirm"). It then opens the page and
   **pastes** it — it does *not* send it.
-- Read it on the page, then say **"send it"**. Jarvis presses Enter, but only if the Claude
-  page is the window in front; otherwise it refuses.
+- Read it, then say **"send it"** — the Claude window doesn't have to be in front. Jarvis
+  brings that window forward itself and presses Enter. If it can't find a Claude window at all
+  it refuses rather than press Enter somewhere else.
 - When Claude says the pull request is ready, tell it **"merge it"** there, then tell Jarvis
   **"update yourself"**. New abilities arrive without reinstalling.
 - "Tell Claude: …" pastes any message the same way.
@@ -770,7 +771,27 @@ web session is for changes to Jarvis itself, since Claude there can open pull re
 
 ---
 
-## 41. When Claude Code or the phone link doesn't work
+## 41. Notion in two minutes
+
+Say **"set up Notion"**. Jarvis does what it can and tells you the next step; say it again
+after each step:
+
+1. It opens Notion's integrations page. Choose **New integration**, name it `JARVIS`, type
+   *Internal*, pick your workspace, **Save**, then press **Copy** next to the *Internal
+   Integration Secret* (starts `ntn_`).
+2. Say **"set up Notion"** again. Jarvis takes the secret from the clipboard — you never say or
+   type it, it isn't shown, and the clipboard is cleared afterwards.
+3. In Notion make a page called **Jarvis**, press **•••** → **Connections** → add **JARVIS**
+   (sharing a parent page shares everything inside it). Say "set up Notion" once more and it
+   sets that page as the home for new notes.
+
+Then: "add *buy a new mouse* to my Jarvis page", "search Notion for project ideas", "make a
+Notion page called Trip plan". Notion pages are only visible to Jarvis once shared with the
+connection.
+
+---
+
+## 42. When Claude Code or the phone link doesn't work
 
 Both have a self-check that names the broken step and the fix. Run it first.
 

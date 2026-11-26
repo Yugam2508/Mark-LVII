@@ -23,6 +23,8 @@ CHANGELOG = [
         "feature request for Claude Code to build and open a pull request for",
         "'Diagnose Claude Code' and a phone-link check tell you exactly which step is broken "
         "and the one command that fixes it",
+        "'Set up Notion' walks the setup step by step and takes the secret from your clipboard",
+        "'Send it' brings the Claude window forward itself, so it works from any window",
     ]},
     {"version": "1.6", "date": "2026-11-28", "items": [
         "Immersive layout: the holographic display fills the window; what Jarvis shows you "
