@@ -47,8 +47,17 @@ def phone_linked() -> bool:
         return False
 
 
+def hub_mode() -> bool:
+    """This PC is the always-on hub: stay awake whenever it is plugged in, phone or no phone."""
+    try:
+        from memory.config_manager import get_plugin_setting
+        return bool(get_plugin_setting("conversation", "hub_mode", False))
+    except Exception:
+        return False
+
+
 def wanted() -> bool:
-    return enabled() and phone_linked() and on_mains()
+    return on_mains() and (hub_mode() or (enabled() and phone_linked()))
 
 
 def _set(flags: int) -> None:

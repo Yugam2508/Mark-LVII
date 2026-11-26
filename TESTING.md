@@ -86,9 +86,13 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] With "My own Tailscale devices can connect without a key" switched off → CONNECT asks for a key
       from Remote Control; a key can be used only once.
 - [ ] Close and reopen the app → it logs straight back in without a key.
-- [ ] Type "what time is it" → the reply shows in the log and the phone reads it aloud
-      (the PC speaks it too for now; that's expected).
-- [ ] Tap **MIC**, say something → it's recognised and answered.
+- [ ] Open the app → it starts listening by itself (a "Jarvis is listening" notification). Just talk: the
+      answer plays on the PHONE in the same voice as the PC, and the PC stays silent.
+- [ ] Talk over Jarvis while it's speaking → it stops and listens (if it hears itself, turn off "Talk over
+      Jarvis" in the app menu).
+- [ ] Close the app, lock the screen, talk → it still answers (the notification stays).
+- [ ] Ask for something that shows a card on the PC (the weather, your calendar) → it also appears in the phone log.
+- [ ] Press **Stop listening** in the notification → the PC speaks again.
 - [ ] Settings → Apps → Default apps → Digital assistant app → **Jarvis** → long-press power
       from another app → the panel opens over it and starts listening.
 - [ ] Allow the permission prompts (Microphone, Contacts, Phone, SMS, Notifications). A quiet
@@ -111,6 +115,54 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] After a quick answer say "hmm, that doesn't sound right" → it goes deeper without being told to.
 - [ ] "Use Claude for deep thinking", ask again → the card says Claude. "Use OpenAI" → back.
 - [ ] "How much deep thinking have I used today?" → calls and tokens per model.
+
+## 7d. Seeing inside the computer
+
+- [ ] Start a game or video, then "what's using my GPU?" → a list with GPU % and video memory per program.
+- [ ] "What's eating my memory?" / "is Chrome running?" / "what's using port 8000?".
+- [ ] "Where is <a file you know>?" (wait a couple of minutes after the update for the first index) →
+      a numbered list; "show me the first one in Explorer" → Explorer opens on it.
+- [ ] "What's taking up space on C:?" → biggest folders with sizes.
+- [ ] Make a junk file; "delete it" → asks to confirm → Recycle Bin; "undo" → back. Say "cancel" once to check.
+- [ ] "Delete C:\Windows" or your user folder → refused.
+- [ ] "Close Notepad" (open one) → confirm → closed.
+- [ ] "Allow Claude Code to run commands" → confirm. Then "ask Claude Code to find what's using space on D:
+      and propose what's safe to clean" → a plan → read it → "go ahead" → confirm → it runs.
+
+## 7e. Doing things on the PC and phone
+
+- [ ] "Turn Bluetooth off", then "on" (Windows). "What Bluetooth devices do I have?" lists paired ones.
+- [ ] "Install VLC" → confirmation naming the winget package → "confirm" → installed. "Uninstall it" likewise.
+- [ ] "Run ipconfig" → shows the command → confirm → output summarised. "Format my D drive" → refused.
+- [ ] "Organise my Downloads" → says how many files go where → confirm → sorted into Images, Documents…
+      "Undo the tidy-up" → back where they were.
+- [ ] "Open youtube.com", "search for best pizza near me" → opens in the PC browser.
+- [ ] "Play my liked songs" (optionally "on my phone") → plays shuffled. Spotify's Jam can't be started by
+      apps, so Jarvis should say that rather than pretend.
+- [ ] Phone, menu → "Let Jarvis open apps and sites" → switch it on. Then "open Spotify on my phone",
+      "open example.com on my phone", "turn the phone's volume to 40", "flashlight on", "set a 5 minute timer
+      on my phone", "pause the music on my phone", "navigate to <place>".
+- [ ] "WhatsApp <a friend> hi from Jarvis" → shows the message → "confirm" → WhatsApp opens the right chat and
+      sends (it says it can't verify delivery; check the chat). An unknown name → it asks for the number
+      once and remembers it. WhatsApp Desktop must be installed and signed in.
+- [ ] "WhatsApp <a friend> hi, from my phone" → the chat opens on the phone with the text typed. Phone menu →
+      "Let Jarvis tap Send in WhatsApp" → switch Jarvis on in Accessibility → repeat: Send is pressed for you.
+- [ ] Phone menu → "Let Jarvis read notifications" → switch Jarvis on (Android may warn; that is normal) and
+      allow Call log when asked. Have a friend WhatsApp you: Jarvis announces it (a card if you're busy).
+- [ ] "Any WhatsApp messages?" → lists them. "Reply to <them>: on my way" → shown to edit/confirm → "confirm" →
+      it arrives in the chat. "Clear that notification" → gone from the phone. "Did anyone call?" → the call log.
+- [ ] ⚙ → PLUGIN SETTINGS → PHONE MESSAGES → switch announcements off → new messages are no longer announced,
+      but "any messages?" still works.
+- [ ] "Shut down the PC in 10 minutes" → confirm → scheduled; "cancel the shutdown" → cancelled. "Clean my temp files".
+- [ ] "Open Bluetooth settings on my phone" → the page opens (Android won't let any app flip it silently).
+
+## 7f. The PC as the hub
+
+- [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.
+- [ ] "Hub status" → hub mode on, phones linked, the Tailscale address, holding awake, starts at login.
+- [ ] Leave the PC plugged in and idle for an hour (screen off is fine) → the phone still connects and answers.
+- [ ] Reboot the PC → Jarvis comes back in the tray by itself and the phone relinks without touching anything.
+- [ ] Unplug it → the log/status says it can sleep again (it only stays awake on mains power).
 
 ## 8. Things from earlier versions still worth a run
 

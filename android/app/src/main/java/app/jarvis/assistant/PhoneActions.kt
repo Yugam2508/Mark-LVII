@@ -26,7 +26,9 @@ import org.json.JSONObject
  * The PC always asks the user to confirm calls and texts first (plugins/phone_control.py).
  */
 object PhoneActions {
-    val abilities = listOf("status", "contacts", "call", "text", "find_phone")
+    val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
+        "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
+        "notifications", "reply_notification", "dismiss_notification", "recent_calls")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -43,6 +45,19 @@ object PhoneActions {
             "call" -> call(context, args.optString("number"))
             "text" -> text(context, args.optString("number"), args.optString("message"))
             "find_phone" -> findPhone(context, args.optInt("seconds", 30))
+            "open_app" -> openApp(context, args.optString("name"))
+            "open_url" -> openUrl(context, args.optString("url"))
+            "settings" -> openSettings(context, args.optString("page"))
+            "volume" -> volume(context, args.optInt("level", -1), args.optString("direction"))
+            "flashlight" -> flashlight(context, args.optBoolean("on", true))
+            "timer" -> timer(context, args.optInt("seconds", 0), args.optString("label"))
+            "media" -> media(context, args.optString("key"))
+            "notifications" -> notifications(context, args.optString("app"), args.optInt("limit", 8))
+            "reply_notification" -> replyNotification(context, args)
+            "dismiss_notification" -> dismissNotification(args)
+            "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
+            "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
+            "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
         }
     } catch (e: SecurityException) {
@@ -112,6 +127,161 @@ object PhoneActions {
         Handler(Looper.getMainLooper()).postDelayed({ if (ringing === r) { r.stop(); ringing = null } },
             seconds.coerceIn(5, 120) * 1000L)
         return Result(true, "Ringing")
+    }
+
+    /** Starting an activity from the background needs "Display over other apps". */
+    private fun launch(context: Context, intent: Intent): Result {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        return Result(true, "Opened")
+    }
+
+    private val overlayHint = "Allow \"Let Jarvis open apps and sites\" in the app's menu first"
+
+    private fun guarded(context: Context, intent: Intent): Result =
+        try { launch(context, intent) } catch (e: Exception) {
+            Result(false, "The phone wouldn't open it. $overlayHint")
+        }
+
+    private fun openApp(context: Context, name: String): Result {
+        if (name.isBlank()) return Result(false, "Which app?")
+        val pm = context.packageManager
+        val main = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val apps = pm.queryIntentActivities(main, 0)
+        val want = name.trim().lowercase()
+        val hit = apps.firstOrNull { it.loadLabel(pm).toString().lowercase() == want }
+            ?: apps.firstOrNull { it.loadLabel(pm).toString().lowercase().contains(want) }
+            ?: return Result(false, "No app called $name is installed")
+        val intent = pm.getLaunchIntentForPackage(hit.activityInfo.packageName)
+            ?: return Result(false, "$name can't be opened")
+        return guarded(context, intent).let {
+            if (it.ok) Result(true, "Opened ${hit.loadLabel(pm)}") else it
+        }
+    }
+
+    private fun openUrl(context: Context, url: String): Result {
+        val u = url.trim()
+        if (!Regex("^https?://", RegexOption.IGNORE_CASE).containsMatchIn(u)) return Result(false, "Only web links can be opened")
+        return guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse(u)))
+    }
+
+    private fun openSettings(context: Context, page: String): Result {
+        val action = when (page.lowercase()) {
+            "bluetooth" -> android.provider.Settings.ACTION_BLUETOOTH_SETTINGS
+            "wifi", "wi-fi" -> android.provider.Settings.ACTION_WIFI_SETTINGS
+            "airplane" -> android.provider.Settings.ACTION_AIRPLANE_MODE_SETTINGS
+            "display" -> android.provider.Settings.ACTION_DISPLAY_SETTINGS
+            "sound" -> android.provider.Settings.ACTION_SOUND_SETTINGS
+            "location" -> android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS
+            "battery" -> android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS
+            else -> android.provider.Settings.ACTION_SETTINGS
+        }
+        // Android no longer lets apps flip Bluetooth or Wi-Fi themselves; the page opens for one tap.
+        return guarded(context, Intent(action))
+    }
+
+    private fun volume(context: Context, level: Int, direction: String): Result {
+        val audio = service(context, AudioManager::class.java)
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val now = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val target = when {
+            level >= 0 -> (level.coerceIn(0, 100) * max / 100.0).toInt()
+            direction == "up" -> (now + maxOf(1, max / 7)).coerceAtMost(max)
+            direction == "down" -> (now - maxOf(1, max / 7)).coerceAtLeast(0)
+            else -> return Result(false, "Say a level or up/down")
+        }
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+        return Result(true, "Volume ${target * 100 / max}%")
+    }
+
+    private fun flashlight(context: Context, on: Boolean): Result {
+        val cm = service(context, android.hardware.camera2.CameraManager::class.java)
+        val id = cm.cameraIdList.firstOrNull {
+            cm.getCameraCharacteristics(it).get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } ?: return Result(false, "This phone has no flashlight")
+        cm.setTorchMode(id, on)
+        return Result(true, if (on) "Flashlight on" else "Flashlight off")
+    }
+
+    private fun timer(context: Context, seconds: Int, label: String): Result {
+        if (seconds <= 0) return Result(false, "How long?")
+        val i = Intent(android.provider.AlarmClock.ACTION_SET_TIMER)
+            .putExtra(android.provider.AlarmClock.EXTRA_LENGTH, seconds)
+            .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label)
+            .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
+        return guarded(context, i).let { if (it.ok) Result(true, "Timer set for ${seconds}s") else it }
+    }
+
+    private fun media(context: Context, key: String): Result {
+        val code = when (key.lowercase()) {
+            "play", "pause", "playpause" -> android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+            "next" -> android.view.KeyEvent.KEYCODE_MEDIA_NEXT
+            "previous" -> android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            else -> return Result(false, "play, pause, next or previous")
+        }
+        val audio = service(context, AudioManager::class.java)
+        audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+        audio.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code))
+        return Result(true, "Sent $key")
+    }
+
+    /** Opens the chat with the message typed in; the accessibility service (if on) presses Send. */
+    private fun whatsapp(context: Context, number: String, message: String): Result {
+        val digits = number.filter { it.isDigit() }
+        if (digits.length < 6 || message.isBlank()) return Result(false, "I need a number and a message")
+        val url = "https://wa.me/$digits?text=" + Uri.encode(message)
+        if (SendTapService.enabled) SendTapService.arm()
+        val r = guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        if (!r.ok) return r
+        return Result(true, if (SendTapService.enabled) "WhatsApp opened and Send pressed"
+            else "WhatsApp is open with the message typed in; it still needs a tap on Send",
+            JSONObject().put("auto_send", SendTapService.enabled))
+    }
+
+    private fun notifications(context: Context, app: String, limit: Int): Result {
+        if (!NotifyService.enabled(context))
+            return Result(false, "Notification access is off. In the Jarvis app menu choose \"Let Jarvis read notifications\".")
+        val list = NotifyService.list(app, limit.coerceIn(1, 30))
+        return Result(true, "${list.length()} notification(s)", JSONObject().put("notifications", list))
+    }
+
+    private fun replyNotification(context: Context, a: JSONObject): Result {
+        val e = NotifyService.find(a.optString("key"), a.optString("app"), a.optString("from"))
+            ?: return Result(false, "I can't find that message on the phone any more")
+        if (a.optString("text").isBlank()) return Result(false, "What should the reply say?")
+        if (!NotifyService.reply(context, e, a.optString("text"))) return Result(false, "That notification has no reply button")
+        return Result(true, "Replied to ${e.title} in ${e.app}")
+    }
+
+    private fun dismissNotification(a: JSONObject): Result {
+        val e = NotifyService.find(a.optString("key"), a.optString("app"), a.optString("from"))
+            ?: return Result(false, "Nothing like that to clear")
+        return if (NotifyService.dismiss(e)) Result(true, "Cleared") else Result(false, "Notification access is off")
+    }
+
+    private fun recentCalls(context: Context, limit: Int): Result {
+        val out = JSONArray()
+        context.contentResolver.query(android.provider.CallLog.Calls.CONTENT_URI,
+            arrayOf(android.provider.CallLog.Calls.CACHED_NAME, android.provider.CallLog.Calls.NUMBER,
+                android.provider.CallLog.Calls.TYPE, android.provider.CallLog.Calls.DATE),
+            null, null, "${android.provider.CallLog.Calls.DATE} DESC")?.use { c ->
+            while (c.moveToNext() && out.length() < limit.coerceIn(1, 30)) {
+                val kind = when (c.getInt(2)) {
+                    android.provider.CallLog.Calls.MISSED_TYPE -> "missed"
+                    android.provider.CallLog.Calls.INCOMING_TYPE -> "incoming"
+                    android.provider.CallLog.Calls.OUTGOING_TYPE -> "outgoing"
+                    else -> "other"
+                }
+                out.put(JSONObject().put("who", c.getString(0) ?: c.getString(1)).put("type", kind)
+                    .put("age_min", (System.currentTimeMillis() - c.getLong(3)) / 60000))
+            }
+        }
+        return Result(true, "${out.length()} call(s)", JSONObject().put("calls", out))
+    }
+
+    private fun navigate(context: Context, where: String): Result {
+        if (where.isBlank()) return Result(false, "Where to?")
+        return guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(where))))
     }
 
     /** Stops "find my phone" (called when the app is opened). */

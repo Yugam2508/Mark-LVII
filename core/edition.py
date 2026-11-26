@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """58 -> 'LVIII'."""
+    """59 -> 'LIX'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,12 +26,38 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 58                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LVIII"
+MARK_NUMBER = 59                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LIX"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-30"
 
 CHANGELOG = [
+    {"version": "LIX", "date": "2026-11-30", "items": [
+        "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
+        "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
+        "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
+        "More hands: Bluetooth on/off and device list, install/uninstall apps (winget), run commands, "
+        "tidy a messy folder by file type (with undo), open websites, and \"play my liked songs\"; on the "
+        "phone: open any app or link, Bluetooth/Wi-Fi settings pages, volume, flashlight, timers, media keys, "
+        "navigation. Anything that changes the PC asks you to confirm first; disk-wiping commands are refused",
+        "Read and answer your phone's messages: \"any WhatsApp messages?\", \"reply to Aarav: on my way\" "
+        "(shown for edit/confirm, sent through the notification's own Reply button, so it works for WhatsApp, "
+        "Telegram, Messages and more), new chat messages announced as they arrive, \"did anyone call?\"; "
+        "plus shut down / restart / sleep the PC (with a delay, confirmed) and clearing temp files",
+        "WhatsApp that works: \"WhatsApp Mum I'm late\" finds her number (from your phone's contacts), shows "
+        "the message to edit or confirm, opens the right chat and sends, from the PC or from the phone",
+        "When Jarvis can't reach Google it now says why on screen (usage limit, blocked or invalid key, "
+        "billing, Google overloaded, no network) instead of silently looking frozen",
+        "The window footer credits you instead of the original author (the original credit stays in "
+        "the README and LICENSE, as the licence requires)",
+        "Jarvis can see inside the computer and act on it: which programs use the GPU/CPU/memory/disk/"
+        "network/a port, find files on every drive (instant, from an index), what's taking disk space, "
+        "delete to the Recycle Bin and close programs (always confirmed), and hand whole-computer jobs "
+        "(\"clean up my D: drive\") to Claude Code, which proposes a plan first and runs it only on your confirm",
+        "Hub mode: tell Jarvis \"this PC is my hub\" (or tick it in CONVERSATION & PRESENCE) and it stays awake "
+        "while plugged in, starts at login and lives in the tray, so your phone can always reach it; ask "
+        "\"hub status\" to see which phones are linked, the Tailscale address and what's holding it awake",
+    ]},
     {"version": "LVIII", "date": "2026-11-30", "items": [
         "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
         "the next will be Mark LIX (no more v1.x)",

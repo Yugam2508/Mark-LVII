@@ -359,12 +359,25 @@ def _play(p, player) -> str:
     dev = resolve_device(p["device"], player) if p.get("device") else None
     did = dev["id"] if dev else None
     where = dev.get("name") if dev else None
+    if kind == "liked":
+        query = query or "liked"
     if not query:
         if dev:
             _api("PUT", "/me/player", body={"device_ids": [did], "play": True})
         else:
             _playback("PUT", "/me/player/play", player)
         return outcome.done("spotify_resume", device=where)
+
+    if kind == "liked":
+        import random
+        saved = (_api("GET", "/me/tracks", params={"limit": 50}) or {}).get("items", [])
+        uris = [i["track"]["uri"] for i in saved if i.get("track")]
+        if not uris:
+            return outcome.failed("spotify_play", "you have no liked songs yet")
+        random.shuffle(uris)
+        _playback("PUT", "/me/player/play", player, body={"uris": uris}, device_id=did)
+        _show(player, "▶ Your liked songs" + (f"  ·  on {where}" if where else ""))
+        return outcome.done("spotify_play", kind="your liked songs", device=where)
 
     if kind == "my_playlist":
         pl = _find_my_playlist(query)
@@ -521,9 +534,12 @@ PLUGIN = {
             },
             "kind": {
                 "type": "STRING",
-                "enum": ["track", "artist", "album", "playlist", "my_playlist"],
+                "enum": ["track", "artist", "album", "playlist", "my_playlist", "liked"],
                 "description": "For play: what the query names. my_playlist = one of the "
-                               "user's own playlists. Default track.",
+                               "user's own playlists. liked = the user's Liked Songs "
+                               "(no query needed; shuffled). Default track. Spotify has no "
+                               "way for apps to start a Jam: say so and offer to play it on "
+                               "the speaker/device instead.",
             },
             "volume": {"type": "INTEGER", "description": "For volume: 0-100"},
             "on": {"type": "BOOLEAN", "description": "For shuffle: true or false"},

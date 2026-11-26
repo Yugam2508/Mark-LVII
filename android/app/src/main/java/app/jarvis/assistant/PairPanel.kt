@@ -9,7 +9,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /** First run: connect this phone to your Jarvis PC. */
-class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayout(context) {
+class PairPanel(context: Context, private val autoConnect: Boolean = false, private val onPaired: () -> Unit) :
+    LinearLayout(context) {
     init {
         orientation = VERTICAL
         setBackgroundColor(Color.rgb(2, 8, 12))
@@ -35,7 +36,7 @@ class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayo
         }
         val message = label("", 13f, Color.rgb(255, 160, 60))
         val go = Button(context).apply { text = "CONNECT" }
-        go.setOnClickListener {
+        fun connect() {
             val parsed = Protocol.parseAddress(address.text.toString())
             val k = key.text.toString().trim().ifEmpty { parsed?.key.orEmpty() }
             when {
@@ -51,6 +52,9 @@ class PairPanel(context: Context, private val onPaired: () -> Unit) : LinearLayo
                 }
             }
         }
+        go.setOnClickListener { connect() }
+        // The address is known (built in, or from before): connect by itself, no tapping.
+        if (autoConnect) post { connect() }
         // Pasting the QR link fills in both fields.
         address.setOnFocusChangeListener { _, focused ->
             if (!focused) Protocol.parseAddress(address.text.toString())?.let { p ->

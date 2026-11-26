@@ -4,3 +4,6 @@ local.properties
 *.iml
 .idea/
 captures/
+
+# your own PC address, baked into your build (see README) — stays out of the public repo
+app/src/main/assets/default_address.txt

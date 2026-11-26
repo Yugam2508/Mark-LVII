@@ -17,6 +17,10 @@ the room — is a way to reach it. Not an operating system per device.
 So today there are several Jarvises that share notes. The hub makes them one.
 
 ## Decisions (made)
+* **For now the hub is a PC that is simply left on** (Mark LIX). "Hub mode" (⚙ → CONVERSATION & PRESENCE, or
+  say "this PC is my hub") keeps it awake while plugged in, keeps Jarvis in the tray, and the phone reaches it
+  over Tailscale; "hub status" says what is linked. The small always-on box below stays the plan for when the
+  hardware is bought; nothing built now is thrown away by it.
 * **The desktop sleeps, shuts down or is locked most of the day**, so it can't be the hub. The hub is a
   small **always-on Linux box** (see "Hardware"). The desktop becomes the *heavy worker*: the hub wakes
   it with Wake-on-LAN (already built) when a job needs the 5070, and lets it sleep again.
