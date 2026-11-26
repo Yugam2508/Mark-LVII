@@ -28,6 +28,8 @@ config/whatsapp_web/
 
 # ── Personal data the assistant accumulates about you ─────────────────────────
 memory/long_term.json
+# routines, and anything else the assistant saves next to its memory code
+memory/*.json
 memory/*.db
 
 # ── Python build noise ────────────────────────────────────────────────────────
