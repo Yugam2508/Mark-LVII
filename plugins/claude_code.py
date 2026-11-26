@@ -344,6 +344,63 @@ def open_window(folder: str, continue_last: bool) -> tuple[bool, str]:
         return False, str(e)
 
 
+# ── self-check ────────────────────────────────────────────────────────────────
+
+def diagnose() -> list[str]:
+    """Walk the chain Jarvis relies on and say which link is broken, with the fix.
+    Also runnable without Jarvis:  python -m plugins.claude_code"""
+    out: list[str] = []
+    ok = lambda m: out.append("OK    " + m)
+    bad = lambda m, fix="": out.append("FAIL  " + m + (f"\n      FIX: {fix}" if fix else ""))
+    exe = _claude()
+    if not exe:
+        bad("Claude Code (the `claude` program) was not found.",
+            "In PowerShell run:  irm https://claude.ai/install.ps1 | iex   then close and reopen "
+            "PowerShell and Jarvis. If it is installed elsewhere, put its full path in "
+            "settings → CLAUDE CODE CONTROL → Path to claude.")
+        return out
+    ok(f"found: {exe}")
+    env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
+    try:
+        v = subprocess.run([exe, "--version"], capture_output=True, text=True, timeout=30, env=env,
+                           creationflags=_NO_WINDOW)
+        (ok if v.returncode == 0 else bad)(f"version: {(v.stdout or v.stderr).strip()[:80]}")
+    except Exception as e:
+        bad(f"could not run it: {e}", "Reinstall with the command above.")
+        return out
+    import tempfile
+    try:
+        t0 = time.time()
+        r = subprocess.run([exe, "-p", "Reply with exactly: OK", "--output-format", "json"],
+                           capture_output=True, text=True, timeout=120, env=env,
+                           cwd=tempfile.gettempdir(), creationflags=_NO_WINDOW,
+                           encoding="utf-8", errors="replace")
+        text = ((r.stdout or "") + (r.stderr or "")).strip()
+        low = text.lower()
+        if "usage limit" in low or "limit reached" in low:
+            bad("your Claude usage limit is used up for now: " + text[:140], "Wait for it to reset.")
+        elif r.returncode != 0 or "not logged in" in low or "/login" in low or "authentication" in low:
+            bad("it is not signed in, or failed: " + text[:200].replace("\n", " "),
+                "Open PowerShell, run  claude  and log in with your Claude account (the same one "
+                "you use on claude.ai), then say 'diagnose Claude Code' again.")
+        else:
+            ok(f"answered a test prompt in {time.time() - t0:.0f}s")
+    except subprocess.TimeoutExpired:
+        bad("a test prompt took over 2 minutes.",
+            "Run  claude  in PowerShell by hand: it is probably waiting on a first-run question "
+            "(trust folder, theme, login). Answer it once and try again.")
+    except Exception as e:
+        bad(f"test prompt failed: {e}")
+    known = projects()
+    if known:
+        ok(f"{len(known)} project(s): " + ", ".join(sorted(known)[:8]))
+    else:
+        bad("Jarvis knows no projects, so it cannot say where to run Claude Code.",
+            "Settings → PLUGIN SETTINGS → CLAUDE CODE CONTROL → Projects: "
+            "jarvis=C:\\Users\\<you>\\Jarvis   (or say: 'add my jarvis project at <folder>')")
+    return out
+
+
 # ── the tool ──────────────────────────────────────────────────────────────────
 
 def _job_line(j: dict) -> str:
@@ -374,7 +431,7 @@ PLUGIN = {
         "type": "OBJECT",
         "properties": {
             "action": {"type": "STRING", "enum": ["run", "approve", "reply", "status", "stop",
-                                                   "open_window", "projects", "add_project"]},
+                                                   "open_window", "projects", "add_project", "diagnose"]},
             "project": {"type": "STRING", "description": "Project name or folder path"},
             "task": {"type": "STRING", "description": "For run/reply: what Claude Code should do"},
             "permission": {"type": "STRING", "enum": ["plan", "edits", "full"]},
@@ -426,6 +483,13 @@ def _gate(title: str, detail: str, permission: str, launch) -> str:
 def run(parameters: dict, player=None, session_memory=None) -> str:
     action = str(parameters.get("action") or "status")
     try:
+        if action == "diagnose":
+            lines = diagnose()
+            addons.show("CLAUDE CODE CHECK", "\n".join(lines))
+            return outcome.done("claude_diagnose", failures=sum(l.startswith("FAIL") for l in lines)) + \
+                "\n" + outcome.untrusted("claude_code", "\n".join(lines)) + \
+                "\nTell the user in two sentences what is wrong and the one fix (the panel has the detail)."
+
         if action == "projects":
             known = projects()
             text = "\n".join(f"{n} — {p}" for n, p in sorted(known.items())) or \
@@ -516,3 +580,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         return outcome.failed("claude_code", f"unknown action {action}")
     except Exception as e:
         return outcome.failed(f"claude_{action}", str(e)[:200])
+
+
+if __name__ == "__main__":      # python -m plugins.claude_code
+    print("\n".join(diagnose()))

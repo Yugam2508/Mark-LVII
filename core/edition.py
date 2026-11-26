@@ -10,10 +10,20 @@ When you add features, bump VERSION and put a new entry at the top of CHANGELOG.
 """
 from __future__ import annotations
 
-VERSION = "1.6"
-DATE = "2026-11-28"
+VERSION = "1.7"
+DATE = "2026-11-29"
 
 CHANGELOG = [
+    {"version": "1.7", "date": "2026-11-29", "items": [
+        "Memory boxes: 'WHO YOU ARE' (Jarvis's own character and rules) and 'THE ESSENTIALS' "
+        "(what matters most about you) are always in front of Jarvis, in full, every session, "
+        "and steer what it says. Tell it \"remember this always\" or \"this is who you are to me\"",
+        "Claude on the web: opens your Chrome profile straight to your Jarvis session, pastes "
+        "requests into it, and sends on your 'send it'. \"Add X to yourself\" drafts a proper "
+        "feature request for Claude Code to build and open a pull request for",
+        "'Diagnose Claude Code' and a phone-link check tell you exactly which step is broken "
+        "and the one command that fixes it",
+    ]},
     {"version": "1.6", "date": "2026-11-28", "items": [
         "Immersive layout: the holographic display fills the window; what Jarvis shows you "
         "slides out of the core as cards that drift away (pin or expand them), with live "

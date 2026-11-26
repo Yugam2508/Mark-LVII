@@ -493,7 +493,14 @@ TOOL_DECLARATIONS = [
                         "projects — active projects, goals, things being built | "
                         "relationships — friends, family, partner, colleagues | "
                         "wishes — future plans, things to buy, travel dreams | "
-                        "notes — habits, schedule, anything else worth remembering"
+                        "notes — habits, schedule, anything else worth remembering | "
+                        "core_user — ESSENTIAL things about the user that must shape every "
+                        "conversation: main goals, what drives them, how they want to be helped. "
+                        "Use when they say it matters, say 'remember this always', or it is "
+                        "clearly central to their life. Keep it short and few | "
+                        "core_self — how YOU should be: your character, role and standing rules "
+                        "the user gave you ('you're my training partner', 'never bring up X'). "
+                        "Both core_* boxes are in front of you in every session"
                     )
                 },
                 "key":   {"type": "STRING", "description": "Short snake_case key (e.g. name, favorite_food, sister_name)"},

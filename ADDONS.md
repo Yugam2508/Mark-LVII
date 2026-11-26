@@ -28,7 +28,9 @@ does nothing until you set it up, and any plugin can be switched off in the Plug
 | Money | "I spent 12 on lunch", budgets | `plugins/money_tracker.py` |
 | Reading & watch list | "Save this for later", "pick something to watch" | `plugins/reading_list.py` |
 | Life profile | Jarvis remembers your life: studies, work, lessons, comedy, travel, training | `plugins/life_profile.py` |
-| Version & what's new | "YOUR NAME EDITION · v1.5" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
+| Memory boxes | Always-on "who you are" and "the essentials" — steer every reply (§39) | `memory/memory_manager.py` |
+| Claude on the web | Opens your Jarvis session in your Chrome profile; "add X to yourself" (§40) | `plugins/claude_web.py` |
+| Version & what's new | "YOUR NAME EDITION · v1.7" in the header; "what's new?" | `core/edition.py`, `plugins/about_jarvis.py` |
 | Holographic HUD | Rings, live spectrum and satellites showing what Jarvis is doing (§34) | `gui/holo.py` |
 | Presence | Quiet when you talk to someone; cards that stay; "I'm back" (§35) | `core/presence.py`, `plugins/conversation.py` |
 | Confirm by voice | Say "confirm" or "cancel" | `core/confirm.py` |
@@ -581,8 +583,8 @@ first word of every conversation.
 
 ## 32. Knowing it updated
 
-The header reads **MARK LVII · YUGAM EDITION · v1.5** (your name, from first launch) and
-the status bar says **EDITION · v1.5**. After each update a **What's new** panel opens
+The header reads **MARK LVII · YUGAM EDITION · v1.7** (your name, from first launch) and
+the status bar says **EDITION · v1.7**. After each update a **What's new** panel opens
 once; click the version in the header to see it again. Ask "what's new?" or "what can you
 do?" and Jarvis answers from the same list.
 
@@ -705,6 +707,82 @@ the microphone stops sending sound or the speakers stop taking it, then reopens 
 on whatever is there (your chosen mic/speakers in ⚙ → audio when they're connected, the
 Windows default otherwise). The log says "SYS: Audio connected: … — switching devices".
 Switch it off in CONVERSATION & PRESENCE if you'd rather it didn't.
+
+---
+
+## 39. Memory boxes: what Jarvis always keeps in mind
+
+Jarvis's memory has ordinary categories (identity, preferences, projects, people, wishes,
+notes), of which only a recent slice rides in each conversation and the rest is looked up
+on demand. Two boxes are different — they are **always in front of it, in full**:
+
+- **WHO YOU ARE** (`core_self`): its character, its role with you, standing rules you've given.
+  "You're my training partner and chief of staff, not a butler." "Never bring up work after 9pm."
+- **THE ESSENTIALS** (`core_user`): what matters most about you, so it steers toward it:
+  main goals, what drives you, how you want to be helped.
+  "Finishing the IRONMAN 70.3 is my top goal." "Be direct, push me when I'm slacking."
+
+Fill them by talking: "remember this always: …", "this is who you are to me: …", "that's
+essential, pin it". Keep them short and few (about 1,500 characters each; the oldest
+lines lead, newer ones past the limit are still remembered but ride in the ordinary
+memory). "What's in your core memory?" and "forget …" work as for any memory. They sync
+between your PCs like the rest of memory. Your personality tweaks ("be more sarcastic")
+are separate and live in §37.
+
+---
+
+## 40. Claude on the web: your Jarvis session
+
+Jarvis can open Claude in your own Chrome (already signed in), go to your Jarvis Claude Code
+session and hand it requests — including "add this feature to yourself".
+
+**One-time setup (2 minutes)**
+1. On the laptop, open Chrome with your **yugamsmart** profile, go to
+   **claude.ai/code** and open (or start) the session for Jarvis — name it
+   "personal jarvis assistant" and point it at the repo `Yugam2508/Mark-LVII`.
+2. Copy that page's address from the browser bar.
+3. In Jarvis: ⚙ → PLUGIN SETTINGS → **CLAUDE ON THE WEB** → paste it into *Address of the
+   Jarvis session*, check the profile name reads `yugamsmart` (spelled as Chrome's profile
+   menu shows it), press SAVE, then **OPEN NOW** to test: Chrome should open on that session.
+
+**Using it**
+- "Open Claude" / "open my Jarvis session" — opens the page.
+- "Add a pomodoro mode to yourself" / "give yourself the ability to …" — Jarvis writes a
+  full request (what you want, the repo, the rules in AGENTS.md, tests, docs, a pull
+  request) and shows it for **EDIT / CONFIRM** (say "confirm"). It then opens the page and
+  **pastes** it — it does *not* send it.
+- Read it on the page, then say **"send it"**. Jarvis presses Enter, but only if the Claude
+  page is the window in front; otherwise it refuses.
+- When Claude says the pull request is ready, tell it **"merge it"** there, then tell Jarvis
+  **"update yourself"**. New abilities arrive without reinstalling.
+- "Tell Claude: …" pastes any message the same way.
+
+For quick jobs on a project folder on this PC, "ask Claude Code to …" (§36) is faster; the
+web session is for changes to Jarvis itself, since Claude there can open pull requests.
+
+---
+
+## 41. When Claude Code or the phone link doesn't work
+
+Both have a self-check that names the broken step and the fix. Run it first.
+
+**Claude Code** — say "diagnose Claude Code", or in PowerShell:
+```powershell
+cd $env:USERPROFILE\Jarvis
+.\.venv\Scripts\python.exe -m plugins.claude_code
+```
+Typical results: *not found* → `irm https://claude.ai/install.ps1 | iex`, then reopen
+PowerShell and Jarvis; *not signed in* → run `claude` once and log in with the Claude
+account; *knows no projects* → add `jarvis=C:\Users\<you>\Jarvis` in CLAUDE CODE CONTROL.
+
+**Phone link** — with Jarvis running and Remote Control open, in PowerShell:
+```powershell
+cd $env:USERPROFILE\Jarvis
+.\.venv\Scripts\python.exe -m core.tailnet
+```
+It checks Tailscale, that Jarvis's page is listening, that it answers on the Tailscale
+address, the Windows network category, and the firewall rule, and prints the fix for the
+first one that fails (the usual one: Windows treating Tailscale as a "Public" network).
 
 ---
 

@@ -160,3 +160,84 @@ def enable_https(port: int, backend_tls: bool = False) -> tuple[bool, str]:
     _cache["at"] = 0.0
     url = https_url(port) or (f"https://{dns_name()}" if dns_name() else "")
     return (True, url) if url else (False, "tailscale serve ran but reported no address.")
+
+
+# ── self-check ────────────────────────────────────────────────────────────────
+
+def report(port: int = 8000) -> list[str]:
+    """Walk the chain the phone's request takes and say which link is broken.
+    Run on the PC:  python -m core.tailnet   (Jarvis running, Remote Control open)."""
+    import socket
+    out: list[str] = []
+    ok = lambda m: out.append("OK    " + m)
+    bad = lambda m, fix="": out.append("FAIL  " + m + (f"\n      FIX: {fix}" if fix else ""))
+
+    if not cli():
+        bad("Tailscale is not installed on this PC.", "Install it from tailscale.com/download and sign in.")
+        return out
+    s = status(refresh=True)
+    if not (s["running"] and s["ip"]):
+        bad("Tailscale is installed but not connected on this PC.",
+            "Open Tailscale from the tray and sign in (same account as the phone).")
+        return out
+    ok(f"Tailscale is connected: {s['ip']}" + (f"  ({s['dns']})" if s["dns"] else ""))
+
+    # 1. Is Jarvis's dashboard listening?
+    try:
+        c = socket.create_connection(("127.0.0.1", port), timeout=3); c.close()
+        ok(f"Jarvis's phone page is running on this PC (port {port})")
+    except OSError:
+        bad(f"nothing is listening on port {port}.",
+            "Start Jarvis. If it is running, another copy may hold the port: close all Jarvis windows and "
+            "start one. Pip packages needed: fastapi, uvicorn.")
+        return out
+    # 2. Does it answer on the Tailscale address itself (from this PC)?
+    try:
+        c = socket.create_connection((s["ip"], port), timeout=4); c.close()
+        ok(f"it also answers on {s['ip']}:{port}")
+    except OSError as e:
+        bad(f"it does not answer on {s['ip']}:{port} ({e.__class__.__name__}).",
+            "Windows is blocking it. Run the firewall fix below.")
+
+    if sys.platform == "win32":
+        # 3. Network category of the Tailscale adapter
+        try:
+            r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                                "(Get-NetConnectionProfile -InterfaceAlias 'Tailscale*' "
+                                "-ErrorAction SilentlyContinue).NetworkCategory"],
+                               capture_output=True, text=True, timeout=10, creationflags=_NO_WINDOW)
+            cat = (r.stdout or "").strip()
+            if "Public" in cat:
+                bad("Windows treats the Tailscale connection as a PUBLIC network, which blocks incoming connections.",
+                    'PowerShell as administrator:  Set-NetConnectionProfile -InterfaceAlias "Tailscale*" -NetworkCategory Private')
+            elif cat:
+                ok(f"Tailscale network category: {cat}")
+        except Exception:
+            pass
+        # 4. An allow rule for the port
+        try:
+            r = subprocess.run(["netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir=in"],
+                               capture_output=True, text=True, timeout=20, creationflags=_NO_WINDOW,
+                               encoding="utf-8", errors="replace")
+            blocks = [b for b in (r.stdout or "").split("\n\n") if f"{port}" in b and "Allow" in b and "TCP" in b]
+            if blocks:
+                ok(f"a firewall rule allows TCP {port}")
+            else:
+                bad(f"no firewall rule allows TCP {port}.",
+                    f'PowerShell as administrator:  New-NetFirewallRule -DisplayName "JARVIS dashboard" '
+                    f"-Direction Inbound -Protocol TCP -LocalPort {port},8001 -Action Allow -Profile Any")
+        except Exception:
+            pass
+    # 5. The secure link
+    https = https_url(port)
+    if https:
+        ok(f"secure link is on: {https}")
+    else:
+        out.append(f"INFO  secure link (phone microphone) is off. After enabling HTTPS in the Tailscale admin "
+                   f"console, run:  tailscale serve --bg {port}")
+    out.append(f"INFO  on the phone: Tailscale ON, then open  http://{s['ip']}:{port}  in Chrome")
+    return out
+
+
+if __name__ == "__main__":      # python -m core.tailnet
+    print("\n".join(report()))
