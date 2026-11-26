@@ -2415,10 +2415,8 @@ class MainWindow(QMainWindow):
     def _footer_text() -> str:
         """The shortcut hints and, at the end, whose Jarvis this is: the name given at first launch."""
         try:
-            from memory.config_manager import get_user_name
-            first = (get_user_name() or "").strip().split()[0].upper()
-            if first.lower() in ("sir", "madam", "boss"):
-                first = ""
+            from core.edition import owner_first_name
+            first = owner_first_name().upper()
         except Exception:
             first = ""
         return "F4 MUTE   ·   F11 FULLSCREEN   ·   ESC INTERRUPT" + (f"   ·   BY {first}" if first else "")

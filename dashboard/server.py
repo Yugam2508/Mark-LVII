@@ -1461,6 +1461,14 @@ class DashboardServer:
                         if fut is not None and not fut.done():
                             fut.set_result({"ok": bool(data.get("ok")), "text": str(data.get("text") or "")[:2000],
                                             "data": data.get("data")})
+                    elif data.get("type") in ("share", "phone_event"):
+                        if websocket in self._phones:
+                            try:
+                                from core import phone_events
+                                await asyncio.to_thread(phone_events.handle, {k: data.get(k) for k in
+                                                                              ("type", "text", "event", "level")})
+                            except Exception as e:
+                                print(f"[Dashboard] phone event: {e}")
                     elif data.get("type") == "notification":
                         cb = getattr(self, "_notification_cb", None)
                         if cb is not None and websocket in self._phones:

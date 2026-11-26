@@ -247,12 +247,14 @@ object PhoneActions {
         val digits = number.filter { it.isDigit() }
         if (digits.length < 6 || message.isBlank()) return Result(false, "I need a number and a message")
         val url = "https://wa.me/$digits?text=" + Uri.encode(message)
-        if (SendTapService.enabled) SendTapService.arm()
+        // Switched on in Settings counts even if Android hasn't bound the service in this process yet.
+        val autoSend = SendTapService.enabled || SetupPanel.sendTapEnabled(context)
+        if (autoSend) SendTapService.arm()
         val r = guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         if (!r.ok) return r
-        return Result(true, if (SendTapService.enabled) "WhatsApp opened and Send pressed"
+        return Result(true, if (autoSend) "WhatsApp opened; Send will be pressed when the chat appears"
             else "WhatsApp is open with the message typed in; it still needs a tap on Send",
-            JSONObject().put("auto_send", SendTapService.enabled))
+            JSONObject().put("auto_send", autoSend))
     }
 
     private fun notifications(context: Context, app: String, limit: Int): Result {

@@ -51,6 +51,24 @@ CHANGELOG = [
         "\"Save this to Notion\" now really goes to Notion (it used to follow the default notes place and could "
         "still say Notion). Phone: \"send this to my phone\" (text, a link or the PC clipboard: copied there and "
         "shown as a notification), \"where's my phone?\" with a map link, Do Not Disturb on/off",
+        "After you confirm something (a message, a reply, an install, organising a folder) Jarvis now tells you "
+        "how it really went; before, the result only reached the log, so Jarvis could only guess",
+        "PC care: Wi-Fi (what you're on, networks around, switch network, the Wi-Fi password), \"update all my apps\" "
+        "(winget, confirmed), Recycle Bin size and emptying, an internet speed test, what starts with Windows, "
+        "battery health (wear and cycles), and your local / Tailscale / public IP",
+        "Daily backups of Jarvis's memory, conversation log and settings to OneDrive/JARVIS Backups (keys and "
+        "passwords blanked unless you allow them); \"restore my Jarvis backup\" after a reinstall",
+        "Phone app: a ⋮ button opens \"Permissions & setup\" (phones have no menu key, so those switches were "
+        "out of reach), with a tick or cross for each permission and one tap to fix it, including battery "
+        "restrictions that kill the link; \"Share → Jarvis (to my PC)\" from any app puts text on the PC "
+        "clipboard and opens links there; the PC says when the phone battery is low; \"what did Mum text me?\" "
+        "reads your texts; opening apps or links on the phone now says when Android blocked it instead of "
+        "claiming it worked; headphones and Bluetooth headsets are used when connected",
+        "Smaller fixes: repeated notices no longer stack up as identical cards; the header and footer use your "
+        "name from memory when the setup name was 'sir'; WhatsApp from the PC presses Enter only when WhatsApp is "
+        "in front and adds your country code to local numbers; organising Downloads leaves files that are still "
+        "downloading; \"sleep\" really sleeps; temp cleanup leaves anything used in the last day; a forgotten "
+        "dictation saves itself after four quiet minutes",
         "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
         "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
@@ -187,15 +205,37 @@ CHANGELOG = [
 ]
 
 
-def edition_name() -> str:
-    """'YUGAM EDITION' from the name you gave at first launch, else 'PERSONAL EDITION'."""
+_HONORIFICS = {"sir", "madam", "boss", "mr", "mrs", "ms", "miss", "maam", "ma'am", "master", "chief", "dear", "friend"}
+
+
+def owner_first_name() -> str:
+    """The owner's first name: the name typed at first launch, or, when that was an honorific like
+    'sir', the name Jarvis has in memory (from 'my name is…' / 'call me…'). '' when neither is known."""
     try:
         from memory.config_manager import get_user_name
-        name = (get_user_name() or "").strip()
+        parts = (get_user_name() or "").strip().split()
+        if parts and parts[0].strip(".,").lower() not in _HONORIFICS:
+            return parts[0].strip(".,")
     except Exception:
-        name = ""
-    first = name.split()[0].upper() if name else ""
-    return f"{first} EDITION" if first and first.lower() not in ("sir", "madam", "boss") else "PERSONAL EDITION"
+        pass
+    try:
+        from memory.memory_manager import load_memory
+        ident = load_memory().get("identity", {}) or {}
+        for key in ("name", "first_name", "preferred_name", "nickname"):
+            v = ident.get(key)
+            v = v.get("value") if isinstance(v, dict) else v
+            parts = str(v or "").strip().split()
+            if parts and parts[0].strip(".,").lower() not in _HONORIFICS:
+                return parts[0].strip(".,")
+    except Exception:
+        pass
+    return ""
+
+
+def edition_name() -> str:
+    """'YUGAM EDITION' from your name (first launch, or what Jarvis remembers), else 'PERSONAL EDITION'."""
+    first = owner_first_name().upper()
+    return f"{first} EDITION" if first else "PERSONAL EDITION"
 
 
 def entry_tag(version: str) -> str:

@@ -159,6 +159,11 @@ class FlowLayer:
             if not pinned and not c.pinned and c.title.split(" — ")[0] == str(title).split(" — ")[0]:
                 self._remove(c, animate=False)
                 break
+            # The same pinned notice again (a failure repeating, say): one card, kept current,
+            # not a wall of identical cards.
+            if pinned and c.pinned and c.title == str(title):
+                self._remove(c, animate=False)
+                break
         card = FlowCard(title, text, self.hud, pinned=pinned, accent=accent)
         card.expand.connect(self.on_expand)
         card.closed.connect(lambda c: self._remove(c))

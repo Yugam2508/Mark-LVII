@@ -177,6 +177,18 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "Add 'test from Jarvis' to my <page name> page in Notion" → it lands on that page without asking for a number.
 - [ ] Ask Jarvis to "note that the sky is blue" → it says it saved only after the tool reports it; check the note exists.
 
+## 7h. PC care, backups, and the phone's new bits
+
+- [ ] "What Wi-Fi am I on?", "what networks are around?", "what's the Wi-Fi password?" (shown on screen).
+- [ ] "Are there app updates?" → a list. "Update all my apps" → confirm → when it finishes Jarvis says how it went.
+- [ ] "How full is the Recycle Bin?" → "empty it" → confirm. "Run a speed test" → it answers ~15 s later.
+- [ ] "How's my battery health?" (laptop) → percent, health and cycles. "What's my IP?" → local, Tailscale, public.
+- [ ] "Back up Jarvis" → a zip in OneDrive\JARVIS Backups. Open it: memory and conversations inside, keys blanked.
+- [ ] Phone: tap ⋮ (top right) → Permissions & setup. Fix every ✗ you want; the battery line matters on OnePlus.
+- [ ] Phone: in Chrome, Share → "Jarvis (to my PC)" → the page opens on the PC and the link is on the clipboard.
+- [ ] "What did <someone> text me?" → reads the texts from them.
+- [ ] Confirm any action (a WhatsApp, an install) → Jarvis says afterwards whether it worked.
+
 ## 7f. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.

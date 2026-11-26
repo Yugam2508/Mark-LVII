@@ -19,6 +19,32 @@ import android.os.IBinder
  * quiet notification, as Android requires, with a button to stop listening.
  */
 class LinkService : Service() {
+    // Tell the PC when the phone's battery runs low (Jarvis says it, or shows a card if you're busy).
+    private val batteryLow = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            val b = c.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = b?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = b?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100) ?: 100
+            val pct = if (level >= 0) level * 100 / scale else -1
+            Hub.sendRaw(org.json.JSONObject().put("type", "phone_event").put("event", "battery_low")
+                .put("level", pct).toString(), queue = true)
+        }
+    }
+    private var watching = false
+
+    override fun onCreate() {
+        super.onCreate()
+        try {
+            registerReceiver(batteryLow, android.content.IntentFilter(Intent.ACTION_BATTERY_LOW))
+            watching = true
+        } catch (e: Exception) { }
+    }
+
+    override fun onDestroy() {
+        if (watching) try { unregisterReceiver(batteryLow) } catch (e: Exception) { }
+        super.onDestroy()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_LISTEN) {
             Prefs(this).openMic = false

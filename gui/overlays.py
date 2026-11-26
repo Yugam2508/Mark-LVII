@@ -1037,6 +1037,8 @@ class NoticeStack(QWidget):
         self.hide()
 
     def add(self, title: str, text: str, kind: str = "info") -> None:
+        # The same notice again replaces the old one (moved to the top), so a repeating failure is one card.
+        self._items = [i for i in self._items if not (i["title"] == title and i["kind"] == kind)]
         self._items.insert(0, {"title": title, "text": text, "kind": kind,
                                "at": time.strftime("%H:%M")})
         del self._items[30:]
