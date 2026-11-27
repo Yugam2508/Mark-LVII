@@ -233,6 +233,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 
 - [ ] Phone, Accessibility on (⋮ → Permissions & setup): open Settings on the phone, then "what's on my phone
       screen?" → Jarvis reads it. "Tap Wi-Fi" → it opens. "Scroll down", "go back", "go home".
+- [ ] Long-press the home screen → Widgets → Jarvis → place it. It says "Say “Hey Jarvis”"; talk → "Listening";
+      while it answers → "Speaking…". Tap it → the app opens.
 - [ ] Open a chat, "type hello there" → typed in the box. "Tap send" → it asks you to confirm first.
 - [ ] "Switch to Chrome", "snap this to the left", "move Spotify to my other screen", "minimise everything",
       "close Notepad" (with unsaved text it asks you to save, as usual).
