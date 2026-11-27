@@ -340,7 +340,70 @@ def _ip(p: dict) -> str:
     return outcome.done("ip", **facts)
 
 
+# ── power plan, eject ────────────────────────────────────────────────────────
+
+def parse_plans(out: str) -> list[dict]:
+    """`powercfg /list` -> [{'guid', 'name', 'active'}]."""
+    plans = []
+    for line in out.splitlines():
+        m = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s+\((.+?)\)\s*(\*)?", line, re.I)
+        if m:
+            plans.append({"guid": m.group(1), "name": m.group(2).strip(), "active": bool(m.group(3))})
+    return plans
+
+
+def _power_plan(p: dict) -> str:
+    bad = _need_windows("power_plan")
+    if bad:
+        return bad
+    rc, out = _run(["powercfg", "/list"], 20)
+    plans = parse_plans(out)
+    if not plans:
+        return outcome.failed("power_plan", out.strip()[:160] or "powercfg listed no plans")
+    want = str(p.get("name") or "").strip().lower()
+    if not want:
+        text = "\n".join(f"{'● ' if x['active'] else '  '}{x['name']}" for x in plans)
+        return outcome.done("power_plan", active=next((x["name"] for x in plans if x["active"]), "?")) + "\n" + \
+            outcome.untrusted("power plans", text)
+    def find(w: str):
+        return next((x for x in plans if x["name"].lower() == w), None) or \
+            next((x for x in plans if w in x["name"].lower() or x["name"].lower() in w), None)
+    hit = find(want)
+    if hit is None:                                   # everyday words for the plans
+        aliases = (("saver", "power saver"), ("battery", "power saver"), ("eco", "power saver"),
+                   ("ultimate", "ultimate performance"), ("max", "high performance"), ("performance", "high performance"),
+                   ("fast", "high performance"), ("normal", "balanced"), ("default", "balanced"))
+        for k, v in aliases:
+            if re.search(rf"\b{k}\b", want):
+                hit = find(v)
+                break
+    if hit is None:
+        return outcome.failed("power_plan", f"no power plan called {want}", have=", ".join(x["name"] for x in plans))
+    rc, out = _run(["powercfg", "/setactive", hit["guid"]], 20)
+    return outcome.done("power_plan", now=hit["name"]) if rc == 0 else outcome.failed("power_plan", out[:160])
+
+
+def _eject(p: dict) -> str:
+    bad = _need_windows("eject")
+    if bad:
+        return bad
+    import psutil
+    want = str(p.get("name") or "").strip().upper().rstrip(":\\")
+    removable = [d.mountpoint.rstrip("\\").upper() for d in psutil.disk_partitions(all=False)
+                 if "removable" in (d.opts or "").lower()]
+    if not want:
+        if len(removable) == 1:
+            want = removable[0].rstrip(":")
+        else:
+            return outcome.ask("eject", "Which drive?" + (f" ({', '.join(removable)})" if removable else " No USB drive is plugged in."))
+    drive = f"{want[:1]}:"
+    rc, out = _ps(f"(New-Object -ComObject Shell.Application).Namespace(17).ParseName('{drive}').InvokeVerb('Eject')", 30)
+    return outcome.done("eject", drive=drive, note="Windows says when it's safe to remove") if rc == 0 else \
+        outcome.failed("eject", out[:160] or "Windows couldn't eject it (a file may be open on it)")
+
+
 _ACTIONS = {
+    "power_plan": _power_plan, "eject": _eject,
     "wifi": _wifi, "updates": _updates, "recycle_bin": _recycle_bin, "speed_test": _speed_test,
     "startup_apps": _startup_apps, "battery": _battery, "ip": _ip,
 }
@@ -352,7 +415,9 @@ PLUGIN = {
         "disconnect), app updates through winget (updates: what=list, or install to update everything, asks first), "
         "the Recycle Bin (status, or what=empty, asks first), an internet speed test (speed_test; answers when "
         "done), what starts with Windows (startup_apps; open=true opens the settings page), battery level and "
-        "health (battery), and IP addresses (ip: local, Tailscale, public). For CPU/GPU/memory use system_insight."
+        "health (battery), IP addresses (ip: local, Tailscale, public), the Windows power plan (power_plan: no name = list, "
+        "or name = 'power saver' / 'balanced' / 'high performance'), and safely ejecting a USB drive (eject: name = the "
+        "drive letter, or empty for the only one). For CPU/GPU/memory use system_insight."
     ),
     "parameters": {
         "type": "OBJECT",
@@ -360,7 +425,8 @@ PLUGIN = {
             "action": {"type": "STRING", "enum": list(_ACTIONS)},
             "what": {"type": "STRING", "description": "Sub-action: for wifi status/list/saved/connect/password/"
                                                       "disconnect; for updates list/install; for recycle_bin status/empty"},
-            "name": {"type": "STRING", "description": "For wifi connect/password: the network name"},
+            "name": {"type": "STRING", "description": "For wifi connect/password: the network; for power_plan: the plan; "
+                                                      "for eject: the drive letter"},
             "open": {"type": "BOOLEAN", "description": "For startup_apps: also open the Startup apps settings page"},
         },
         "required": ["action"],

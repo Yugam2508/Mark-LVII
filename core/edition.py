@@ -60,6 +60,9 @@ CHANGELOG = [
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
+        "Rain heads-up: \"rain likely within the hour\" before it starts (home city, 7am–9pm, at most every three hours)",
+        "\"Switch to power saver\" / \"high performance\" (Windows power plans), \"eject my USB\", and \"put my phone on "
+        "vibrate\" / \"silent\" / \"ring\"",
         "A Jarvis widget for the phone's home screen: it shows whether Jarvis is listening, waiting for \"Hey Jarvis\", "
         "speaking or off, and one tap opens it listening",
         "A boot sequence: when Jarvis starts, the dial sweeps in tick by tick, the rings fade up, the core grows into "

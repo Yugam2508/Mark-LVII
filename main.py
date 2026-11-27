@@ -3161,6 +3161,11 @@ class JarvisLive:
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
             try:
+                from core import rain_alert as _ra
+                _ra.start()                               # "rain in about half an hour"
+            except Exception as _e:
+                print(f"[RainAlert] {_e}")
+            try:
                 from core import screen_time as _st
                 _st.start()                               # where the time on this PC goes (local only)
             except Exception as _e:

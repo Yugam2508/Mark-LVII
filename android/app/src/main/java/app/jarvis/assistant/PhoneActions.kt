@@ -30,7 +30,7 @@ object PhoneActions {
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
         "notifications", "reply_notification", "dismiss_notification", "recent_calls",
         "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock", "answer_call", "decline_call",
-        "screen_read", "tap", "scroll", "type_text", "nav")
+        "screen_read", "tap", "scroll", "type_text", "nav", "ringer")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -70,6 +70,7 @@ object PhoneActions {
             "scroll" -> hands { SendTapService.scroll(args.optString("direction") != "up") }
             "type_text" -> hands { SendTapService.type(args.optString("text")) }
             "nav" -> nav(args.optString("where"))
+            "ringer" -> ringer(context, args.optString("mode"))
             "answer_call" -> callButton(true)
             "decline_call" -> callButton(false)
             "lock" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Phone locked")
@@ -409,6 +410,23 @@ object PhoneActions {
             else -> return Result(false, "back, home, recents, notifications or quick settings")
         }
         return globalAction(a, "Done")
+    }
+
+    /** Ring / vibrate / silent. Silent needs Do Not Disturb access on Android, which notification access gives. */
+    private fun ringer(context: Context, mode: String): Result {
+        val audio = service(context, AudioManager::class.java)
+        val m = when (mode.lowercase()) {
+            "normal", "ring", "loud", "on" -> AudioManager.RINGER_MODE_NORMAL
+            "vibrate", "vibration" -> AudioManager.RINGER_MODE_VIBRATE
+            "silent", "mute", "off" -> AudioManager.RINGER_MODE_SILENT
+            else -> return Result(false, "ring, vibrate or silent?")
+        }
+        return try {
+            audio.ringerMode = m
+            Result(true, "Ringer: ${mode.lowercase()}")
+        } catch (e: SecurityException) {
+            Result(false, "Android needs Do Not Disturb access for that: switch on \"Read and reply to notifications\" in ⋮ → Permissions & setup")
+        }
     }
 
     private fun callButton(answer: Boolean): Result {

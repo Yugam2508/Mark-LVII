@@ -73,7 +73,8 @@ PLUGIN = {
         "take a screenshot on the phone (screenshot) or lock it (lock); operate the app open on the phone: read "
         "what's on its screen (screen_read), tap a button by its words (tap + button), scroll up/down (scroll + "
         "direction), type into the box in focus (type_text + text), go back / home / recents / notifications "
-        "(nav + nav_to). For a multi-step job on the phone, read the screen, act, and read again. For a person pass the name or number. "
+        "(nav + nav_to); the ringer: normal / vibrate / silent (ringer + mode). For a multi-step job on the phone, "
+        "read the screen, act, and read again. For a person pass the name or number. "
         "Calls and texts need the user's confirmation, which this tool asks for. Not for messages on "
         "WhatsApp or email — use those tools. For music by name use spotify_control with the phone as the device."
     ),
@@ -83,7 +84,8 @@ PLUGIN = {
             "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts", "open_app", "open_url",
                                                     "settings", "volume", "flashlight", "timer", "media", "navigate",
                                                     "send_to_phone", "location", "dnd", "alarm", "screenshot", "lock",
-                                                    "screen_read", "tap", "scroll", "type_text", "nav"]},
+                                                    "screen_read", "tap", "scroll", "type_text", "nav", "ringer"]},
+            "mode": {"type": "STRING", "enum": ["normal", "vibrate", "silent"], "description": "For ringer"},
             "button": {"type": "STRING", "description": "For tap: the words on the button or item to tap"},
             "nav_to": {"type": "STRING", "enum": ["back", "home", "recents", "notifications", "quick settings"],
                        "description": "For nav"},
@@ -153,7 +155,7 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                   "media": ("key",), "navigate": ("where",), "send_to_phone": ("text", "title"),
                   "location": (), "dnd": ("on",), "alarm": ("hour", "minute", "label"),
                   "screenshot": (), "lock": (), "screen_read": (), "scroll": ("direction",),
-                  "type_text": ("text",), "nav": ("nav_to",)}
+                  "type_text": ("text",), "nav": ("nav_to",), "ringer": ("mode",)}
         if action == "tap":
             return _tap(str(parameters.get("button") or parameters.get("text") or "").strip())
         if action in simple:

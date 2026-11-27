@@ -129,6 +129,8 @@ PLUGIN_SETTINGS = {
          "default": True},
         {"key": "screen_time", "label": "Keep track of which apps and sites I spend time on (stays on this PC)",
          "type": "toggle", "default": True},
+        {"key": "rain_alerts", "label": "Tell me before it rains (home city, 7am–9pm)", "type": "toggle",
+         "default": True},
         {"key": "home_city", "label": "Home city (for the weather when you don't name one)", "type": "text",
          "placeholder": "London"},
         {"key": "open_shared_links", "label": "Open links I share to Jarvis from my phone in the browser",
