@@ -48,6 +48,11 @@ CHANGELOG = [
         "From any app on the PC: Ctrl+Alt+S stops Jarvis talking and Ctrl+Alt+M mutes or unmutes the microphone "
         "(Esc and F4 only worked while Jarvis's window was in front); \"Hey Jarvis\" on the phone lights a PHONE "
         "satellite on the PC's hologram",
+        "\"Take notes of this lecture\" (or meeting): everything said is written down as it's heard, Jarvis stays silent, "
+        "and \"stop taking notes\" turns it into proper notes — summary, key points, action items and deadlines, things "
+        "to look up — saved with the full transcript",
+        "Interpreter: \"interpret between English and Spanish\" and Jarvis translates whatever anyone says into the other "
+        "language until \"stop interpreting\" — handy on the phone abroad",
         "The laptop's battery is watched like the suit's power: Jarvis tells you at 20% and again at 10% (with the time "
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "

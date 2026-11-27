@@ -20,7 +20,8 @@ _lock = threading.Lock()
 _state: dict = {"on": False, "path": None, "title": "", "words": 0, "started": None, "last": None}
 _tail = ""                      # the end of the previous chunk: "end" + "dictation" can arrive apart
 SILENCE_LIMIT = 240.0           # seconds of nothing heard before it ends by itself
-_STOP = re.compile(r"\b(end|stop|finish|finished|close)\s+(the\s+)?dictation\b|\bthat'?s\s+(all|everything|it)\s+for\s+(the\s+)?dictation\b|\bdictation\s+(over|done|complete)\b", re.I)
+_STOP = re.compile(r"\b(end|stop|finish|finished|close)\s+(the\s+)?dictation\b|\bthat'?s\s+(all|everything|it)\s+for\s+(the\s+)?dictation\b|\bdictation\s+(over|done|complete)\b"
+                   r"|\bstop\s+taking\s+notes\b|\b(end|finish)\s+(the\s+)?(lecture|meeting)\s+notes\b", re.I)
 _stop_cb = None
 
 

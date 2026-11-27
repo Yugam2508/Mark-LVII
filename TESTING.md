@@ -238,6 +238,10 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       "close Notepad" (with unsaved text it asks you to save, as usual).
 - [ ] In another app (a game, a browser), press Ctrl+Alt+S while Jarvis talks → it stops. Ctrl+Alt+M → mic muted;
       again → unmuted.
+- [ ] Play a lecture video: "take notes of this lecture, thermodynamics week 6" → Jarvis goes quiet. After a few
+      minutes, "stop taking notes" → notes with summary, key points and action items appear and are in your notes.
+- [ ] "Interpret between English and Spanish" → say something in English → Jarvis says it in Spanish, and back.
+      "Stop interpreting" → normal again.
 - [ ] "What's the weather?" → an answer, not a browser tab; "will it rain this afternoon?"; "weather in Paris tomorrow".
 - [ ] "Show me my day" → a TODAY panel with calendar, to-dos, weather, study, jobs and phone battery.
 - [ ] Copy three things, then "what did I copy?" → a numbered list. "Copy the link again" → it's back on the clipboard.
