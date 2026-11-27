@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 class TrayIntegration(QObject):
     summoned = pyqtSignal()          # emitted from the hotkey thread → shown on the GUI thread
+    hotkey = pyqtSignal(str)         # other global chords ("interrupt", "mute"), handled on the GUI thread
 
     def __init__(self, window, assistant_name: str = "JARVIS"):
         super().__init__(window)
@@ -28,6 +29,7 @@ class TrayIntegration(QObject):
         self.available = QSystemTrayIcon.isSystemTrayAvailable()
         self.tray = None
         self.summoned.connect(self.show_window)
+        self.hotkey.connect(self._on_hotkey)
         if not self.available:
             return
         icon_path = Path(__file__).resolve().parent.parent / "config" / "jarvis.ico"
@@ -64,6 +66,12 @@ class TrayIntegration(QObject):
         a = QAction(text, menu)
         a.triggered.connect(lambda _=False: fn())
         menu.addAction(a)
+
+    def _on_hotkey(self, name: str) -> None:
+        if name == "interrupt":
+            self.win._do_interrupt()
+        elif name == "mute":
+            self.win._toggle_mute()
 
     def _say(self, text: str) -> None:
         fn = getattr(self.win, "on_text_command", None)

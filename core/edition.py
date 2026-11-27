@@ -45,6 +45,9 @@ CHANGELOG = [
         "CONVERSATION & PRESENCE → Home city, or just tell Jarvis where you live)",
         "\"Show me my day\": one TODAY panel with your calendar, to-dos, weather and rain, study so far, what Jarvis is "
         "working on and your phone's battery, and a two-sentence summary",
+        "From any app on the PC: Ctrl+Alt+S stops Jarvis talking and Ctrl+Alt+M mutes or unmutes the microphone "
+        "(Esc and F4 only worked while Jarvis's window was in front); \"Hey Jarvis\" on the phone lights a PHONE "
+        "satellite on the PC's hologram",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
         "in Android's settings — never \"version\"",
     ]},

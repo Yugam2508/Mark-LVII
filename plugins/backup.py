@@ -92,7 +92,7 @@ def _files() -> list[tuple[Path, str]]:
 def make_backup(reason: str = "manual") -> Path:
     keep_secrets = bool(_setting("include_secrets", False))
     with _lock:
-        dest = folder() / f"jarvis-backup-{dt.datetime.now():%Y-%m-%d-%H%M%S}.zip"
+        dest = folder() / f"jarvis-backup-{dt.datetime.now().strftime('%Y-%m-%d-%H%M%S-%f')[:-3]}.zip"
         n = 2
         while dest.exists():                       # two in the same second: never overwrite one
             dest = dest.with_name(f"{dest.stem.split('~')[0]}~{n}.zip")
@@ -111,7 +111,7 @@ def make_backup(reason: str = "manual") -> Path:
             z.writestr("BACKUP-INFO.txt", f"Jarvis backup, {dt.datetime.now():%Y-%m-%d %H:%M} ({reason}).\n"
                        f"Keys and passwords included: {'yes' if keep_secrets else 'no (blanked)'}.\n")
         os.replace(tmp, dest)
-        for old in sorted(folder().glob("jarvis-backup-*.zip"))[:-KEEP]:
+        for old in backups()[:-KEEP]:                 # oldest first, by time — never the one just made
             try:
                 old.unlink()
             except OSError:
@@ -120,8 +120,15 @@ def make_backup(reason: str = "manual") -> Path:
 
 
 def backups() -> list[Path]:
+    """Oldest first, by when they were written (names alone can sort a same-second backup wrongly)."""
     try:
-        return sorted(folder().glob("jarvis-backup-*.zip"))
+        items = []
+        for p in folder().glob("jarvis-backup-*.zip"):
+            try:
+                items.append((p.stat().st_mtime, p.name, p))
+            except OSError:
+                pass
+        return [p for _, _, p in sorted(items)]
     except Exception:
         return []
 

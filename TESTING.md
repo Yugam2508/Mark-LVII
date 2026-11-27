@@ -236,6 +236,8 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Open a chat, "type hello there" → typed in the box. "Tap send" → it asks you to confirm first.
 - [ ] "Switch to Chrome", "snap this to the left", "move Spotify to my other screen", "minimise everything",
       "close Notepad" (with unsaved text it asks you to save, as usual).
+- [ ] In another app (a game, a browser), press Ctrl+Alt+S while Jarvis talks → it stops. Ctrl+Alt+M → mic muted;
+      again → unmuted.
 - [ ] "What's the weather?" → an answer, not a browser tab; "will it rain this afternoon?"; "weather in Paris tomorrow".
 - [ ] "Show me my day" → a TODAY panel with calendar, to-dos, weather, study, jobs and phone battery.
 - [ ] Copy three things, then "what did I copy?" → a numbered list. "Copy the link again" → it's back on the clipboard.

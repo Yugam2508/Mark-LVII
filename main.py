@@ -2923,6 +2923,11 @@ class JarvisLive:
 
         def on_state(awake: bool) -> None:
             self.ui.write_log("SYS: Phone: " + ("awake — listening." if awake else "waiting for \"Hey Jarvis\"."))
+            if awake:
+                try:
+                    self.ui.push_context("phone", "agent")       # a PHONE satellite on the PC's hologram
+                except Exception:
+                    pass
             if self._dashboard is not None and loop is not None:
                 asyncio.run_coroutine_threadsafe(self._dashboard.broadcast(
                     {"type": "phone_wake", "awake": awake, "available": True}), loop)
