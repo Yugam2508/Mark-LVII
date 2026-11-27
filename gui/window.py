@@ -1326,7 +1326,7 @@ class MainWindow(QMainWindow):
         # Click the version to see what changed (the panel also opens once by
         # itself after every update — see _maybe_show_whats_new).
         self._sub_lbl.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._sub_lbl.setToolTip("What's new in this version")
+        self._sub_lbl.setToolTip("What's new in this Mark")
         self._sub_lbl.mousePressEvent = lambda _e: self._open_whats_new()
         name_col.addWidget(self._sub_lbl)
         lay.addLayout(name_col)

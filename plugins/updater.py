@@ -204,7 +204,7 @@ def _daily() -> None:
 PLUGIN = {
     "name": "updater",
     "description": (
-        "Updates the assistant itself to the newest version and restarts it, or checks "
+        "Updates the assistant itself to the newest Mark and restarts it, or checks "
         "whether an update is available. Use for 'update yourself', 'are there updates', "
         "'get the latest version'."
     ),

@@ -29,10 +29,10 @@ def roman(n: int) -> str:
 MARK_NUMBER = 60                      # <- the only number to change at each update
 MARK = roman(MARK_NUMBER)             # "LX"
 VERSION = MARK                        # what "have I seen this release?" compares
-DATE = "2026-11-30"
+DATE = "2026-11-27"
 
 CHANGELOG = [
-    {"version": "LX", "date": "2026-11-30", "items": [
+    {"version": "LX", "date": "2026-11-27", "items": [
         "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
         "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "
         "decide for itself again",
@@ -120,7 +120,7 @@ CHANGELOG = [
         "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
         "of failing again and again",
     ]},
-    {"version": "LIX", "date": "2026-11-30", "items": [
+    {"version": "LIX", "date": "2026-11-26", "items": [
         "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
         "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
         "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
@@ -146,7 +146,7 @@ CHANGELOG = [
         "while plugged in, starts at login and lives in the tray, so your phone can always reach it; ask "
         "\"hub status\" to see which phones are linked, the Tailscale address and what's holding it awake",
     ]},
-    {"version": "LVIII", "date": "2026-11-30", "items": [
+    {"version": "LVIII", "date": "2026-11-26", "items": [
         "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
         "the next will be Mark LIX (no more v1.x)",
         "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
@@ -285,8 +285,11 @@ def edition_name() -> str:
 
 
 def entry_tag(version: str) -> str:
-    """'LVIII' -> 'MARK LVIII'; the older '1.8' -> 'v1.8'."""
-    return f"v{version}" if version[:1].isdigit() else f"MARK {version}"
+    """'LVIII' -> 'MARK LVIII'. The fork's early updates ('1.8') were updates of Mark LVII:
+    'MARK LVII · UPDATE 8'. Releases are named by Mark only — never 'version'."""
+    if version[:1].isdigit():
+        return f"MARK LVII · UPDATE {version.split('.')[-1]}"
+    return f"MARK {version}"
 
 
 def tag() -> str:

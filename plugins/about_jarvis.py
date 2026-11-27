@@ -1,5 +1,5 @@
 """
-plugins/about_jarvis.py — "what's new?", "what version are you?", "what can you do?"
+plugins/about_jarvis.py — "what's new?", "which Mark are you?", "what can you do?"
 
 The assistant has no memory of being updated, so without this it guesses — and
 usually says nothing changed. This answers from core/edition.py, the same list
@@ -34,19 +34,20 @@ PLUGIN = {
     "name": "about_jarvis",
     "description": (
         "Answers questions about the assistant itself: what's new since the last update, "
-        "what version is running, and what it can do. Use for 'what's new', 'did you "
-        "update', 'what changed', 'what version are you', 'what can you do'. Always use "
+        "which Mark is running (releases are named by Mark, e.g. Mark LXI — never call it a "
+        "'version'), and what it can do. Use for 'what's new', 'did you update', 'what changed', "
+        "'which Mark are you', 'what version are you', 'what can you do'. Always use "
         "this instead of guessing — you do not otherwise know what was added."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["whats_new", "version", "capabilities"]},
+            "action": {"type": "STRING", "enum": ["whats_new", "mark", "capabilities"]},
         },
         "required": ["action"],
     },
     "tier": "core",
-    "brief": "What's new / version / capabilities of the assistant.",
+    "brief": "What's new / which Mark / capabilities of the assistant.",
 }
 
 
@@ -56,15 +57,15 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
         if action == "capabilities":
             if player:
                 player.show_content(f"WHAT I CAN DO · {edition.tag()}", CAPABILITIES)
-            return outcome.done("capabilities", version=edition.tag(),
+            return outcome.done("capabilities", mark=edition.tag(),
                                 note="the full list with example phrases is on screen; mention three or four things "
                                      "that fit what they seem to want, not the whole list") + "\n" + CAPABILITIES
-        if action == "version":
-            return outcome.done("version", version=edition.tag(), date=edition.DATE,
+        if action in ("mark", "version"):
+            return outcome.done("mark", mark=edition.tag(), date=edition.DATE,
                                 edition=edition.edition_name())
         if player:
-            player.show_content(f"WHAT'S NEW · v{edition.VERSION}", edition.whats_new_text())
-        return outcome.done("whats_new", version=edition.VERSION, date=edition.DATE,
+            player.show_content(f"WHAT'S NEW · {edition.tag()}", edition.whats_new_text())
+        return outcome.done("whats_new", mark=edition.tag(), date=edition.DATE,
                             note="summarise the top items in a sentence or two; the full list "
                                  "is on screen") + "\n" + edition.whats_new_text()
     except Exception as e:

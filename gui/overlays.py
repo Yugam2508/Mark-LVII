@@ -978,7 +978,7 @@ class WhatsNewOverlay(_HudOverlay):
         bl.setContentsMargins(0, 4, 6, 4)
         bl.setSpacing(4)
         for i, entry in enumerate(edition.CHANGELOG):
-            head = QLabel(f"{edition.entry_tag(entry['version'])}  —  {entry['date']}" + ("   (this version)" if i == 0 else ""))
+            head = QLabel(f"{edition.entry_tag(entry['version'])}  —  {entry['date']}" + ("   (this Mark)" if i == 0 else ""))
             head.setFont(hud_font(9, QFont.Weight.Bold))
             head.setStyleSheet(f"color: {C.PRI if i == 0 else C.TEXT_MED}; background: transparent;"
                                "margin-top: 6px;")
