@@ -82,6 +82,8 @@ class HoloCore:
         self._read = {"CPU": 0.0, "MEM": 0.0, "NET": 0.0, "GPU": 0.0, "PHN": -1.0}
         self._mode = "idle"
         self._beams: list[dict] = []      # projection beams from the core to a card that just appeared
+        self._born = time.time()          # the boot sequence plays for the first few seconds
+        self.BOOT = 2.6
 
     # ── satellites ───────────────────────────────────────────────────────
     def push(self, label: str, kind: str = "tool") -> None:
@@ -185,6 +187,10 @@ class HoloCore:
             self._read["PHN"] = cur + (b - cur) * min(1.0, dt * 2.0)
 
     # ── painting ────────────────────────────────────────────────────────
+    def boot_progress(self) -> float:
+        """0 → 1 over the boot sequence (then 1 for good)."""
+        return min(1.0, (time.time() - self._born) / self.BOOT)
+
     def paint(self, p: QPainter, cx: float, cy: float, r: float, main: QColor, acc: QColor,
               white: QColor, tone, amp: float, name: str, state: str, W: float, H: float,
               muted: bool) -> None:
@@ -192,18 +198,45 @@ class HoloCore:
         p.save()
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         tx, ty = self._tilt_e
+        k = self.boot_progress()
+
+        def stage(a: float, b: float) -> float:          # each layer comes in during its own slice of the boot
+            return 0.0 if k <= a else 1.0 if k >= b else (k - a) / (b - a)
+        p.setOpacity(stage(0.0, 0.5))
         self._paint_glow(p, cx + tx * 10, cy + ty * 8, r, acc, amp)
+        p.setOpacity(stage(0.5, 1.0))
         self._paint_motes(p, cx, cy, r, main, acc, tx, ty)
         self._paint_sats(p, cx, cy, r, tone, W, H, main)
+        p.setOpacity(stage(0.65, 1.0))
         self._paint_readouts(p, cx + tx * 3, cy + ty * 3, r, main, acc, W)
-        self._paint_dial(p, cx, cy, r, main, acc)
+        p.setOpacity(1.0)
+        self._paint_dial(p, cx, cy, r, main, acc, sweep=stage(0.0, 0.55))
+        p.setOpacity(stage(0.25, 0.65))
         self._paint_segments(p, cx, cy, r * 0.86, acc, main)
         self._paint_sweep(p, cx, cy, r, acc)
         self._paint_spectrum(p, cx, cy, r * 0.50, r * 0.70, acc, main)
         self._paint_ripples(p, cx, cy, r, acc)
-        self._paint_core(p, cx - tx * 4, cy - ty * 3, r * 0.40, main, acc, white, amp, name, state, muted)
+        grow = stage(0.15, 0.6)
+        p.setOpacity(grow)
+        self._paint_core(p, cx - tx * 4, cy - ty * 3, r * 0.40 * (0.6 + 0.4 * (1 - (1 - grow) ** 3)),
+                         main, acc, white, amp, name, state, muted)
+        p.setOpacity(1.0)
         self._paint_beams(p, cx, cy, r, acc)
+        self._paint_boot_text(p, cx, cy, r, acc)
         p.restore()
+
+    def _paint_boot_text(self, p, cx, cy, r, acc):
+        """'INITIALISING' while the rings come in, then 'SYSTEMS ONLINE' for a moment."""
+        t = time.time() - self._born
+        if t > self.BOOT + 1.6:
+            return
+        text = "INITIALISING" if t < self.BOOT else "SYSTEMS ONLINE"
+        a = 0.9 if t < self.BOOT else max(0.0, 1.0 - (t - self.BOOT) / 1.6)
+        if t < self.BOOT:
+            a *= 0.55 + 0.45 * abs(math.sin(t * 6))            # a little flicker while booting
+        p.setPen(QPen(with_alpha(acc, a)))
+        p.setFont(px_font(max(9, r * 0.075), QFont.Weight.DemiBold, mono=True, spacing=3.0))
+        p.drawText(QRectF(cx - r, cy + r * 0.47, 2 * r, r * 0.14), Qt.AlignmentFlag.AlignCenter, text)
 
     def _paint_beams(self, p, cx, cy, r, acc):
         now = time.time()
@@ -307,13 +340,13 @@ class HoloCore:
         p.setBrush(QBrush(g))
         p.drawEllipse(QPointF(cx, cy), r * 1.25, r * 1.25)
 
-    def _paint_dial(self, p, cx, cy, r, main, acc):
-        # outer hairline + 120 ticks, every 10th long, slowly turning
+    def _paint_dial(self, p, cx, cy, r, main, acc, sweep: float = 1.0):
+        # outer hairline + 120 ticks, every 10th long, slowly turning; at boot they sweep in one by one
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(QPen(with_alpha(main, 0.35), 1))
+        p.setPen(QPen(with_alpha(main, 0.35 * sweep), 1))
         p.drawEllipse(QPointF(cx, cy), r * 1.06, r * 1.06)
         base = self._spin * 0.35
-        for i in range(120):
+        for i in range(int(round(120 * sweep))):
             a = base + i * (2 * math.pi / 120)
             long_ = i % 10 == 0
             r0 = r * (0.95 if long_ else 0.985)

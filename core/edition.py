@@ -60,6 +60,8 @@ CHANGELOG = [
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
+        "A boot sequence: when Jarvis starts, the dial sweeps in tick by tick, the rings fade up, the core grows into "
+        "place, the globe and gauges arrive, and \"SYSTEMS ONLINE\" flashes under the core",
         "The hologram shows your phone's battery as a live PHONE gauge next to the processor, memory, network and "
         "graphics ones while the phone is linked (it turns red when the phone runs low)",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
