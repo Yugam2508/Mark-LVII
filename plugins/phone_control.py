@@ -73,7 +73,8 @@ PLUGIN = {
         "take a screenshot on the phone (screenshot) or lock it (lock); operate the app open on the phone: read "
         "what's on its screen (screen_read), tap a button by its words (tap + button), scroll up/down (scroll + "
         "direction), type into the box in focus (type_text + text), go back / home / recents / notifications "
-        "(nav + nav_to); the ringer: normal / vibrate / silent (ringer + mode). For a multi-step job on the phone, "
+        "(nav + nav_to); the ringer: normal / vibrate / silent (ringer + mode); remember where something is "
+        "(remember_place + place, e.g. 'car' for 'remember where I parked') and find it again (find_place). For a multi-step job on the phone, "
         "read the screen, act, and read again. For a person pass the name or number. "
         "Calls and texts need the user's confirmation, which this tool asks for. Not for messages on "
         "WhatsApp or email — use those tools. For music by name use spotify_control with the phone as the device."
@@ -84,7 +85,9 @@ PLUGIN = {
             "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts", "open_app", "open_url",
                                                     "settings", "volume", "flashlight", "timer", "media", "navigate",
                                                     "send_to_phone", "location", "dnd", "alarm", "screenshot", "lock",
-                                                    "screen_read", "tap", "scroll", "type_text", "nav", "ringer"]},
+                                                    "screen_read", "tap", "scroll", "type_text", "nav", "ringer",
+                                                    "remember_place", "find_place"]},
+            "place": {"type": "STRING", "description": "For remember_place / find_place: what to call it, e.g. 'car'"},
             "mode": {"type": "STRING", "enum": ["normal", "vibrate", "silent"], "description": "For ringer"},
             "button": {"type": "STRING", "description": "For tap: the words on the button or item to tap"},
             "nav_to": {"type": "STRING", "enum": ["back", "home", "recents", "notifications", "quick settings"],
@@ -96,7 +99,8 @@ PLUGIN = {
             "text": {"type": "STRING", "description": "For send_to_phone: the text or link; empty = what's on the PC clipboard"},
             "name": {"type": "STRING", "description": "For open_app: the app's name, e.g. 'Spotify'"},
             "url": {"type": "STRING", "description": "For open_url: a full https:// address"},
-            "page": {"type": "STRING", "description": "For settings: bluetooth, wifi, sound, display, location, battery"},
+            "page": {"type": "STRING", "description": "For settings: bluetooth, wifi, hotspot, mobile data, nfc, sound, "
+                                                      "display, location, battery"},
             "level": {"type": "INTEGER", "description": "For volume: 0-100"},
             "direction": {"type": "STRING", "description": "For volume: up or down"},
             "on": {"type": "BOOLEAN", "description": "For flashlight: true or false"},
@@ -134,6 +138,45 @@ def _tap(button: str) -> str:
     return do_tap()
 
 
+_PLACES = None
+
+
+def _places_path():
+    from pathlib import Path
+    return Path(__file__).resolve().parent.parent / "memory" / "places.json"
+
+
+def _place(action: str, name: str) -> str:
+    """'Remember where I parked' (the phone's location now) and 'where did I park?'."""
+    import json
+    import time as _t
+    path = _places_path()
+    try:
+        places = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        places = {}
+    if action == "remember_place":
+        r = phone("location", {})
+        data = r.get("data") or {}
+        if not r.get("ok") or "lat" not in data:
+            return outcome.failed("phone_remember_place", r.get("text") or "the phone has no location right now")
+        places[name] = {"lat": data["lat"], "lon": data["lon"], "accuracy_m": data.get("accuracy_m"),
+                        "map": data.get("map"), "at": _t.time()}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(places, indent=1), encoding="utf-8")
+        return outcome.done("phone_remember_place", place=name, accuracy_m=round(float(data.get("accuracy_m") or 0)))
+    p = places.get(name) or next((v for k, v in places.items() if name in k or k in name), None)
+    if not p:
+        return outcome.failed("phone_find_place", f"nothing saved as {name}", saved=", ".join(places) or "none")
+    mins = int((_t.time() - p["at"]) / 60)
+    try:
+        phone("send_to_phone", {"text": p["map"], "title": f"Your {name}"})
+    except Exception:
+        pass
+    return outcome.done("phone_find_place", place=name, saved_minutes_ago=mins, map=p["map"],
+                        note="the map link is on the phone as a notification; tap it to navigate")
+
+
 def _ambiguous(action: str, matches: list) -> str:
     listing = "\n".join(f"{i}. {c.get('name')} ({c.get('label') or 'phone'})" for i, c in enumerate(matches[:6], 1))
     if not matches:
@@ -158,6 +201,8 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                   "type_text": ("text",), "nav": ("nav_to",), "ringer": ("mode",)}
         if action == "tap":
             return _tap(str(parameters.get("button") or parameters.get("text") or "").strip())
+        if action in ("remember_place", "find_place"):
+            return _place(action, str(parameters.get("place") or "car").strip().lower() or "car")
         if action in simple:
             args = {k: parameters[k] for k in simple[action] if parameters.get(k) is not None}
             if action == "nav" and "nav_to" in args:

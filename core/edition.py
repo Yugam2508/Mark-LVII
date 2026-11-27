@@ -60,6 +60,9 @@ CHANGELOG = [
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
+        "\"Remember where I parked\" saves the phone's location; \"where did I park?\" sends the map link to the phone. "
+        "\"Record my screen\" starts or stops Windows' own recorder, and \"open hotspot settings on my phone\" (also "
+        "mobile data and NFC pages)",
         "Rain heads-up: \"rain likely within the hour\" before it starts (home city, 7am–9pm, at most every three hours)",
         "\"Switch to power saver\" / \"high performance\" (Windows power plans), \"eject my USB\", and \"put my phone on "
         "vibrate\" / \"silent\" / \"ring\"",

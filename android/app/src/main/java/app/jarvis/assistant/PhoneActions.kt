@@ -204,10 +204,15 @@ object PhoneActions {
             "sound" -> android.provider.Settings.ACTION_SOUND_SETTINGS
             "location" -> android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS
             "battery" -> android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS
+            "hotspot", "tethering" -> "android.settings.TETHER_SETTINGS"       // not public, but widely there
+            "data", "mobile data" -> android.provider.Settings.ACTION_DATA_ROAMING_SETTINGS
+            "nfc" -> android.provider.Settings.ACTION_NFC_SETTINGS
             else -> android.provider.Settings.ACTION_SETTINGS
         }
         // Android no longer lets apps flip Bluetooth or Wi-Fi themselves; the page opens for one tap.
-        return guarded(context, Intent(action))
+        val r = guarded(context, Intent(action))
+        return if (!r.ok && action == "android.settings.TETHER_SETTINGS")
+            guarded(context, Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)) else r
     }
 
     private fun volume(context: Context, level: Int, direction: String): Result {
