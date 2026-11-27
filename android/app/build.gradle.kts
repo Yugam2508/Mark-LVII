@@ -11,8 +11,8 @@ android {
         applicationId = "app.jarvis.assistant"
         minSdk = 29
         targetSdk = 34
-        versionCode = 60
-        versionName = "Mark LX"
+        versionCode = 61
+        versionName = "Mark LXI"
     }
 
     buildTypes {

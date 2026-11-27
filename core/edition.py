@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """60 -> 'LX'."""
+    """61 -> 'LXI'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,12 +26,16 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 60                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LX"
+MARK_NUMBER = 61                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LXI"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-27"
 
 CHANGELOG = [
+    {"version": "LXI", "date": "2026-11-27", "items": [
+        "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
+        "in Android's settings — never \"version\"",
+    ]},
     {"version": "LX", "date": "2026-11-27", "items": [
         "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
         "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "

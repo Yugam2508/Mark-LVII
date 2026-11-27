@@ -5,7 +5,7 @@ Work down the list on the G14 first, then the desktop. Each line is **what to do
 *Known issues* (or tell Claude Code — paste the log lines from the COMMUNICATIONS panel).
 
 Update first: say **"update yourself"**, or run the installer once more. After the
-restart the header should read **MARK LX** and the What's new panel should open.
+restart the header should read **MARK LXI** and the What's new panel should open.
 
 ---
 
