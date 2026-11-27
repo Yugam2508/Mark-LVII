@@ -1549,6 +1549,12 @@ class JarvisLive:
             parts.append(_personality.prompt_block())
         except Exception as e:
             print(f"[Personality] skipped: {e}")
+        try:
+            from memory.config_manager import get_plugin_setting as _gps
+            if _gps("conversation", "careful_mode", False):
+                parts.append("[CAREFUL MODE IS ON] Before you do ANYTHING that changes something — opening or closing apps, playing music, changing a setting, sending, saving, deleting, moving, typing into an app, phone actions — first say in one short sentence exactly what you are about to do and wait for the user's yes. Answering questions and looking things up need no permission.")
+        except Exception:
+            pass
         # A session that starts without a resumption handle (a voice change, a
         # rejected handle, a restart within the hour) would otherwise know
         # nothing of what was just said. Hand it the last turns instead.

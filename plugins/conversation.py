@@ -26,7 +26,7 @@ import threading
 import time
 
 from core import addons, outcome, presence
-from memory.config_manager import get_plugin_setting
+from memory.config_manager import get_plugin_setting, save_plugin_config
 
 NAMESPACE = "conversation"
 _state = {"last": "free"}
@@ -97,13 +97,15 @@ PLUGIN = {
         "'back' when they say they're back or free (then mention anything they missed); "
         "'status' when they ask if you're listening; 'handoff' for 'where were we on my "
         "desktop/laptop', 'continue what I was saying on the other computer' (it returns the "
-        "last turns another device had with them). While paused, say nothing unless they use "
-        "your name."
+        "last turns another device had with them); 'careful' with on=true/false for 'be careful', "
+        "'ask me before you do anything', 'you can just do things again'. While paused, say nothing unless "
+        "they use your name."
     ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "action": {"type": "STRING", "enum": ["pause", "back", "status", "handoff"]},
+            "action": {"type": "STRING", "enum": ["pause", "back", "status", "handoff", "careful"]},
+            "on": {"type": "BOOLEAN", "description": "For careful: true = ask before every action"},
             "minutes": {"type": "NUMBER", "description": "For pause: how long, default from settings"},
             "reason": {"type": "STRING", "description": "For pause: e.g. 'talking to someone', 'on a call'"},
         },
@@ -135,6 +137,8 @@ PLUGIN_SETTINGS = {
          "placeholder": "London"},
         {"key": "open_shared_links", "label": "Open links I share to Jarvis from my phone in the browser",
          "type": "toggle", "default": True},
+        {"key": "careful_mode", "label": "Careful mode: Jarvis asks before every action, not just risky ones",
+         "type": "toggle", "default": False},
         {"key": "keep_transcript", "label": "Keep a full log of our conversations on this PC "
          "(so Jarvis can look back at what you said)", "type": "toggle", "default": True},
         {"key": "hub_mode", "label": "This PC is my always-on hub (never sleeps while plugged in, "
@@ -163,6 +167,12 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             missed = back()
             return outcome.done("conversation_back", missed=len(missed)) + \
                 ("\n" + outcome.untrusted("missed", "\n".join(missed)) if missed else "")
+        if action == "careful":
+            on = bool(parameters.get("on", True))
+            save_plugin_config(NAMESPACE, {"careful_mode": on})
+            return outcome.done("careful_mode", on=on,
+                                note=("[CAREFUL MODE IS ON] Before you do ANYTHING that changes something — opening or closing apps, playing music, changing a setting, sending, saving, deleting, moving, typing into an app, phone actions — first say in one short sentence exactly what you are about to do and wait for the user's yes. Answering questions and looking things up need no permission." if on else "careful mode is off: act on clear requests "
+                                      "straight away again (risky ones still ask on screen)"))
         if action == "handoff":
             from core import handoff
             other = handoff.latest_other()

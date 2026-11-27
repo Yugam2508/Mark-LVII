@@ -244,6 +244,7 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       minutes, "stop taking notes" → notes with summary, key points and action items appear and are in your notes.
 - [ ] "Interpret between English and Spanish" → say something in English → Jarvis says it in Spanish, and back.
       "Stop interpreting" → normal again.
+- [ ] "Be careful, ask me before you do anything" → "open Spotify" → it asks first. "You can just do things again" → back to normal.
 - [ ] "Remember where I parked" (phone with location on) → saved. Later "where did I park?" → a map link arrives on
       the phone. "Record my screen" → Windows starts recording (say it again to stop).
 - [ ] "Switch to power saver" → Windows' power plan changes; "high performance"; "what power plan am I on?".

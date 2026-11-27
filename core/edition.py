@@ -60,6 +60,9 @@ CHANGELOG = [
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
+        "Careful mode: \"be careful\" / \"ask me before you do anything\" — Jarvis then says what it's about to do and waits "
+        "for your yes before any action at all (questions still answered straight away); \"you can just do things again\" "
+        "turns it off. Also a switch in CONVERSATION & PRESENCE",
         "\"Remember where I parked\" saves the phone's location; \"where did I park?\" sends the map link to the phone. "
         "\"Record my screen\" starts or stops Windows' own recorder, and \"open hotspot settings on my phone\" (also "
         "mobile data and NFC pages)",
