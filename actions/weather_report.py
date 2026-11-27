@@ -1,71 +1,48 @@
-import webbrowser
-from urllib.parse import quote_plus
+"""
+actions/weather_report.py — the weather, answered (not a browser tab).
+
+Real data from Open-Meteo through core/weather.py: now, when rain comes, today / tomorrow / the next days.
+Without a city it uses the home city (setting WEATHER → city, or the city in Jarvis's memory).
+"""
+from core import outcome
 
 
-def weather_action(
-    parameters: dict,
-    player=None,
-    session_memory=None,
-) -> str:
-    city     = parameters.get("city")
-    when     = parameters.get("time", "today")  
-
-    if not city or not isinstance(city, str) or not city.strip():
-        msg = "Sir, the city is missing for the weather report."
-        _log(msg, player)
-        return msg
-
-    city = city.strip()
-    when = (when or "today").strip()
-
-    search_query  = f"weather in {city} {when}"
-    url           = f"https://www.google.com/search?q={quote_plus(search_query)}"
-
+def weather_action(parameters: dict, player=None, session_memory=None) -> str:
+    from core import weather
+    city = str((parameters or {}).get("city") or "").strip()
+    when = str((parameters or {}).get("time") or "today").strip().lower()
     try:
-        opened = webbrowser.open(url)
-        if not opened:
-            raise RuntimeError("webbrowser.open returned False")
+        place, text = weather.report(city, when)
+    except LookupError as e:
+        return outcome.ask("weather", f"{e}. Which city?")
     except Exception as e:
-        msg = f"Sir, I couldn't open the browser for the weather report: {e}"
-        _log(msg, player)
-        return msg
-
-    msg = f"Showing the weather for {city}, {when}, sir."
-    _log(msg, player)
-
-    if session_memory:
-        try:
-            session_memory.set_last_search(query=search_query, response=msg)
-        except Exception:
-            pass
-
-    return msg
-
-
-def _log(message: str, player=None) -> None:
-    print(f"[Weather] {message}")
+        return outcome.failed("weather", f"the weather service didn't answer ({str(e)[:100]})")
     if player:
         try:
-            player.write_log(f"JARVIS: {message}")
+            player.show_content(f"WEATHER — {place}", text)
         except Exception:
             pass
+    return outcome.done("weather", place=place, when=when,
+                        note="say it naturally in a sentence or two (what it's like, and when rain comes, if it does)") \
+        + "\n" + text
 
 
 # ── Tool declaration (auto-discovered by core/action_loader.py) ──────────────
 TOOL = {
     "name": "weather_report",
-    "description": "Gives the weather report to user",
+    "description": (
+        "The weather from a forecast service: what it's like now, when rain is coming, and today / tomorrow / "
+        "the next few days. city is optional (the user's home city is used when they don't name one); time = "
+        "now, today, tomorrow or week. Use for any weather question ('do I need an umbrella', 'good for a run "
+        "after 4?')."
+    ),
     "parameters": {
         "type": "OBJECT",
         "properties": {
-            "city": {
-                "type": "STRING",
-                "description": "City name"
-            }
+            "city": {"type": "STRING", "description": "City name; leave empty for the user's home city"},
+            "time": {"type": "STRING", "enum": ["now", "today", "tomorrow", "week"]},
         },
-        "required": [
-            "city"
-        ]
+        "required": [],
     },
     "handler": weather_action,
 }

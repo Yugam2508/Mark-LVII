@@ -190,6 +190,27 @@ class SystemMonitor:
             )
             self._record("temp")
 
+        # The laptop's own battery, like the suit's power: once at 20% and once at 10% per discharge.
+        try:
+            b = psutil.sensors_battery()
+        except Exception:
+            b = None
+        if b is not None:
+            if b.power_plugged:
+                self._battery_said = set()
+            else:
+                said = getattr(self, "_battery_said", set())
+                for level in (10, 20):
+                    if b.percent <= level and level not in said:
+                        said |= {lv for lv in (10, 20) if lv >= level}
+                        self._battery_said = said
+                        mins = "" if b.secsleft in (psutil.POWER_TIME_UNLIMITED, psutil.POWER_TIME_UNKNOWN) \
+                            else f" (about {int(b.secsleft // 60)} minutes left)"
+                        alerts.append(
+                            f"[SYSTEM_ALERT] The laptop battery is at {b.percent:.0f}%{mins} and not charging. "
+                            "Tell the user briefly in their language and suggest plugging in.")
+                        break
+
         if gpu >= 0 and gpu >= self.thresholds["gpu"] and self._can_alert("gpu"):
             alerts.append(
                 f"[SYSTEM_ALERT] GPU load is at {gpu:.0f}%. "

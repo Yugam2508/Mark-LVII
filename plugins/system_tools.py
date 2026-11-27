@@ -431,7 +431,19 @@ def _screenshot(p: dict) -> str:
     return outcome.done("screenshot", saved=str(path))
 
 
+def _screen_record(p: dict) -> str:
+    """Start or stop Windows' own screen recorder (Xbox Game Bar: Win+Alt+R) for the app in front."""
+    if not WINDOWS:
+        return outcome.failed("screen_record", "this uses the Windows Game Bar")
+    from actions.send_message import pyautogui
+    pyautogui.hotkey("win", "alt", "r")
+    return outcome.unverified("screen_record", "pressed the Game Bar's record shortcut; it records the app in front "
+                              "and saves to Videos\\Captures — if nothing happened, the Game Bar is switched off in "
+                              "Windows settings (Gaming → Xbox Game Bar)")
+
+
 _ACTIONS = {
+    "screen_record": _screen_record,
     "screenshot": _screenshot,
     "power": _power,
     "clean_temp": _clean_temp,
@@ -447,7 +459,8 @@ _ACTIONS = {
 PLUGIN = {
     "name": "system_tools",
     "description": (
-        "Does things on this PC: take a screenshot and save it to Pictures/Screenshots (screenshot; "
+        "Does things on this PC: start or stop recording the screen (screen_record, the Windows Game Bar); "
+        "take a screenshot and save it to Pictures/Screenshots (screenshot; "
         "for LOOKING at the screen to answer a question use screen_process instead); turn Bluetooth on/off, list paired Bluetooth devices or open the "
         "Bluetooth page to connect one (state: on/off/status/devices/settings); install or uninstall "
         "an app with winget (name); run a PowerShell command or script the user dictated (command; "

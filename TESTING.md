@@ -5,7 +5,7 @@ Work down the list on the G14 first, then the desktop. Each line is **what to do
 *Known issues* (or tell Claude Code — paste the log lines from the COMMUNICATIONS panel).
 
 Update first: say **"update yourself"**, or run the installer once more. After the
-restart the header should read **MARK LX** and the What's new panel should open.
+restart the header should read **MARK LXI** and the What's new panel should open.
 
 ---
 
@@ -228,6 +228,32 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] Phone: pull down Quick Settings → edit → add the Jarvis tile. Tap it → listening off; tap again → the app opens
       listening. The listening notification has Mute and Stop; tapping it opens the app.
 - [ ] Turn Tailscale off on the phone → the app says "Tailscale looks off — tap here"; tap → Tailscale opens.
+
+## 7k. Mark LXI
+
+- [ ] Phone, Accessibility on (⋮ → Permissions & setup): open Settings on the phone, then "what's on my phone
+      screen?" → Jarvis reads it. "Tap Wi-Fi" → it opens. "Scroll down", "go back", "go home".
+- [ ] Long-press the home screen → Widgets → Jarvis → place it. It says "Say “Hey Jarvis”"; talk → "Listening";
+      while it answers → "Speaking…". Tap it → the app opens.
+- [ ] Open a chat, "type hello there" → typed in the box. "Tap send" → it asks you to confirm first.
+- [ ] "Switch to Chrome", "snap this to the left", "move Spotify to my other screen", "minimise everything",
+      "close Notepad" (with unsaved text it asks you to save, as usual).
+- [ ] In another app (a game, a browser), press Ctrl+Alt+S while Jarvis talks → it stops. Ctrl+Alt+M → mic muted;
+      again → unmuted.
+- [ ] Play a lecture video: "take notes of this lecture, thermodynamics week 6" → Jarvis goes quiet. After a few
+      minutes, "stop taking notes" → notes with summary, key points and action items appear and are in your notes.
+- [ ] "Interpret between English and Spanish" → say something in English → Jarvis says it in Spanish, and back.
+      "Stop interpreting" → normal again.
+- [ ] "Be careful, ask me before you do anything" → "open Spotify" → it asks first. "You can just do things again" → back to normal.
+- [ ] "Remember where I parked" (phone with location on) → saved. Later "where did I park?" → a map link arrives on
+      the phone. "Record my screen" → Windows starts recording (say it again to stop).
+- [ ] "Switch to power saver" → Windows' power plan changes; "high performance"; "what power plan am I on?".
+- [ ] Plug in a USB stick, "eject my USB" → Windows says it's safe to remove.
+- [ ] "Put my phone on vibrate", then "ring" (silent needs notification access).
+- [ ] After an hour of normal use: "what's my screen time today?" → apps and sites with times; "how long on YouTube?"
+- [ ] "What's the weather?" → an answer, not a browser tab; "will it rain this afternoon?"; "weather in Paris tomorrow".
+- [ ] "Show me my day" → a TODAY panel with calendar, to-dos, weather, study, jobs and phone battery.
+- [ ] Copy three things, then "what did I copy?" → a numbered list. "Copy the link again" → it's back on the clipboard.
 
 ## 7h. The PC as the hub
 

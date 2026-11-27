@@ -29,6 +29,7 @@ class ConversationPanel(
     private val holo = HoloView(context)
     private val status = TextView(context)
     private val hint = TextView(context)
+    private val pcLine = TextView(context)
     private val log = TextView(context)
     private val scroll = ScrollView(context)
     private val input = EditText(context)
@@ -55,6 +56,10 @@ class ConversationPanel(
             }, LayoutParams(dp(48), dp(48)))
         }
         addView(top, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        // How the PC is doing, updated every few seconds while linked.
+        pcLine.setTextColor(Color.rgb(70, 120, 140)); pcLine.textSize = 11f; pcLine.gravity = Gravity.CENTER
+        pcLine.typeface = android.graphics.Typeface.MONOSPACE
+        addView(pcLine, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(holo, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.3f))
         // What Jarvis is doing right now, in words: waiting for "Hey Jarvis", listening, speaking.
         hint.setTextColor(Color.rgb(0, 212, 255)); hint.textSize = 14f; hint.gravity = Gravity.CENTER
@@ -161,6 +166,11 @@ class ConversationPanel(
                 lines.append("\n\n"); render()
             }
             is Protocol.Event.Wake -> onState(LiveAudio.state, 0f)
+            is Protocol.Event.PcStatus -> {
+                val bat = if (event.battery >= 0) " · BATTERY ${event.battery}%${if (event.charging) " charging" else ""}" else ""
+                pcLine.text = "PC · ${event.mark.ifBlank { "JARVIS" }} · CPU ${event.cpu}% · MEM ${event.mem}%$bat"
+                pcLine.setTextColor(if (event.battery in 0..15 && !event.charging) Color.rgb(255, 120, 80) else Color.rgb(70, 120, 140))
+            }
             is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
     }

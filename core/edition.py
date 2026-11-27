@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """60 -> 'LX'."""
+    """61 -> 'LXI'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,12 +26,60 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 60                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LX"
+MARK_NUMBER = 61                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LXI"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-27"
 
 CHANGELOG = [
+    {"version": "LXI", "date": "2026-11-27", "items": [
+        "Jarvis can operate any app on your phone when you ask: \"what's on my phone screen?\", \"tap Sign in\", "
+        "\"scroll down\", \"type hello\", \"go back\", \"go home\", \"open my notifications\" — through the optional "
+        "accessibility switch; taps on anything that sends, pays, buys, deletes or posts ask you first",
+        "Windows by voice: \"switch to Chrome\", \"snap VS Code to the left\", \"move Spotify to my other screen\", "
+        "\"maximise this\", \"minimise everything\", \"close Notepad\" (politely — it can still ask to save)",
+        "Clipboard history: \"what did I copy earlier?\", \"copy that link again\", \"paste the address I copied\" — the "
+        "last 40 things you copied, kept in memory only and never written to disk",
+        "Real weather: \"what's the weather?\" now answers from a forecast service (it used to open a Google search) — "
+        "now, when the rain comes, today / tomorrow / the week — for your home city unless you name one (set it in "
+        "CONVERSATION & PRESENCE → Home city, or just tell Jarvis where you live)",
+        "\"Show me my day\": one TODAY panel with your calendar, to-dos, weather and rain, study so far, what Jarvis is "
+        "working on and your phone's battery, and a two-sentence summary",
+        "From any app on the PC: Ctrl+Alt+S stops Jarvis talking and Ctrl+Alt+M mutes or unmutes the microphone "
+        "(Esc and F4 only worked while Jarvis's window was in front); \"Hey Jarvis\" on the phone lights a PHONE "
+        "satellite on the PC's hologram",
+        "\"Take notes of this lecture\" (or meeting): everything said is written down as it's heard, Jarvis stays silent, "
+        "and \"stop taking notes\" turns it into proper notes — summary, key points, action items and deadlines, things "
+        "to look up — saved with the full transcript",
+        "Interpreter: \"interpret between English and Spanish\" and Jarvis translates whatever anyone says into the other "
+        "language until \"stop interpreting\" — handy on the phone abroad",
+        "Screen time: \"how long have I been on YouTube today?\", \"where did my time go this week?\" — by app, and by site "
+        "in the browser; idle time isn't counted (a playing video is), and it stays on this PC (switch off in "
+        "CONVERSATION & PRESENCE)",
+        "The laptop's battery is watched like the suit's power: Jarvis tells you at 20% and again at 10% (with the time "
+        "left) when it isn't charging",
+        "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
+        "laptop's battery — updated every few seconds while linked",
+        "While your phone is the microphone and speaker, the PC's state line says so (\"LISTENING · VIA PHONE\"), so a "
+        "quiet PC never looks broken",
+        "Careful mode: \"be careful\" / \"ask me before you do anything\" — Jarvis then says what it's about to do and waits "
+        "for your yes before any action at all (questions still answered straight away); \"you can just do things again\" "
+        "turns it off. Also a switch in CONVERSATION & PRESENCE",
+        "\"Remember where I parked\" saves the phone's location; \"where did I park?\" sends the map link to the phone. "
+        "\"Record my screen\" starts or stops Windows' own recorder, and \"open hotspot settings on my phone\" (also "
+        "mobile data and NFC pages)",
+        "Rain heads-up: \"rain likely within the hour\" before it starts (home city, 7am–9pm, at most every three hours)",
+        "\"Switch to power saver\" / \"high performance\" (Windows power plans), \"eject my USB\", and \"put my phone on "
+        "vibrate\" / \"silent\" / \"ring\"",
+        "A Jarvis widget for the phone's home screen: it shows whether Jarvis is listening, waiting for \"Hey Jarvis\", "
+        "speaking or off, and one tap opens it listening",
+        "A boot sequence: when Jarvis starts, the dial sweeps in tick by tick, the rings fade up, the core grows into "
+        "place, the globe and gauges arrive, and \"SYSTEMS ONLINE\" flashes under the core",
+        "The hologram shows your phone's battery as a live PHONE gauge next to the processor, memory, network and "
+        "graphics ones while the phone is linked (it turns red when the phone runs low)",
+        "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
+        "in Android's settings — never \"version\"",
+    ]},
     {"version": "LX", "date": "2026-11-27", "items": [
         "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
         "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "

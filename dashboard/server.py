@@ -1061,7 +1061,7 @@ class DashboardServer:
     # ── broadcast ────────────────────────────────────────────────────────
 
     async def broadcast(self, msg: dict) -> None:
-        live_only = msg.get("type") == "phone_wake" or (msg.get("type") == "card"
+        live_only = msg.get("type") in ("phone_wake", "pc_status") or (msg.get("type") == "card"
                                                          and msg.get("kind") in ("confirm", "confirm_done"))
         if not live_only:
             self._history.append(msg)

@@ -93,6 +93,8 @@ object Protocol {
         class PhoneAction(val id: String, val action: String, val args: JSONObject) : Event()
         /** The PC heard "Hey Jarvis" (awake) or went back to waiting; available=false: no wake word on the PC. */
         data class Wake(val awake: Boolean, val available: Boolean) : Event()
+        /** How the PC is doing: its Mark, load and battery (-1 = no battery). */
+        data class PcStatus(val mark: String, val cpu: Int, val mem: Int, val battery: Int, val charging: Boolean) : Event()
     }
 
     fun parseEvent(json: String): Event? = try {
@@ -110,6 +112,8 @@ object Protocol {
                 else Event.Card(o.optString("title"), text, o.optString("kind", "panel"))
             }
             "phone_wake" -> Event.Wake(o.optBoolean("awake", false), o.optBoolean("available", true))
+            "pc_status" -> Event.PcStatus(o.optString("mark"), o.optInt("cpu", 0), o.optInt("mem", 0),
+                o.optInt("battery", -1), o.optBoolean("charging", false))
             "phone_action" -> {
                 val id = o.optString("id")
                 if (id.isEmpty()) null else Event.PhoneAction(id, o.optString("action"), o.optJSONObject("args") ?: JSONObject())

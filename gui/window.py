@@ -488,6 +488,10 @@ class MainWindow(QMainWindow):
             from core.summon import Summon
             self._summon = Summon(self._tray.summoned.emit)
             if self._summon.scope == "global":
+                # From any app: Ctrl+Alt+S stops Jarvis talking, Ctrl+Alt+M mutes or unmutes the mic.
+                from core.summon import VK_CONTROL, VK_MENU, VK_S, VK_M
+                self._summon.add((VK_CONTROL, VK_MENU, VK_S), lambda: self._tray.hotkey.emit("interrupt"))
+                self._summon.add((VK_CONTROL, VK_MENU, VK_M), lambda: self._tray.hotkey.emit("mute"))
                 self._summon.start()
             else:
                 sc_sum = QShortcut(QKeySequence("Ctrl+Alt+J"), self)
@@ -3145,6 +3149,11 @@ class MainWindow(QMainWindow):
     def _on_clipboard_changed(self):
         try:
             text = QApplication.clipboard().text().strip()
+            try:
+                from core import clip_history
+                clip_history.add(text)                # "what did I copy earlier?" (memory only)
+            except Exception:
+                pass
             if len(text) >= 10:
                 self._clipboard_sig.emit(text)
         except Exception:

@@ -28,7 +28,8 @@ WMO = {0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "overcast", 45: "fo
 
 
 def _city() -> str:
-    city = str(get_plugin_setting(NAMESPACE, "city", "") or "").strip()
+    city = str(get_plugin_setting(NAMESPACE, "city", "") or "").strip() or \
+        str(get_plugin_setting("conversation", "home_city", "") or "").strip()
     if city:
         return city
     try:
@@ -44,10 +45,22 @@ def _city() -> str:
 
 
 def weather() -> str:
-    import requests
+    """Today's weather line for the briefing, with when the rain comes (core/weather.py)."""
     city = _city()
     if not city:
         return ""
+    try:
+        from core import weather as _w
+        g = _w.geocode(city)
+        data = _w.forecast(g["lat"], g["lon"])
+        day = data.get("daily") or {}
+        line = (f"{g['name']}: {_w.words(day['weather_code'][0])}, {round(day['temperature_2m_min'][0])}–"
+                f"{round(day['temperature_2m_max'][0])}°C, {day['precipitation_probability_max'][0]}% chance of rain")
+        rw = _w.rain_window(data)
+        return line + (f"; {rw}" if rw else "")
+    except Exception:
+        pass
+    import requests
     geo = requests.get("https://geocoding-api.open-meteo.com/v1/search",
                        params={"name": city, "count": 1}, timeout=8).json().get("results") or []
     if not geo:

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E6020A10"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp">
+
+    <TextView
+        android:id="@+id/widget_orb"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@android:drawable/presence_online"
+        android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:letterSpacing="0.25"
+            android:text="JARVIS"
+            android:textColor="#00D4FF"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_state"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap to talk"
+            android:textColor="#A0C8D8"
+            android:textSize="13sp" />
+    </LinearLayout>
+</LinearLayout>

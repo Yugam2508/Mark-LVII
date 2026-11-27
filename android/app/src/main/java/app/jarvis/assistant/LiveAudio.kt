@@ -69,8 +69,12 @@ object LiveAudio {
     fun remove(l: Listener) { listeners.remove(l) }
 
     private fun emit(s: State, level: Float = 0f) {
+        val changed = s != state
         state = s
-        main.post { listeners.forEach { it.onState(s, level) } }
+        main.post {
+            listeners.forEach { it.onState(s, level) }
+            if (changed) JarvisWidget.refresh(ctx)            // the home-screen widget follows the state
+        }
     }
 
     val running: Boolean get() = wanted
@@ -108,6 +112,7 @@ object LiveAudio {
     fun stop() {
         wanted = false
         awake = false
+        main.post { JarvisWidget.refresh(ctx) }
         teardown()
         audio?.let {
             if (Build.VERSION.SDK_INT >= 31) it.clearCommunicationDevice()
@@ -240,6 +245,7 @@ object LiveAudio {
         wakeAvailable = available
         if (nowAwake && !was) cue()
         emit(state)
+        main.post { JarvisWidget.refresh(ctx) }
     }
 
     /** Tap on the orb: wake Jarvis without saying the phrase. */

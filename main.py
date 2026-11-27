@@ -1549,6 +1549,12 @@ class JarvisLive:
             parts.append(_personality.prompt_block())
         except Exception as e:
             print(f"[Personality] skipped: {e}")
+        try:
+            from memory.config_manager import get_plugin_setting as _gps
+            if _gps("conversation", "careful_mode", False):
+                parts.append("[CAREFUL MODE IS ON] Before you do ANYTHING that changes something — opening or closing apps, playing music, changing a setting, sending, saving, deleting, moving, typing into an app, phone actions — first say in one short sentence exactly what you are about to do and wait for the user's yes. Answering questions and looking things up need no permission.")
+        except Exception:
+            pass
         # A session that starts without a resumption handle (a voice change, a
         # rejected handle, a restart within the hour) would otherwise know
         # nothing of what was just said. Hand it the last turns instead.
@@ -2892,6 +2898,18 @@ class JarvisLive:
             for piece in pieces:
                 self._forward_phone_audio(piece)
 
+    async def _pc_status_to_phones(self, period: float = 10.0) -> None:
+        """While a phone is linked, tell it how this PC is doing (shown as a line in the phone app)."""
+        while True:
+            await asyncio.sleep(period)
+            try:
+                d = self._dashboard
+                if d is None or not d._phones:
+                    continue
+                await d.broadcast(pc_status())
+            except Exception as e:
+                print(f"[PCStatus] {e}")
+
     def _forward_phone_audio(self, data: bytes) -> None:
         try:
             self.out_queue.put_nowait({"data": data, "mime_type": "audio/pcm"})
@@ -2923,6 +2941,11 @@ class JarvisLive:
 
         def on_state(awake: bool) -> None:
             self.ui.write_log("SYS: Phone: " + ("awake — listening." if awake else "waiting for \"Hey Jarvis\"."))
+            if awake:
+                try:
+                    self.ui.push_context("phone", "agent")       # a PHONE satellite on the PC's hologram
+                except Exception:
+                    pass
             if self._dashboard is not None and loop is not None:
                 asyncio.run_coroutine_threadsafe(self._dashboard.broadcast(
                     {"type": "phone_wake", "awake": awake, "available": True}), loop)
@@ -3144,6 +3167,21 @@ class JarvisLive:
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
             try:
+                from core import rain_alert as _ra
+                _ra.start()                               # "rain in about half an hour"
+            except Exception as _e:
+                print(f"[RainAlert] {_e}")
+            try:
+                from core import screen_time as _st
+                _st.start()                               # where the time on this PC goes (local only)
+            except Exception as _e:
+                print(f"[ScreenTime] {_e}")
+            try:
+                from core import phone_state as _ps
+                _ps.start()                               # the phone's battery, for the hologram
+            except Exception as _e:
+                print(f"[PhoneState] {_e}")
+            try:
                 from plugins import hub as _hub
                 _hub.startup_check(self.ui)
             except Exception as _e:
@@ -3158,6 +3196,7 @@ class JarvisLive:
             self.ui.set_mirror(lambda t, x, k: asyncio.run_coroutine_threadsafe(
                 self._dashboard.broadcast_card(t, x, k), _loop) if self._dashboard else None)
             self._keep_task(asyncio.create_task(self._dashboard.serve()))
+            self._keep_task(asyncio.create_task(self._pc_status_to_phones()))
             # Runs for the whole lifetime, not just inside an active session
             self._keep_task(asyncio.create_task(self._process_dashboard_commands()))
         except Exception as e:
@@ -3486,6 +3525,26 @@ class JarvisLive:
             delay = getattr(self, "_conn_backoff", 3)
             print(f"[JARVIS] Reconnecting in {delay}s...")
             await asyncio.sleep(delay)
+
+def pc_status() -> dict:
+    """This PC's state for a linked phone: Mark, load, battery."""
+    import psutil
+    out = {"type": "pc_status", "cpu": round(psutil.cpu_percent(interval=None)),
+           "mem": round(psutil.virtual_memory().percent)}
+    try:
+        from core import edition
+        out["mark"] = edition.tag()
+    except Exception:
+        pass
+    try:
+        b = psutil.sensors_battery()
+        if b is not None:
+            out["battery"] = round(b.percent)
+            out["charging"] = bool(b.power_plugged)
+    except Exception:
+        pass
+    return out
+
 
 def _exit_process(code: int = 0) -> None:
     """End the process on purpose, after the atexit handlers.

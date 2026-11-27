@@ -79,7 +79,7 @@ class SetupPanel(private val activity: Activity, private val onClose: () -> Unit
                 open(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${activity.packageName}"))) },
             Row("Read and reply to notifications (WhatsApp etc.)", NotifyService.enabled(activity), "switch on") {
                 open(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-            Row("Accessibility (optional): press Send in WhatsApp, phone screenshots, lock the phone", sendTapEnabled(activity), "switch on") {
+            Row("Accessibility (optional): operate apps for you — read the screen, tap, scroll, type; WhatsApp Send; screenshots; lock", sendTapEnabled(activity), "switch on") {
                 Toast.makeText(activity, "Find Jarvis under Installed apps / Downloaded apps and switch it on", Toast.LENGTH_LONG).show()
                 open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
             Row("Jarvis is the phone's assistant (long-press power)", isAssistant(activity), "choose Jarvis") {
