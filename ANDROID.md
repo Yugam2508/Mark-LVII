@@ -31,6 +31,18 @@ find-my-phone, status — through a foreground link service that restarts after 
 against the real Android 15 framework and its parsing logic is unit-tested; it has not yet been run on
 a phone. Still to come: wake word (step 2), notifications and the IR blaster, control of other apps.
 
+### Cab fares (Mark LXII)
+"Cheapest cab to X" (`plugins/cab_fares.py` on the PC, `FareCheck.kt` + `FareParse.kt` on the phone). Grab, Gojek,
+TADA and Zig have no public fare API, and deep links that prefill a destination are undocumented for most of them
+and need coordinates, so the phone drives each app through the accessibility service the way you would: fresh
+launch → "Where to?" → types the destination → taps the best-matching suggestion → reads every price on the fares
+screen. Prices are the one thing these apps always render as text, so parsing starts from a price and looks back
+for the ride's name; that survives redesigns better than view ids. It taps only words from short allow-lists,
+never anything matching book/order/request/pay, and nothing at all once a price shows. Trade-offs: it is personal
+use of your own signed-in apps, on request only, but their terms forbid automated access in general terms; a
+check takes 15–30 s an app and the screen is taken over meanwhile; an app update can break one app's flow (each
+failure returns the trace and the words on screen so the lists can be fixed).
+
 ## Build plan (Android Studio, Kotlin)
 1. **Skeleton + assistant role** — opens on long-press power, shows the holo display, text and push-to-talk
    voice to a laptop's dashboard. *Done when: long-press power opens it and "what time is it" works.*
