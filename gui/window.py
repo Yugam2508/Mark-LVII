@@ -3145,6 +3145,11 @@ class MainWindow(QMainWindow):
     def _on_clipboard_changed(self):
         try:
             text = QApplication.clipboard().text().strip()
+            try:
+                from core import clip_history
+                clip_history.add(text)                # "what did I copy earlier?" (memory only)
+            except Exception:
+                pass
             if len(text) >= 10:
                 self._clipboard_sig.emit(text)
         except Exception:

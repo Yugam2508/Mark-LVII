@@ -36,6 +36,10 @@ CHANGELOG = [
         "Jarvis can operate any app on your phone when you ask: \"what's on my phone screen?\", \"tap Sign in\", "
         "\"scroll down\", \"type hello\", \"go back\", \"go home\", \"open my notifications\" — through the optional "
         "accessibility switch; taps on anything that sends, pays, buys, deletes or posts ask you first",
+        "Windows by voice: \"switch to Chrome\", \"snap VS Code to the left\", \"move Spotify to my other screen\", "
+        "\"maximise this\", \"minimise everything\", \"close Notepad\" (politely — it can still ask to save)",
+        "Clipboard history: \"what did I copy earlier?\", \"copy that link again\", \"paste the address I copied\" — the "
+        "last 40 things you copied, kept in memory only and never written to disk",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
         "in Android's settings — never \"version\"",
     ]},
