@@ -26,12 +26,19 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 61                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LXI"
+MARK_NUMBER = 62                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LXII"
 VERSION = MARK                        # what "have I seen this release?" compares
 DATE = "2026-11-27"
 
 CHANGELOG = [
+    {"version": "LXII", "date": "2026-11-27", "items": [
+        "\"What's the cheapest cab to Changi?\" — Jarvis checks Grab, Gojek, TADA and Zig on your phone one after another "
+        "(it opens each app, enters the destination and reads the fare it quotes), shows them side by side with the "
+        "place each app picked, and says the cheapest. \"Open the cheapest\" leaves that app on its fares screen for "
+        "you to book: Jarvis never books or pays. Shared rides are left out unless you ask. Needs the phone unlocked "
+        "and the Accessibility switch on; takes about a minute",
+    ]},
     {"version": "LXI", "date": "2026-11-27", "items": [
         "Jarvis can operate any app on your phone when you ask: \"what's on my phone screen?\", \"tap Sign in\", "
         "\"scroll down\", \"type hello\", \"go back\", \"go home\", \"open my notifications\" — through the optional "

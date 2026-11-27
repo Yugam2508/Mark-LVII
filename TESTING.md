@@ -5,7 +5,7 @@ Work down the list on the G14 first, then the desktop. Each line is **what to do
 *Known issues* (or tell Claude Code — paste the log lines from the COMMUNICATIONS panel).
 
 Update first: say **"update yourself"**, or run the installer once more. After the
-restart the header should read **MARK LXI** and the What's new panel should open.
+restart the header should read **MARK LXII** and the What's new panel should open.
 
 ---
 
@@ -254,6 +254,21 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
 - [ ] "What's the weather?" → an answer, not a browser tab; "will it rain this afternoon?"; "weather in Paris tomorrow".
 - [ ] "Show me my day" → a TODAY panel with calendar, to-dos, weather, study, jobs and phone battery.
 - [ ] Copy three things, then "what did I copy?" → a numbered list. "Copy the link again" → it's back on the clipboard.
+
+## 7l. Mark LXII: cheapest cab
+
+Phone unlocked, Accessibility on, "Open apps and sites when asked" on, and signed in to the ride apps.
+
+- [ ] "What's the cheapest cab to Jewel Changi?" → Jarvis says it's checking; the phone opens Grab, types Jewel,
+      shows fares, goes home, then Gojek, TADA, Zig. After about a minute a CAB FARES panel lists each app's cheapest
+      ride and price with the place it picked (★ on the cheapest), and Jarvis says which is cheapest.
+- [ ] Check that **nothing was booked** in any app.
+- [ ] "Open the cheapest one" → that app opens on its fares screen; you press Book yourself (or don't).
+- [ ] "Check only Grab and Zig for a ride to NUS" → only those two.
+- [ ] Lock the phone and ask again → "unlock the phone first", once, not four times.
+- [ ] If an app says "couldn't find where to type the destination" or "no prices showed up", copy the panel and
+      what the app's screen looked like and paste it to Claude: the words it looks for are in
+      `android/.../FareCheck.kt` and are quick to adjust.
 
 ## 7h. The PC as the hub
 

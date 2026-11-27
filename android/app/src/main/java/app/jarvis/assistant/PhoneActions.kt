@@ -30,7 +30,7 @@ object PhoneActions {
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
         "notifications", "reply_notification", "dismiss_notification", "recent_calls",
         "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock", "answer_call", "decline_call",
-        "screen_read", "tap", "scroll", "type_text", "nav", "ringer")
+        "screen_read", "tap", "scroll", "type_text", "nav", "ringer", "cab_fare")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -76,6 +76,7 @@ object PhoneActions {
             "lock" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Phone locked")
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
+            "cab_fare" -> FareCheck.run(context, args.optString("app"), args.optString("destination"), args.optBoolean("leave_open", false))
             else -> Result(false, "This phone doesn't know how to $action yet")
         }
     } catch (e: SecurityException) {
