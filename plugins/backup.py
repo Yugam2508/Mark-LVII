@@ -93,6 +93,10 @@ def make_backup(reason: str = "manual") -> Path:
     keep_secrets = bool(_setting("include_secrets", False))
     with _lock:
         dest = folder() / f"jarvis-backup-{dt.datetime.now():%Y-%m-%d-%H%M%S}.zip"
+        n = 2
+        while dest.exists():                       # two in the same second: never overwrite one
+            dest = dest.with_name(f"{dest.stem.split('~')[0]}~{n}.zip")
+            n += 1
         tmp = dest.with_suffix(".tmp")
         with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
             for path, arc in _files():
