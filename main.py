@@ -2892,6 +2892,18 @@ class JarvisLive:
             for piece in pieces:
                 self._forward_phone_audio(piece)
 
+    async def _pc_status_to_phones(self, period: float = 10.0) -> None:
+        """While a phone is linked, tell it how this PC is doing (shown as a line in the phone app)."""
+        while True:
+            await asyncio.sleep(period)
+            try:
+                d = self._dashboard
+                if d is None or not d._phones:
+                    continue
+                await d.broadcast(pc_status())
+            except Exception as e:
+                print(f"[PCStatus] {e}")
+
     def _forward_phone_audio(self, data: bytes) -> None:
         try:
             self.out_queue.put_nowait({"data": data, "mime_type": "audio/pcm"})
@@ -3168,6 +3180,7 @@ class JarvisLive:
             self.ui.set_mirror(lambda t, x, k: asyncio.run_coroutine_threadsafe(
                 self._dashboard.broadcast_card(t, x, k), _loop) if self._dashboard else None)
             self._keep_task(asyncio.create_task(self._dashboard.serve()))
+            self._keep_task(asyncio.create_task(self._pc_status_to_phones()))
             # Runs for the whole lifetime, not just inside an active session
             self._keep_task(asyncio.create_task(self._process_dashboard_commands()))
         except Exception as e:
@@ -3496,6 +3509,26 @@ class JarvisLive:
             delay = getattr(self, "_conn_backoff", 3)
             print(f"[JARVIS] Reconnecting in {delay}s...")
             await asyncio.sleep(delay)
+
+def pc_status() -> dict:
+    """This PC's state for a linked phone: Mark, load, battery."""
+    import psutil
+    out = {"type": "pc_status", "cpu": round(psutil.cpu_percent(interval=None)),
+           "mem": round(psutil.virtual_memory().percent)}
+    try:
+        from core import edition
+        out["mark"] = edition.tag()
+    except Exception:
+        pass
+    try:
+        b = psutil.sensors_battery()
+        if b is not None:
+            out["battery"] = round(b.percent)
+            out["charging"] = bool(b.power_plugged)
+    except Exception:
+        pass
+    return out
+
 
 def _exit_process(code: int = 0) -> None:
     """End the process on purpose, after the atexit handlers.
