@@ -48,6 +48,8 @@ CHANGELOG = [
         "From any app on the PC: Ctrl+Alt+S stops Jarvis talking and Ctrl+Alt+M mutes or unmutes the microphone "
         "(Esc and F4 only worked while Jarvis's window was in front); \"Hey Jarvis\" on the phone lights a PHONE "
         "satellite on the PC's hologram",
+        "The hologram shows your phone's battery as a live PHONE gauge next to the processor, memory, network and "
+        "graphics ones while the phone is linked (it turns red when the phone runs low)",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
         "in Android's settings — never \"version\"",
     ]},

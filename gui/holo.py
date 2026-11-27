@@ -79,7 +79,7 @@ class HoloCore:
                        for _ in range(70)]
         self.tilt = (0.0, 0.0)           # -1..1 each way, set by the HUD from the mouse position
         self._tilt_e = [0.0, 0.0]        # eased
-        self._read = {"CPU": 0.0, "MEM": 0.0, "NET": 0.0, "GPU": 0.0}
+        self._read = {"CPU": 0.0, "MEM": 0.0, "NET": 0.0, "GPU": 0.0, "PHN": -1.0}
         self._mode = "idle"
         self._beams: list[dict] = []      # projection beams from the core to a card that just appeared
 
@@ -173,6 +173,16 @@ class HoloCore:
             src = {}
         for k, v in src.items():
             self._read[k] += (max(0.0, min(1.0, v)) - self._read[k]) * min(1.0, dt * 2.0)
+        try:
+            from core import phone_state as _ps
+            b = _ps.battery / 100.0 if _ps.battery >= 0 else -1.0
+        except Exception:
+            b = -1.0
+        if b < 0:
+            self._read["PHN"] = -1.0
+        else:
+            cur = self._read["PHN"] if self._read["PHN"] >= 0 else b
+            self._read["PHN"] = cur + (b - cur) * min(1.0, dt * 2.0)
 
     # ── painting ────────────────────────────────────────────────────────
     def paint(self, p: QPainter, cx: float, cy: float, r: float, main: QColor, acc: QColor,
@@ -232,7 +242,9 @@ class HoloCore:
         """Four small live gauges around the dial: processor, memory, network, graphics."""
         rr = r * 1.21
         rect = QRectF(cx - rr, cy - rr, 2 * rr, 2 * rr)
-        spots = (("CPU", 207), ("MEM", 243), ("NET", 297), ("GPU", 333))   # degrees, clockwise from 3 o'clock
+        spots = [("CPU", 207), ("MEM", 243), ("NET", 297), ("GPU", 333)]   # degrees, clockwise from 3 o'clock
+        if self._read.get("PHN", -1.0) >= 0:
+            spots.append(("PHN", 153))                                      # the phone, lower left
         p.setFont(px_font(max(8, r * 0.055), QFont.Weight.DemiBold, mono=True, spacing=1.0))
         for key, deg in spots:
             v = self._read.get(key, 0.0)
@@ -240,12 +252,13 @@ class HoloCore:
             p.setBrush(Qt.BrushStyle.NoBrush)
             p.setPen(QPen(with_alpha(main, 0.22), 3.0, cap=Qt.PenCapStyle.FlatCap))
             p.drawArc(rect, int(-(deg - span / 2) * 16), int(-span * 16))
-            hot = v > 0.85
+            hot = (v < 0.15) if key == "PHN" else (v > 0.85)                # a low phone is the warning
             p.setPen(QPen(with_alpha(acc if not hot else QColor(255, 90, 70), 0.85), 3.0, cap=Qt.PenCapStyle.FlatCap))
             p.drawArc(rect, int(-(deg - span / 2) * 16), int(-span * max(0.02, v) * 16))
             a = math.radians(deg)
             lx, ly = cx + math.cos(a) * (rr + r * 0.07), cy + math.sin(a) * (rr + r * 0.07)
-            label = f"{key} {v * 100:.0f}%" if key != "NET" else f"NET {v * 5:.1f}MB/s"
+            label = (f"NET {v * 5:.1f}MB/s" if key == "NET" else
+                     f"PHONE {v * 100:.0f}%" if key == "PHN" else f"{key} {v * 100:.0f}%")
             box = QRectF(lx - 50, ly - 8, 100, 16)
             p.setPen(QPen(with_alpha(main, 0.65)))
             p.drawText(box, Qt.AlignmentFlag.AlignCenter, label)

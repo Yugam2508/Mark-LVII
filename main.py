@@ -3149,6 +3149,11 @@ class JarvisLive:
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
             try:
+                from core import phone_state as _ps
+                _ps.start()                               # the phone's battery, for the hologram
+            except Exception as _e:
+                print(f"[PhoneState] {_e}")
+            try:
                 from plugins import hub as _hub
                 _hub.startup_check(self.ui)
             except Exception as _e:
