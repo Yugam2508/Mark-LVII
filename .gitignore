@@ -33,6 +33,7 @@ memory/*.json
 memory/*.db
 # the word-for-word conversation log (core/transcript.py)
 memory/conversations/
+memory/screen_time/
 
 # ── Python build noise ────────────────────────────────────────────────────────
 __pycache__/

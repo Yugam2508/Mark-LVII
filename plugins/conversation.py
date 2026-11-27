@@ -127,6 +127,8 @@ PLUGIN_SETTINGS = {
          "type": "choice", "options": ["20", "45", "120"], "default": "45"},
         {"key": "welcome_back", "label": "When I'm back, tell me what I missed", "type": "toggle",
          "default": True},
+        {"key": "screen_time", "label": "Keep track of which apps and sites I spend time on (stays on this PC)",
+         "type": "toggle", "default": True},
         {"key": "home_city", "label": "Home city (for the weather when you don't name one)", "type": "text",
          "placeholder": "London"},
         {"key": "open_shared_links", "label": "Open links I share to Jarvis from my phone in the browser",

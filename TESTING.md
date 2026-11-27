@@ -242,6 +242,7 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       minutes, "stop taking notes" → notes with summary, key points and action items appear and are in your notes.
 - [ ] "Interpret between English and Spanish" → say something in English → Jarvis says it in Spanish, and back.
       "Stop interpreting" → normal again.
+- [ ] After an hour of normal use: "what's my screen time today?" → apps and sites with times; "how long on YouTube?"
 - [ ] "What's the weather?" → an answer, not a browser tab; "will it rain this afternoon?"; "weather in Paris tomorrow".
 - [ ] "Show me my day" → a TODAY panel with calendar, to-dos, weather, study, jobs and phone battery.
 - [ ] Copy three things, then "what did I copy?" → a numbered list. "Copy the link again" → it's back on the clipboard.

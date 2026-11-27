@@ -3161,6 +3161,11 @@ class JarvisLive:
             self._dashboard = DashboardServer()
             self._dashboard.set_connect_callback(self._on_phone_connected)
             try:
+                from core import screen_time as _st
+                _st.start()                               # where the time on this PC goes (local only)
+            except Exception as _e:
+                print(f"[ScreenTime] {_e}")
+            try:
                 from core import phone_state as _ps
                 _ps.start()                               # the phone's battery, for the hologram
             except Exception as _e:

@@ -53,6 +53,9 @@ CHANGELOG = [
         "to look up — saved with the full transcript",
         "Interpreter: \"interpret between English and Spanish\" and Jarvis translates whatever anyone says into the other "
         "language until \"stop interpreting\" — handy on the phone abroad",
+        "Screen time: \"how long have I been on YouTube today?\", \"where did my time go this week?\" — by app, and by site "
+        "in the browser; idle time isn't counted (a playing video is), and it stays on this PC (switch off in "
+        "CONVERSATION & PRESENCE)",
         "The laptop's battery is watched like the suit's power: Jarvis tells you at 20% and again at 10% (with the time "
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
