@@ -608,6 +608,15 @@ class HudCanvas(QWidget):
             p.drawText(QRectF(cx - r, cy - fsz, r * 2, fsz * 2),
                        Qt.AlignmentFlag.AlignCenter, name)
 
+    @staticmethod
+    def _via_phone() -> bool:
+        try:
+            from core import addons
+            a = addons.assistant()
+            return bool(a is not None and a._phone_audio_routed())
+        except Exception:
+            return False
+
     def mouseMoveEvent(self, e):
         W, H = max(1, self.width()), max(1, self.height())
         pos = e.position()
@@ -685,6 +694,8 @@ class HudCanvas(QWidget):
             txt, col = "LISTENING", qcol(C.GREEN)
         else:
             txt, col = str(self.state), qcol(C.PRI)
+        if not self.muted and self._via_phone():
+            txt += "  ·  VIA PHONE"                     # the phone is the mic and speaker right now
         p.setFont(px_font(13, QFont.Weight.DemiBold, spacing=5))
         tw = p.fontMetrics().horizontalAdvance(txt)
         p.setPen(QPen(col))

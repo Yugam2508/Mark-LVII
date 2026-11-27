@@ -60,6 +60,8 @@ CHANGELOG = [
         "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
+        "While your phone is the microphone and speaker, the PC's state line says so (\"LISTENING · VIA PHONE\"), so a "
+        "quiet PC never looks broken",
         "Careful mode: \"be careful\" / \"ask me before you do anything\" — Jarvis then says what it's about to do and waits "
         "for your yes before any action at all (questions still answered straight away); \"you can just do things again\" "
         "turns it off. Also a switch in CONVERSATION & PRESENCE",
