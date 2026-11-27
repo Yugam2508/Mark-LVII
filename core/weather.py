@@ -33,7 +33,8 @@ def words(code) -> str:
 def home_city() -> str:
     try:
         from memory.config_manager import get_plugin_setting
-        c = str(get_plugin_setting("conversation", "home_city", "") or "").strip()
+        c = str(get_plugin_setting("conversation", "home_city", "") or "").strip() or \
+            str(get_plugin_setting("daily_briefing", "city", "") or "").strip()
         if c:
             return c
     except Exception:
