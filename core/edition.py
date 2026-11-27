@@ -48,6 +48,8 @@ CHANGELOG = [
         "From any app on the PC: Ctrl+Alt+S stops Jarvis talking and Ctrl+Alt+M mutes or unmutes the microphone "
         "(Esc and F4 only worked while Jarvis's window was in front); \"Hey Jarvis\" on the phone lights a PHONE "
         "satellite on the PC's hologram",
+        "The laptop's battery is watched like the suit's power: Jarvis tells you at 20% and again at 10% (with the time "
+        "left) when it isn't charging",
         "The phone app shows how the PC is doing under the top bar — its Mark, processor and memory load and the "
         "laptop's battery — updated every few seconds while linked",
         "The hologram shows your phone's battery as a live PHONE gauge next to the processor, memory, network and "
