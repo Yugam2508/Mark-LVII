@@ -229,6 +229,12 @@ Build and install it first: `android/README.md` has the steps (about 10 minutes 
       listening. The listening notification has Mute and Stop; tapping it opens the app.
 - [ ] Turn Tailscale off on the phone → the app says "Tailscale looks off — tap here"; tap → Tailscale opens.
 
+## 7k. Mark LXI
+
+- [ ] Phone, Accessibility on (⋮ → Permissions & setup): open Settings on the phone, then "what's on my phone
+      screen?" → Jarvis reads it. "Tap Wi-Fi" → it opens. "Scroll down", "go back", "go home".
+- [ ] Open a chat, "type hello there" → typed in the box. "Tap send" → it asks you to confirm first.
+
 ## 7h. The PC as the hub
 
 - [ ] Say "this PC is my hub" → it says what's still needed (plug in, AUTO-START). Press AUTO-START.

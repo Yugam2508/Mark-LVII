@@ -70,7 +70,10 @@ PLUGIN = {
         "is playing (media), start navigation (navigate); send text or a link (or the PC clipboard) to the "
         "phone (send_to_phone: copied there and shown as a notification); where the phone is (location, "
         "gives a map link); Do Not Disturb on/off (dnd, with on); set an alarm (alarm: hour, minute, label); "
-        "take a screenshot on the phone (screenshot) or lock it (lock). For a person pass the name or number. "
+        "take a screenshot on the phone (screenshot) or lock it (lock); operate the app open on the phone: read "
+        "what's on its screen (screen_read), tap a button by its words (tap + button), scroll up/down (scroll + "
+        "direction), type into the box in focus (type_text + text), go back / home / recents / notifications "
+        "(nav + nav_to). For a multi-step job on the phone, read the screen, act, and read again. For a person pass the name or number. "
         "Calls and texts need the user's confirmation, which this tool asks for. Not for messages on "
         "WhatsApp or email — use those tools. For music by name use spotify_control with the phone as the device."
     ),
@@ -79,7 +82,11 @@ PLUGIN = {
         "properties": {
             "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts", "open_app", "open_url",
                                                     "settings", "volume", "flashlight", "timer", "media", "navigate",
-                                                    "send_to_phone", "location", "dnd", "alarm", "screenshot", "lock"]},
+                                                    "send_to_phone", "location", "dnd", "alarm", "screenshot", "lock",
+                                                    "screen_read", "tap", "scroll", "type_text", "nav"]},
+            "button": {"type": "STRING", "description": "For tap: the words on the button or item to tap"},
+            "nav_to": {"type": "STRING", "enum": ["back", "home", "recents", "notifications", "quick settings"],
+                       "description": "For nav"},
             "label": {"type": "STRING", "description": "For timer/alarm: what it's for, e.g. 'swim'"},
             "title": {"type": "STRING", "description": "For send_to_phone: a short heading"},
             "hour": {"type": "INTEGER", "description": "For alarm: hour 0-23"},
@@ -104,6 +111,27 @@ PLUGIN = {
 }
 
 
+_RISKY = re.compile(r"\b(send|pay|buy|purchase|order|checkout|check out|delete|remove|confirm|transfer|post|"
+                    r"publish|call|subscribe|install|uninstall|sign out|log out|reset|format|unfriend|block)\b", re.I)
+
+
+def _tap(button: str) -> str:
+    """Tap something on the phone's screen; a button that sends, pays, deletes or posts asks first."""
+    if not button:
+        return outcome.ask("phone_tap", "Which button? Say the words on it.")
+
+    def do_tap() -> str:
+        r = phone("tap", {"text": button})
+        return outcome.done("phone_tap", tapped=button) if r.get("ok") else \
+            outcome.failed("phone_tap", r.get("text") or "no answer")
+
+    if _RISKY.search(button):
+        from core import confirm
+        return confirm.request(f"phone_tap:{button[:40]}", f"Tap \"{button}\" on your phone",
+                               f"Tap \"{button}\" in the app open on your phone", do_tap)
+    return do_tap()
+
+
 def _ambiguous(action: str, matches: list) -> str:
     listing = "\n".join(f"{i}. {c.get('name')} ({c.get('label') or 'phone'})" for i, c in enumerate(matches[:6], 1))
     if not matches:
@@ -124,9 +152,14 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                   "volume": ("level", "direction"), "flashlight": ("on",), "timer": ("seconds", "label"),
                   "media": ("key",), "navigate": ("where",), "send_to_phone": ("text", "title"),
                   "location": (), "dnd": ("on",), "alarm": ("hour", "minute", "label"),
-                  "screenshot": (), "lock": ()}
+                  "screenshot": (), "lock": (), "screen_read": (), "scroll": ("direction",),
+                  "type_text": ("text",), "nav": ("nav_to",)}
+        if action == "tap":
+            return _tap(str(parameters.get("button") or parameters.get("text") or "").strip())
         if action in simple:
             args = {k: parameters[k] for k in simple[action] if parameters.get(k) is not None}
+            if action == "nav" and "nav_to" in args:
+                args = {"where": args["nav_to"]}
             if action == "send_to_phone" and not str(args.get("text") or "").strip():
                 try:
                     import pyperclip
@@ -140,6 +173,8 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                 if not re.match(r"^https?://", u, re.I) and re.match(r"^[\w-]+(\.[\w-]+)+", u):
                     args["url"] = "https://" + u
             r = phone(action, args)
+            if action == "screen_read" and r.get("ok"):
+                return outcome.done("phone_screen_read") + "\n" + outcome.untrusted("phone screen", r.get("text", ""))
             return outcome.done(f"phone_{action}", result=r.get("text", "")) if r.get("ok") else \
                 outcome.failed(f"phone_{action}", r.get("text") or "no answer")
         if action == "find_phone":

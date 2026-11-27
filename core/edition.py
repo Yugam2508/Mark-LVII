@@ -33,6 +33,9 @@ DATE = "2026-11-27"
 
 CHANGELOG = [
     {"version": "LXI", "date": "2026-11-27", "items": [
+        "Jarvis can operate any app on your phone when you ask: \"what's on my phone screen?\", \"tap Sign in\", "
+        "\"scroll down\", \"type hello\", \"go back\", \"go home\", \"open my notifications\" — through the optional "
+        "accessibility switch; taps on anything that sends, pays, buys, deletes or posts ask you first",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
         "in Android's settings — never \"version\"",
     ]},

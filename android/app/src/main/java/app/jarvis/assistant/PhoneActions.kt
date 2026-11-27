@@ -29,7 +29,8 @@ object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
         "notifications", "reply_notification", "dismiss_notification", "recent_calls",
-        "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock", "answer_call", "decline_call")
+        "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock", "answer_call", "decline_call",
+        "screen_read", "tap", "scroll", "type_text", "nav")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -63,6 +64,12 @@ object PhoneActions {
             "texts" -> texts(context, args.optString("from"), args.optInt("limit", 8))
             "alarm" -> alarm(context, args.optInt("hour", -1), args.optInt("minute", 0), args.optString("label"))
             "screenshot" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, "Screenshot taken (it's in the phone's gallery)")
+            "screen_read" -> SendTapService.screenText()?.let { Result(true, it.ifBlank { "Nothing readable on screen" }) }
+                ?: Result(false, accessHint)
+            "tap" -> hands { SendTapService.tap(args.optString("text")) }
+            "scroll" -> hands { SendTapService.scroll(args.optString("direction") != "up") }
+            "type_text" -> hands { SendTapService.type(args.optString("text")) }
+            "nav" -> nav(args.optString("where"))
             "answer_call" -> callButton(true)
             "decline_call" -> callButton(false)
             "lock" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Phone locked")
@@ -382,6 +389,26 @@ object PhoneActions {
             .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label.ifBlank { "Jarvis" })
             .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
         return guarded(context, i).let { if (it.ok) Result(true, "Alarm set for %02d:%02d".format(hour, minute)) else it }
+    }
+
+    private val accessHint = "That needs Jarvis switched on in Accessibility: open Jarvis → ⋮ → Permissions & setup → the Accessibility line"
+
+    private fun hands(act: () -> String): Result {
+        if (SendTapService.instance == null) return Result(false, accessHint)
+        val r = act()
+        return Result(r in setOf("tapped", "scrolled", "typed"), r)
+    }
+
+    private fun nav(where: String): Result {
+        val a = when (where.lowercase()) {
+            "back" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+            "home" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
+            "recents", "recent apps", "apps" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+            "notifications" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
+            "quick settings" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
+            else -> return Result(false, "back, home, recents, notifications or quick settings")
+        }
+        return globalAction(a, "Done")
     }
 
     private fun callButton(answer: Boolean): Result {
