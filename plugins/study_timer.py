@@ -68,9 +68,51 @@ def _quiz(subject: str) -> bool:
         return False
 
 
+DEFAULT_DISTRACTIONS = ("youtube, instagram, netflix, tiktok, twitter, x.com, reddit, facebook, twitch, "
+                        "prime video, disney+, valorant, steam, epic games, league of legends, discord")
+
+
+def distractions() -> list[str]:
+    raw = str(get_plugin_setting(NAMESPACE, "distractions", DEFAULT_DISTRACTIONS) or DEFAULT_DISTRACTIONS)
+    return [w.strip().lower() for w in raw.split(",") if w.strip()]
+
+
+def distraction_in(title: str, process: str) -> str:
+    """The distraction this window is, or ''."""
+    hay = f"{title} {process}".lower()
+    return next((d for d in distractions() if d and d in hay), "")
+
+
+def _guard(sess: dict, period: float = 15.0, grace: float = 60.0, cooldown: float = 300.0) -> None:
+    """While a focus block runs, notice a distraction holding the screen and nudge once in a while."""
+    if not get_plugin_setting(NAMESPACE, "focus_guard", True):
+        return
+    from core import foreground
+    stop: threading.Event = sess["stop"]
+    seen: dict[str, float] = {}
+    last_nudge = 0.0
+    while not stop.wait(period):
+        if sess.get("phase") != "focus" or _session.get("id") != sess["id"]:
+            if _session.get("id") != sess["id"]:
+                return
+            seen.clear()
+            continue
+        what = distraction_in(foreground.title(), foreground.process_name())
+        if not what:
+            seen.clear()
+            continue
+        seen[what] = seen.get(what, 0.0) + period
+        if seen[what] >= grace and time.time() - last_nudge >= cooldown:
+            last_nudge = time.time()
+            sess.setdefault("distractions", []).append(what)
+            addons.say(f"[SYSTEM] The user is in a study block on {sess['subject']} but has had {what} in front "
+                       "for over a minute. Nudge them back to studying in one short, friendly sentence (no lecture).")
+
+
 def _run(sess: dict) -> None:
     stop: threading.Event = sess["stop"]
     subject = sess["subject"]
+    threading.Thread(target=_guard, args=(sess,), name="study_focus_guard", daemon=True).start()
     try:
         from plugins import modes
         sess["prev_mode"] = modes.current()
@@ -151,6 +193,10 @@ PLUGIN_SETTINGS = {
     "fields": [
         {"key": "quiz_in_breaks", "label": "Quiz me from my notes in breaks", "type": "toggle",
          "default": True},
+        {"key": "focus_guard", "label": "Nudge me when YouTube, a game or social media takes over a study block",
+         "type": "toggle", "default": True},
+        {"key": "distractions", "label": "What counts as a distraction (comma separated)", "type": "text",
+         "placeholder": DEFAULT_DISTRACTIONS},
     ],
 }
 
@@ -189,7 +235,8 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             left = max(0, int((_session["ends"] - time.time()) // 60)) if _session.get("ends") else None
             return outcome.done("study_status", running=True, subject=_session["subject"],
                                 phase=_session.get("phase"), block=_session.get("round"),
-                                of=_session["rounds"], minutes_left=left)
+                                of=_session["rounds"], minutes_left=left,
+                                distracted_by=", ".join(_session.get("distractions", [])) or None)
         days = int(parameters.get("days") or 7)
         stats = _stats(days)
         total = sum(stats.values())

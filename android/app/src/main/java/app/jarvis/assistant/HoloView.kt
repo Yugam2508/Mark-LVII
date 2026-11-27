@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import android.view.View
 import kotlin.math.cos
 import kotlin.math.min
@@ -30,10 +32,31 @@ class HoloView(context: Context) : View(context) {
     }
     private val rect = RectF()
 
+    // Living layers, as on the PC: drifting motes with depth, ripples on loud moments, a turning globe.
+    private val rnd = java.util.Random(7)
+    private val motes = Array(48) { floatArrayOf((rnd.nextFloat() * 6.283f), 0.55f + rnd.nextFloat() * 1.0f,
+        0.25f + rnd.nextFloat() * 0.75f, (0.02f + rnd.nextFloat() * 0.07f) * (if (rnd.nextBoolean()) 1 else -1), rnd.nextFloat() * 6.3f) }
+    private val ripples = ArrayList<FloatArray>()      // [age, strength]
+    private var lastPeak = 0f
+    private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
+
     private val ticker = object : Runnable {
         override fun run() {
             val speed = when (state) { State.THINKING -> 1.6f; State.SPEAKING -> 0.9f; else -> 0.4f }
             phase += 0.016f * speed
+            // motes: drawn in while listening, blown out while speaking
+            val push = when (state) { State.SPEAKING -> 0.10f + 0.5f * level; State.LISTENING -> -0.06f; else -> 0f }
+            for (m in motes) {
+                m[0] += m[3] * 0.016f * (if (state == State.THINKING) 2.2f else 1f)
+                m[1] += push * 0.016f * (0.4f + m[2])
+                m[4] += 0.016f * (1.5f + m[2])
+                if (m[1] > 1.6f) m[1] = 0.55f else if (m[1] < 0.5f) m[1] = 1.55f
+            }
+            if (level > 0.35f && level > lastPeak * 1.25f && (ripples.isEmpty() || ripples.last()[0] > 0.35f))
+                ripples.add(floatArrayOf(0f, level.coerceAtMost(1f)))
+            lastPeak = maxOf(level, lastPeak * 0.92f)
+            for (r in ripples) r[0] += 0.016f
+            ripples.removeAll { it[0] > 1.6f }
             level *= 0.92f
             invalidate()
             postOnAnimation(this)
@@ -56,6 +79,25 @@ class HoloView(context: Context) : View(context) {
         val r = min(width, height) * 0.42f
         val main = Color.rgb(0, 212, 255)
         val acc = accent()
+
+        // soft glow behind everything, brighter with the voice
+        glow.shader = RadialGradient(cx, cy, r * 1.2f, intArrayOf(Color.argb((40 + 70 * level).toInt().coerceIn(0, 255),
+            Color.red(acc), Color.green(acc), Color.blue(acc)), Color.argb(0, Color.red(acc), Color.green(acc), Color.blue(acc))),
+            floatArrayOf(0f, 1f), Shader.TileMode.CLAMP)
+        c.drawCircle(cx, cy, r * 1.2f, glow)
+        // motes
+        for (m in motes) {
+            val tw = 0.55f + 0.45f * sin(m[4])
+            fill.color = if (state == State.SPEAKING || state == State.LISTENING) acc else main
+            fill.alpha = ((0.10f + 0.45f * m[2]) * tw * 255).toInt().coerceIn(0, 255)
+            c.drawCircle(cx + cos(m[0]) * m[1] * r, cy + sin(m[0]) * m[1] * r * 0.85f, 1.2f + 2.2f * m[2], fill)
+        }
+        // ripples leaving the core on loud moments
+        for (rp in ripples) {
+            val k = rp[0] / 1.6f
+            stroke.color = acc; stroke.strokeWidth = 2f; stroke.alpha = ((1 - k) * 140 * rp[1]).toInt().coerceIn(0, 255)
+            c.drawCircle(cx, cy, r * (0.40f + 0.75f * k), stroke)
+        }
 
         // outer tick dial
         stroke.color = main; stroke.strokeWidth = 2f; stroke.alpha = 150
@@ -83,12 +125,38 @@ class HoloView(context: Context) : View(context) {
             stroke.color = if (h > 6f) acc else main; stroke.alpha = 200; stroke.strokeWidth = 3f
             c.drawLine(cx + cos(a) * r0, cy + sin(a) * r0, cx + cos(a) * (r0 + h), cy + sin(a) * (r0 + h), stroke)
         }
-        // core
+        // core, with a wireframe globe turning inside it
         fill.color = acc; fill.alpha = (50 + 90 * level).toInt().coerceIn(0, 255)
         c.drawCircle(cx, cy, r * 0.36f, fill)
+        drawGlobe(c, cx, cy, r * 0.33f, main)
         stroke.color = main; stroke.strokeWidth = 2f; stroke.alpha = 200
         c.drawCircle(cx, cy, r * 0.36f, stroke)
         text.textSize = r * 0.14f
         c.drawText(label, cx, cy + text.textSize * 0.35f, text)
+    }
+
+    private fun drawGlobe(c: Canvas, cx: Float, cy: Float, R: Float, main: Int) {
+        val yaw = phase * 0.9f
+        val tilt = 0.38f
+        val ct = cos(tilt); val st = sin(tilt)
+        fun line(lat1: Float, lon1: Float, lat2: Float, lon2: Float) {
+            val x1 = cos(lat1) * sin(lon1); val y1 = sin(lat1); val z1 = cos(lat1) * cos(lon1)
+            val x2 = cos(lat2) * sin(lon2); val y2 = sin(lat2); val z2 = cos(lat2) * cos(lon2)
+            val yy1 = y1 * ct - z1 * st; val zz1 = y1 * st + z1 * ct
+            val yy2 = y2 * ct - z2 * st; val zz2 = y2 * st + z2 * ct
+            val front = (zz1 + zz2) / 2f
+            stroke.color = main; stroke.strokeWidth = 1.2f
+            stroke.alpha = ((0.08f + 0.25f * maxOf(0f, front)) * 255).toInt()
+            c.drawLine(cx + x1 * R, cy + yy1 * R, cx + x2 * R, cy + yy2 * R, stroke)
+        }
+        val pi = Math.PI.toFloat()
+        for (k in 0 until 8) {                                     // meridians
+            val lon = yaw + k * pi / 8
+            for (i in 0 until 16) line(-pi / 2 + i * pi / 16, lon, -pi / 2 + (i + 1) * pi / 16, lon)
+        }
+        for (latDeg in intArrayOf(-60, -30, 0, 30, 60)) {          // parallels
+            val lat = latDeg * pi / 180f
+            for (i in 0 until 28) line(lat, yaw + i * 2 * pi / 28, lat, yaw + (i + 1) * 2 * pi / 28)
+        }
     }
 }

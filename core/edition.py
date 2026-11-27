@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 def roman(n: int) -> str:
-    """59 -> 'LIX'."""
+    """60 -> 'LX'."""
     out = ""
     for value, sym in ((1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"), (90, "XC"),
                        (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")):
@@ -26,13 +26,101 @@ def roman(n: int) -> str:
     return out
 
 
-MARK_NUMBER = 59                      # <- the only number to change at each update
-MARK = roman(MARK_NUMBER)             # "LIX"
+MARK_NUMBER = 60                      # <- the only number to change at each update
+MARK = roman(MARK_NUMBER)             # "LX"
 VERSION = MARK                        # what "have I seen this release?" compares
-DATE = "2026-11-30"
+DATE = "2026-11-27"
 
 CHANGELOG = [
-    {"version": "LIX", "date": "2026-11-30", "items": [
+    {"version": "LX", "date": "2026-11-27", "items": [
+        "Deep thinking no longer jumps in on its own: Jarvis answers itself unless you ask (\"think harder\", "
+        "\"are you sure?\", \"second opinion\") or doubt it; a switch in PLUGIN SETTINGS → DEEP THINKING lets it "
+        "decide for itself again",
+        "Dictation: say \"take dictation\" before a long ramble (a feature list, ideas) and the app writes every "
+        "word to a file as you say it while Jarvis stays silent; \"end dictation\" saves it to your notes and "
+        "tells you how many words were kept and whether they reached the notes. Nothing depends on the AI remembering",
+        "Jarvis may no longer say \"saved\" unless a tool said so; Notion notes longer than 100 lines used to be "
+        "silently cut off and are now sent in full (or reported as failed); \"run a self-check\" tests screenshots, "
+        "notes, Notion, dictation and the phone link for real and says exactly what is broken",
+        "Jarvis stops forgetting: every conversation is now kept word for word on this PC (memory/conversations), "
+        "and \"what did I tell you yesterday about…\" searches it; before, a whole session shrank to two "
+        "sentences when it ended. \"Take a screenshot\" now actually saves one to Pictures/Screenshots",
+        "Notion by name: \"add this to my Jarvis ideas page\" finds the page itself (no search-then-number step), "
+        "and long pages are created in full. Remembering a fact now reports when it did NOT save, instead of "
+        "always answering ok; session summaries keep every item of a list you gave",
+        "\"Save this to Notion\" now really goes to Notion (it used to follow the default notes place and could "
+        "still say Notion). Phone: \"send this to my phone\" (text, a link or the PC clipboard: copied there and "
+        "shown as a notification), \"where's my phone?\" with a map link, Do Not Disturb on/off",
+        "After you confirm something (a message, a reply, an install, organising a folder) Jarvis now tells you "
+        "how it really went; before, the result only reached the log, so Jarvis could only guess",
+        "PC care: Wi-Fi (what you're on, networks around, switch network, the Wi-Fi password), \"update all my apps\" "
+        "(winget, confirmed), Recycle Bin size and emptying, an internet speed test, what starts with Windows, "
+        "battery health (wear and cycles), and your local / Tailscale / public IP",
+        "Daily backups of Jarvis's memory, conversation log and settings to OneDrive/JARVIS Backups (keys and "
+        "passwords blanked unless you allow them); \"restore my Jarvis backup\" after a reinstall",
+        "Phone app: a ⋮ button opens \"Permissions & setup\" (phones have no menu key, so those switches were "
+        "out of reach), with a tick or cross for each permission and one tap to fix it, including battery "
+        "restrictions that kill the link; \"Share → Jarvis (to my PC)\" from any app puts text on the PC "
+        "clipboard and opens links there; the PC says when the phone battery is low; \"what did Mum text me?\" "
+        "reads your texts; opening apps or links on the phone now says when Android blocked it instead of "
+        "claiming it worked; headphones and Bluetooth headsets are used when connected",
+        "Smaller fixes: repeated notices no longer stack up as identical cards; the header and footer use your "
+        "name from memory when the setup name was 'sir'; WhatsApp from the PC presses Enter only when WhatsApp is "
+        "in front and adds your country code to local numbers; organising Downloads leaves files that are still "
+        "downloading; \"sleep\" really sleeps; temp cleanup leaves anything used in the last day; a forgotten "
+        "dictation saves itself after four quiet minutes",
+        "\"Take a screenshot\" was only opening the Snipping Tool and waiting for a drag, so nothing was ever "
+        "saved; it now saves the whole screen (\"snip\" still opens the tool). Study sessions have a focus guard: "
+        "if YouTube, a game or social media holds the screen for a minute during a block, Jarvis nudges you back",
+        "Phone: \"set an alarm for 7 on my phone\", and with the accessibility switch on, \"take a screenshot on my "
+        "phone\" and \"lock my phone\"; the phone timer's label and the send-to-phone heading now reach the phone",
+        "If Jarvis says \"saved\", \"noted\" or \"I've added it\" in a turn where no tool ran, it is told at once "
+        "to do it properly or say it isn't saved — the \"it said it saved it and hadn't\" problem, caught as it happens",
+        "The always-listening phone no longer streams silence: it sends the microphone only while someone talks "
+        "(plus a moment either side), which saves roughly 100 MB of mobile data an hour and battery; the PC "
+        "microphone stays off the whole time the phone is your speaker (switch in ⋮ → Permissions & setup)",
+        "\"Hey Jarvis\" on the phone: the phone listens all the time once the app is open (no button), and nothing it "
+        "hears reaches Jarvis until the PC's wake-word detector hears \"Hey Jarvis\" in it — then the whole sentence "
+        "goes through, with a chime and a buzz, and the conversation flows until it's quiet for a while. Tap the orb "
+        "to talk without the phrase, long-press to send it back to waiting; the screen says which state it's in. "
+        "If the PC hasn't got the wake word yet it sets it up once and listens to everything meanwhile",
+        "Protocols, Tony-style: \"create a night protocol: lock the PC, phone on Do Not Disturb, lights off\", then "
+        "\"initiate night protocol\" runs every step (anything that needs your OK still asks); \"what protocols do I "
+        "have?\", add or delete steps by voice",
+        "\"Run diagnostics\": a status readout of processor, memory, graphics, disks, temperatures, battery, internet "
+        "latency, whether your Gemini key is answering (or blocked / out of quota), Tailscale, the phone link, backups "
+        "and the wake word, with Jarvis saying only what needs attention",
+        "A controllable agent: \"what are you working on?\" lists everything running in the background (installs, "
+        "updates, deep thinking, speed tests, dictation, Claude Code jobs, agent tasks) and \"stop that\" / \"cancel "
+        "the install\" stops it — or says plainly when something can't be stopped half-way",
+        "Interrupting: \"stop\", \"wait\", \"hold on\" now just stop Jarvis (no \"okay, stopping\"), \"go on\" picks up "
+        "where it was cut off, and tapping the orb on the phone while Jarvis talks cuts it off instantly on both devices",
+        "A more alive hologram: a wireframe globe turns inside the core, a field of motes drifts in while Jarvis "
+        "listens and is blown outward when it speaks, live processor / memory / network / graphics gauges sit "
+        "around the dial, the whole thing leans slightly toward your mouse, and every new card is projected — a "
+        "beam from the core, the frame drawing itself, a scan line revealing the content",
+        "One Jarvis instead of a menu of agents: background work picks its own way of working (research with "
+        "checked sources, price hunting, a study pack, a news digest, or general work) from what you ask — "
+        "nobody has to choose a \"researcher\" or a \"general\" agent any more",
+        "Easier to drive: the tray icon has a Quick menu (diagnostics, what's running, stop everything, screenshot, "
+        "back up, what did I miss) and a wake-word switch, and a confirmation that goes up while Jarvis is hidden in "
+        "the tray pops up a notification. Phone: a Jarvis tile in the pull-down Quick Settings, Mute and Stop on the "
+        "listening notification (tap it to open the app), \"Tailscale looks off — tap to open it\" when the PC can't "
+        "be reached, and long-press the conversation to copy it",
+        "Talk to the display like Tony: \"close that\", \"close the weather\", \"clear the screen\", \"pin the calendar\", "
+        "\"expand the email\", \"full screen\", \"switch to panels\", \"hide\" — and the phone's orb now has the same "
+        "living layers as the PC (glow, drifting motes, ripples on loud moments, a turning globe in the core)",
+        "\"Sir, Mum is calling your phone\": when your phone rings, the PC says who it is (or shows a card if you're "
+        "busy), and \"answer it\" / \"decline it\" presses the call's own buttons on the phone (needs notification access)",
+        "Confirm from the phone: when Jarvis needs your OK (a text, an install), the phone shows it with CONFIRM and "
+        "CANCEL — in the app and as a notification you can answer from the lock screen; a stale card can never "
+        "confirm a different request",
+        "Fixed the Android build error (\"Can not extract resource\" in mergeDebugResources)",
+        "Deep thinking is sturdier: a model your OpenAI key can't call is skipped for the next one, the real "
+        "OpenAI error is shown instead of a guess, and after every route fails it waits five minutes instead "
+        "of failing again and again",
+    ]},
+    {"version": "LIX", "date": "2026-11-26", "items": [
         "The phone is now Jarvis's microphone and speaker: it listens all the time (no button), plays "
         "Jarvis's own voice (same accent and personality as on the PC), the PC goes quiet while you use the "
         "phone so only one device answers, and what Jarvis shows on the PC appears on the phone too",
@@ -58,7 +146,7 @@ CHANGELOG = [
         "while plugged in, starts at login and lives in the tray, so your phone can always reach it; ask "
         "\"hub status\" to see which phones are linked, the Tailscale address and what's holding it awake",
     ]},
-    {"version": "LVIII", "date": "2026-11-30", "items": [
+    {"version": "LVIII", "date": "2026-11-26", "items": [
         "Releases are now numbered by Mark, like the project itself: this is Mark LVIII, "
         "the next will be Mark LIX (no more v1.x)",
         "Android app (android/): pair your phone with a Jarvis PC, talk or type, and make it "
@@ -163,20 +251,45 @@ CHANGELOG = [
 ]
 
 
-def edition_name() -> str:
-    """'YUGAM EDITION' from the name you gave at first launch, else 'PERSONAL EDITION'."""
+_HONORIFICS = {"sir", "madam", "boss", "mr", "mrs", "ms", "miss", "maam", "ma'am", "master", "chief", "dear", "friend"}
+
+
+def owner_first_name() -> str:
+    """The owner's first name: the name typed at first launch, or, when that was an honorific like
+    'sir', the name Jarvis has in memory (from 'my name is…' / 'call me…'). '' when neither is known."""
     try:
         from memory.config_manager import get_user_name
-        name = (get_user_name() or "").strip()
+        parts = (get_user_name() or "").strip().split()
+        if parts and parts[0].strip(".,").lower() not in _HONORIFICS:
+            return parts[0].strip(".,")
     except Exception:
-        name = ""
-    first = name.split()[0].upper() if name else ""
-    return f"{first} EDITION" if first and first.lower() not in ("sir", "madam", "boss") else "PERSONAL EDITION"
+        pass
+    try:
+        from memory.memory_manager import load_memory
+        ident = load_memory().get("identity", {}) or {}
+        for key in ("name", "first_name", "preferred_name", "nickname"):
+            v = ident.get(key)
+            v = v.get("value") if isinstance(v, dict) else v
+            parts = str(v or "").strip().split()
+            if parts and parts[0].strip(".,").lower() not in _HONORIFICS:
+                return parts[0].strip(".,")
+    except Exception:
+        pass
+    return ""
+
+
+def edition_name() -> str:
+    """'YUGAM EDITION' from your name (first launch, or what Jarvis remembers), else 'PERSONAL EDITION'."""
+    first = owner_first_name().upper()
+    return f"{first} EDITION" if first else "PERSONAL EDITION"
 
 
 def entry_tag(version: str) -> str:
-    """'LVIII' -> 'MARK LVIII'; the older '1.8' -> 'v1.8'."""
-    return f"v{version}" if version[:1].isdigit() else f"MARK {version}"
+    """'LVIII' -> 'MARK LVIII'. The fork's early updates ('1.8') were updates of Mark LVII:
+    'MARK LVII · UPDATE 8'. Releases are named by Mark only — never 'version'."""
+    if version[:1].isdigit():
+        return f"MARK LVII · UPDATE {version.split('.')[-1]}"
+    return f"MARK {version}"
 
 
 def tag() -> str:

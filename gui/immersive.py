@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import time
 
-from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtCore import QEasingCurve, QPoint, QPointF, QPropertyAnimation, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPen
 from PyQt6.QtWidgets import (QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLineEdit,
                              QPushButton, QVBoxLayout, QWidget)
 
@@ -43,6 +43,57 @@ def _btn(text: str, tip: str = "") -> QPushButton:
                     f" border-radius: 3px; padding: 0 6px; }}"
                     f"QPushButton:hover {{ color: {C.TEXT}; border-color: {C.PRI}; }}")
     return b
+
+
+class _Materialize(QWidget):
+    """Laid over a new card for its first moments: the frame's corners draw themselves, then a bright scan
+    line sweeps down and the content appears behind it — a projection forming, not a box popping up."""
+    DURATION = 0.65
+
+    def __init__(self, card: QWidget, accent: str):
+        super().__init__(card)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._accent = QColor(accent)
+        self._start = time.time()
+        self.setGeometry(card.rect())
+        self.raise_()
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(16)
+
+    def _tick(self):
+        if time.time() - self._start > self.DURATION:
+            self._timer.stop()
+            self.deleteLater()
+            return
+        self.setGeometry(self.parentWidget().rect())
+        self.update()
+
+    def paintEvent(self, _):
+        k = min(1.0, (time.time() - self._start) / self.DURATION)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        W, H = self.width(), self.height()
+        # 0 → 0.35: corners only, content hidden; 0.35 → 1: the scan line reveals it top to bottom
+        reveal = max(0.0, (k - 0.35) / 0.65)
+        y = H * reveal
+        p.fillRect(QRectF(0, y, W, H - y), QColor(0, 10, 18, 245))
+        acc = QColor(self._accent)
+        L = min(18.0, W * 0.1) * min(1.0, k / 0.35)
+        p.setPen(QPen(acc, 1.6))
+        for (x0, y0, dx, dy) in ((0, 0, 1, 1), (W, 0, -1, 1), (0, H, 1, -1), (W, H, -1, -1)):
+            p.drawLine(QPointF(x0, y0), QPointF(x0 + dx * L, y0))
+            p.drawLine(QPointF(x0, y0), QPointF(x0, y0 + dy * L))
+        if 0.0 < reveal < 1.0:
+            g = QLinearGradient(0, y - 10, 0, y + 2)
+            glow = QColor(acc)
+            glow.setAlpha(0)
+            g.setColorAt(0.0, glow)
+            glow.setAlpha(140)
+            g.setColorAt(1.0, glow)
+            p.fillRect(QRectF(0, y - 10, W, 12), g)
+            p.setPen(QPen(QColor(255, 255, 255, 220), 1.2))
+            p.drawLine(QPointF(0, y), QPointF(W, y))
 
 
 class FlowCard(QFrame):
@@ -101,6 +152,11 @@ class FlowCard(QFrame):
         self._fx.setOpacity(0.0)
         self.setGraphicsEffect(self._fx)
         self._anims = []
+        self._accent_name = accent
+        try:
+            _Materialize(self, accent)
+        except Exception:
+            pass
 
     def _toggle_pin(self):
         self.pinned = not self.pinned
@@ -159,6 +215,11 @@ class FlowLayer:
             if not pinned and not c.pinned and c.title.split(" — ")[0] == str(title).split(" — ")[0]:
                 self._remove(c, animate=False)
                 break
+            # The same pinned notice again (a failure repeating, say): one card, kept current,
+            # not a wall of identical cards.
+            if pinned and c.pinned and c.title == str(title):
+                self._remove(c, animate=False)
+                break
         card = FlowCard(title, text, self.hud, pinned=pinned, accent=accent)
         card.expand.connect(self.on_expand)
         card.closed.connect(lambda c: self._remove(c))
@@ -204,6 +265,12 @@ class FlowLayer:
                 side = -side
             x = W - CARD_W - 14 if side == 1 else 14
             c.glide_to(QPoint(x, y[side]))
+            if time.time() - c.born < 0.3:            # just made: a beam from the core to where it lands
+                try:
+                    self.hud._holo.beam(x + (0 if side == 1 else CARD_W), y[side] + h / 2,
+                                        getattr(c, "_accent_name", ""))
+                except Exception:
+                    pass
             y[side] += h + 10
 
     # ── captions ────────────────────────────────────────────────────────

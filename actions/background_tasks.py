@@ -65,7 +65,7 @@ def background_tasks(parameters: dict, player=None) -> str:
         except ValueError as e:
             return outcome.failed("background_tasks", str(e))
         starts = time.strftime("%Y-%m-%d %H:%M", time.localtime(not_before)) if not_before else "now"
-        return outcome.started("background_tasks", task_id=t["id"], agent=t["agent"],
+        return outcome.started("background_tasks", task_id=t["id"], working_as=t["agent"].replace("_", " "),
                                minutes=t["budget"]["minutes"], starts=starts,
                                note="the result is announced when it is done; the conversation "
                                     "carries on meanwhile")
@@ -124,9 +124,10 @@ TOOL = {
         "Long work that runs in the background on this computer while the conversation carries on: "
         "real research, reading and comparing many sources, writing a report, working through a "
         "list. For a quick answer the user is waiting for, use web_search instead. "
-        "start = hand the task to an agent — agent 'researcher' for research (it plans, reads "
-        "sources in full, checks every quote against the page and writes a cited report), "
-        "'general' for other work; task = the whole request, self-contained, in the user's words; "
+        "start = hand the task to Jarvis's background worker; it picks the right way of working by "
+        "itself from the task (research with checked sources and a cited report, price hunting, a "
+        "study pack, a news digest, or general work), so leave agent empty and never ask the user "
+        "which agent; task = the whole request, self-contained, in the user's words; "
         "minutes = the time budget when the user gives one ('research this for 10 minutes' -> 10); "
         "without one, 10 for research, more (20-40) when the user asks for something thorough or "
         "in depth; at = start later, "

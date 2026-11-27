@@ -38,12 +38,25 @@ class TrayIntegration(QObject):
         self._add(menu, f"Show {assistant_name}", self.show_window)
         self._add(menu, "Mute / unmute microphone", window._toggle_mute)
         self._add(menu, "Stop talking", window._do_interrupt)
+        if hasattr(window, "_toggle_wake_word"):
+            self._add(menu, "Wake word on / off", window._toggle_wake_word)
         self._add(menu, "Immersive / panels", window._toggle_layout)
+        menu.addSeparator()
+        # One click for the things people ask most, without opening the window: they go to Jarvis as if typed.
+        quick = menu.addMenu("Quick")
+        for label, said in (("Run diagnostics", "run diagnostics"),
+                            ("What are you working on?", "what are you working on?"),
+                            ("Stop everything running", "stop everything that's running in the background"),
+                            ("Take a screenshot", "take a screenshot"),
+                            ("Back up Jarvis now", "back up Jarvis"),
+                            ("What did I miss?", "what did I miss?")):
+            self._add(quick, label, lambda s=said: self._say(s))
         menu.addSeparator()
         self._add(menu, "Quit", self.quit)
         self.tray.setContextMenu(menu)
         self._menu = menu
         self.tray.activated.connect(self._clicked)
+        self.tray.messageClicked.connect(self.show_window)
         self.tray.show()
         QApplication.instance().setQuitOnLastWindowClosed(False)
 
@@ -51,6 +64,20 @@ class TrayIntegration(QObject):
         a = QAction(text, menu)
         a.triggered.connect(lambda _=False: fn())
         menu.addAction(a)
+
+    def _say(self, text: str) -> None:
+        fn = getattr(self.win, "on_text_command", None)
+        if fn:
+            import threading
+            threading.Thread(target=fn, args=(text,), daemon=True).start()
+
+    def notify_confirm(self, title: str) -> None:
+        """A confirmation went up while the window is hidden: say so from the tray (click to open)."""
+        if self.tray is None:
+            return
+        self.tray.showMessage("Jarvis needs your OK",
+                              f"{title}. Say \"confirm\" or \"cancel\", or click here to see it.",
+                              QSystemTrayIcon.MessageIcon.Warning, 12000)
 
     def _clicked(self, reason) -> None:
         if reason in (QSystemTrayIcon.ActivationReason.Trigger, QSystemTrayIcon.ActivationReason.DoubleClick):

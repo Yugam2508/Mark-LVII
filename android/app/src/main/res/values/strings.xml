@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Jarvis</string>
-    <string name="send_tap_description">Lets Jarvis press WhatsApp's Send button after you confirm a message on your PC. It reads nothing else.</string>
+    <string name="send_tap_description">Lets Jarvis press WhatsApp\'s Send button after you confirm a message on your PC, and take a screenshot or lock the phone when you ask. It reads nothing else.</string>
 </resources>

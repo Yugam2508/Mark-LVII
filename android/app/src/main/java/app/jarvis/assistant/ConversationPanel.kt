@@ -28,10 +28,14 @@ class ConversationPanel(
     private val prefs = Prefs(context)
     private val holo = HoloView(context)
     private val status = TextView(context)
+    private val hint = TextView(context)
     private val log = TextView(context)
     private val scroll = ScrollView(context)
     private val input = EditText(context)
     private val mic = Button(context)
+    private val confirmBar = LinearLayout(context)
+    private val confirmText = TextView(context)
+    private var confirmTitle = ""
     private val lines = StringBuilder()
 
     init {
@@ -40,12 +44,54 @@ class ConversationPanel(
         setPadding(dp(14), dp(10), dp(14), dp(10))
 
         status.setTextColor(Color.rgb(90, 140, 160)); status.textSize = 12f; status.gravity = Gravity.CENTER
-        addView(status, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        val top = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(status, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        // Every switch lives behind this button (phones have no menu key). Not in the assistant overlay.
+        (context as? MainActivity)?.let { act ->
+            top.addView(Button(context).apply {
+                text = "⋮"; textSize = 20f; setBackgroundColor(Color.TRANSPARENT); setTextColor(Color.rgb(0, 212, 255))
+                contentDescription = "Permissions and setup"
+                setOnClickListener { act.showSetup() }
+            }, LayoutParams(dp(48), dp(48)))
+        }
+        addView(top, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(holo, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.3f))
+        // What Jarvis is doing right now, in words: waiting for "Hey Jarvis", listening, speaking.
+        hint.setTextColor(Color.rgb(0, 212, 255)); hint.textSize = 14f; hint.gravity = Gravity.CENTER
+        hint.setPadding(0, dp(2), 0, dp(6))
+        addView(hint, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        // Tap the orb to talk without the wake word; long-press to send it back to waiting.
+        holo.setOnClickListener {
+            when {
+                !LiveAudio.running -> toggleMic()
+                LiveAudio.state == LiveAudio.State.SPEAKING -> LiveAudio.interruptNow()   // tap to cut Jarvis off
+                else -> LiveAudio.wakeNow()
+            }
+        }
+        holo.setOnLongClickListener { LiveAudio.sleepNow(); true }
 
         log.setTextColor(Color.rgb(220, 235, 245)); log.textSize = 15f
+        log.setOnLongClickListener {
+            val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+            cm?.setPrimaryClip(android.content.ClipData.newPlainText("Jarvis conversation", lines.toString().trim()))
+            android.widget.Toast.makeText(context, "Conversation copied", android.widget.Toast.LENGTH_SHORT).show()
+            true
+        }
         scroll.addView(log)
         addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+
+        // A confirmation waiting on the PC (a text to send, an install): answer it right here.
+        confirmBar.orientation = VERTICAL
+        confirmBar.setBackgroundColor(Color.argb(235, 40, 22, 0))
+        confirmBar.setPadding(dp(10), dp(8), dp(10), dp(8))
+        confirmText.setTextColor(Color.rgb(255, 200, 120)); confirmText.textSize = 14f
+        confirmBar.addView(confirmText)
+        val answers = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.END }
+        answers.addView(Button(context).apply { text = "CANCEL"; setOnClickListener { answerConfirm(false) } })
+        answers.addView(Button(context).apply { text = "CONFIRM"; setOnClickListener { answerConfirm(true) } })
+        confirmBar.addView(answers)
+        confirmBar.visibility = GONE
+        addView(confirmBar, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
 
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         input.hint = "Just talk, or type here"; input.setHintTextColor(Color.rgb(80, 110, 125))
@@ -83,27 +129,70 @@ class ConversationPanel(
 
     override fun onConnection(connected: Boolean, detail: String) {
         if (!connected && !prefs.paired) onUnpaired?.let { post(it) }
-        status.text = if (connected) "● connected to your PC" else "○ $detail"
+        val vpnOff = !connected && !vpnUp()
+        status.text = when {
+            connected -> "● connected to your PC"
+            vpnOff -> "○ Tailscale looks off — tap here to open it"
+            else -> "○ $detail"
+        }
         status.setTextColor(if (connected) Color.rgb(0, 255, 136) else Color.rgb(255, 160, 60))
+        status.setOnClickListener(if (vpnOff) OnClickListener { openTailscale() } else null)
+    }
+
+    private fun vpnUp(): Boolean = try {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        cm?.allNetworks?.any { cm.getNetworkCapabilities(it)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true } == true
+    } catch (e: Exception) { true }
+
+    private fun openTailscale() {
+        val i = context.packageManager.getLaunchIntentForPackage("com.tailscale.ipn")
+            ?: android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=com.tailscale.ipn"))
+        try { context.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { }
     }
 
     override fun onEvent(event: Protocol.Event) {
         when (event) {
             is Protocol.Event.Said -> { append(event.speaker, event.text); render() }
             is Protocol.Event.Card -> {
+                if (event.kind == "confirm") { showConfirm(event.title, event.text); return }
+                if (event.kind == "confirm_done") { confirmBar.visibility = GONE; confirmTitle = ""; return }
                 lines.append("▣ ").append(event.title.uppercase())
                 if (event.text.isNotEmpty()) lines.append("\n").append(event.text)
                 lines.append("\n\n"); render()
             }
+            is Protocol.Event.Wake -> onState(LiveAudio.state, 0f)
             is Protocol.Event.System, is Protocol.Event.Status, is Protocol.Event.PhoneAction -> Unit
         }
+    }
+
+    private fun showConfirm(title: String, text: String) {
+        confirmTitle = title
+        confirmText.text = "Jarvis needs your OK: $title\n$text"
+        confirmBar.visibility = VISIBLE
+    }
+
+    private fun answerConfirm(accepted: Boolean) {
+        if (confirmTitle.isNotEmpty()) Hub.sendRaw(Protocol.confirmBody(confirmTitle, accepted))
+        confirmBar.visibility = GONE
+        confirmTitle = ""
+        ConfirmNote.clear(context)
     }
 
     // ── the voice ────────────────────────────────────────────────────────────
 
     override fun onState(state: LiveAudio.State, level: Float) {
+        val waiting = LiveAudio.wakeMode && LiveAudio.wakeAvailable && !LiveAudio.awake
+        hint.text = when {
+            !LiveAudio.running -> "Not listening — tap the orb or LISTEN"
+            LiveAudio.muted -> "Muted — tap UNMUTE"
+            state == LiveAudio.State.CONNECTING -> "Connecting to your PC…"
+            state == LiveAudio.State.SPEAKING -> if (prefs.duplex) "Speaking — talk to interrupt" else "Speaking…"
+            waiting -> "Say “Hey Jarvis” — or tap the orb"
+            LiveAudio.wakeMode && !LiveAudio.wakeAvailable -> "Listening (the wake word isn't set up on the PC yet)"
+            else -> "Listening — just talk"
+        }
         holo.state = when (state) {
-            LiveAudio.State.LISTENING -> if (LiveAudio.muted) HoloView.State.IDLE else HoloView.State.LISTENING
+            LiveAudio.State.LISTENING -> if (LiveAudio.muted || waiting) HoloView.State.IDLE else HoloView.State.LISTENING
             LiveAudio.State.SPEAKING -> HoloView.State.SPEAKING
             LiveAudio.State.CONNECTING -> HoloView.State.THINKING
             LiveAudio.State.OFF -> HoloView.State.IDLE

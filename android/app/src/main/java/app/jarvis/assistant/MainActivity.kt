@@ -17,6 +17,7 @@ import android.widget.FrameLayout
 class MainActivity : Activity() {
     private val root by lazy { FrameLayout(this) }
     private var triedAuto = false
+    private var setup: SetupPanel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,7 +25,7 @@ class MainActivity : Activity() {
         // Everything Jarvis may be asked to do on this phone, asked for once up front.
         val wanted = mutableListOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS,
             Manifest.permission.CALL_PHONE, Manifest.permission.SEND_SMS,
-            Manifest.permission.READ_CALL_LOG)
+            Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_SMS, Manifest.permission.ACCESS_FINE_LOCATION)
         if (android.os.Build.VERSION.SDK_INT >= 33) wanted += Manifest.permission.POST_NOTIFICATIONS
         val missing = wanted.filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
         if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 1)
@@ -32,7 +33,30 @@ class MainActivity : Activity() {
         show()
     }
 
+    /** The "Permissions & setup" screen (from the ⋮ button: the phone has no menu key). */
+    fun showSetup() {
+        root.removeAllViews()
+        setup = SetupPanel(this) { show() }.also { root.addView(it) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        visible = true
+        setup?.refresh()                          // back from a settings page: show what changed
+    }
+
+    override fun onPause() {
+        visible = false
+        super.onPause()
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (setup != null) show() else @Suppress("DEPRECATION") super.onBackPressed()
+    }
+
     private fun show() {
+        setup = null
         root.removeAllViews()
         if (Prefs(this).paired) {
             LinkService.start(this)
@@ -46,7 +70,8 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        show()                                   // the microphone may just have been allowed: start listening
+        if (setup != null) setup?.refresh()       // asked from the setup screen: stay there, show the new ticks
+        else show()                               // the microphone may just have been allowed: start listening
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -55,30 +80,14 @@ class MainActivity : Activity() {
         show()
     }
 
+    // Phones with a menu key get the same screen from it.
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, 1, 0, "Make Jarvis my assistant")
-        menu.add(0, 2, 0, "Always listening on/off")
-        menu.add(0, 4, 0, "Talk over Jarvis on/off")
-        menu.add(0, 5, 0, "Let Jarvis open apps and sites")
-        menu.add(0, 6, 0, "Let Jarvis tap Send in WhatsApp")
-        menu.add(0, 7, 0, "Let Jarvis read notifications")
-        menu.add(0, 3, 0, "Forget this PC")
+        menu.add(0, 1, 0, "Permissions & setup")
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            1 -> startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
-            2 -> Prefs(this).let {
-                it.openMic = !it.openMic
-                if (it.openMic) LinkService.start(this, listen = true) else LiveAudio.stop()
-            }
-            4 -> Prefs(this).let { it.duplex = !it.duplex; LiveAudio.stop(); if (it.openMic) LinkService.start(this, listen = true) }
-            5 -> startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:$packageName")))
-            6 -> startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            7 -> startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            3 -> { Hub.disconnect(); Prefs(this).forget(); show() }
-        }
+        if (item.itemId == 1 && Prefs(this).paired) showSetup()
         return true
     }
 
@@ -90,4 +99,9 @@ class MainActivity : Activity() {
 
     @Suppress("unused")
     private fun gravityCenter() = Gravity.CENTER
+
+    companion object {
+        /** On screen right now: Android lets an app open other apps and pages while it is visible. */
+        @Volatile var visible = false
+    }
 }

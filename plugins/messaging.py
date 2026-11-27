@@ -28,6 +28,7 @@ from pathlib import Path
 from core import confirm, outcome
 
 SAVED = Path(__file__).resolve().parent.parent / "config" / "whatsapp_contacts.json"
+_DIGITS_ONLY = re.compile(r"^[+()\d\s.-]+$")
 
 
 def _saved() -> dict:
@@ -63,16 +64,60 @@ def _digits(n: str) -> str:
     return re.sub(r"\D", "", n)
 
 
+def country_code() -> str:
+    try:
+        from memory.config_manager import get_plugin_setting
+        return re.sub(r"\D", "", str(get_plugin_setting("whatsapp", "country_code", "") or ""))
+    except Exception:
+        return ""
+
+
+def international(raw: str) -> str:
+    """WhatsApp needs the full international number without '+' or a leading 0.
+    '' means a country code is needed and none is set."""
+    raw = (raw or "").strip()
+    d = _digits(raw)
+    if raw.startswith("+"):
+        return d
+    if d.startswith("00"):
+        return d[2:]
+    cc = country_code()
+    if d.startswith("0"):
+        return cc + d[1:] if cc else ""
+    if cc and len(d) <= 10 and not d.startswith(cc):
+        return cc + d
+    return d
+
+
+def _foreground_title() -> str:
+    from core import foreground
+    return foreground.title()
+
+
 def _send_on_pc(digits: str, message: str) -> str:
-    url = f"whatsapp://send?phone={digits}&text={urllib.parse.quote(message)}"
+    text = urllib.parse.quote(message)
+    opened_web = False
     if sys.platform.startswith("win"):
         try:
-            os.startfile(url)  # type: ignore[attr-defined]
-        except OSError:
-            webbrowser.open(f"https://wa.me/{digits}?text={urllib.parse.quote(message)}")
+            os.startfile(f"whatsapp://send?phone={digits}&text={text}")  # type: ignore[attr-defined]
+        except OSError:                                  # no WhatsApp Desktop: WhatsApp Web instead
+            webbrowser.open(f"https://web.whatsapp.com/send?phone={digits}&text={text}")
+            opened_web = True
     else:
-        webbrowser.open(f"https://wa.me/{digits}?text={urllib.parse.quote(message)}")
-    time.sleep(7)                                   # let the chat open with the text in the box
+        webbrowser.open(f"https://web.whatsapp.com/send?phone={digits}&text={text}")
+        opened_web = True
+    # Wait for the chat to be in front with the text in the box, and only then press Enter:
+    # an Enter that lands in some other window could send or submit something else.
+    deadline = time.time() + (25 if opened_web else 12)
+    while time.time() < deadline:
+        time.sleep(1.0)
+        if "whatsapp" in _foreground_title().lower():
+            time.sleep(2.5 if opened_web else 1.2)       # the text box fills a moment after the window
+            break
+    else:
+        if sys.platform.startswith("win"):
+            return outcome.failed("whatsapp", "the chat didn't come to the front, so I didn't press Enter; it may "
+                                  "be open with the message typed, ready for the user to send")
     from actions.send_message import pyautogui
     pyautogui.press("enter")
     return outcome.unverified("whatsapp", "I opened the chat and pressed Enter, but nothing reports whether "
@@ -106,6 +151,8 @@ PLUGIN = {
             "message": {"type": "STRING", "description": "What to send"},
             "number": {"type": "STRING", "description": "The person's number, when the user just told you it"},
             "device": {"type": "STRING", "enum": ["pc", "phone"], "description": "Where to send from; default pc"},
+            "country_code": {"type": "STRING", "description": "Only when the user tells you their country code "
+                             "for contacts without one, e.g. '44'; it is remembered"},
         },
         "required": ["who", "message"],
     },
@@ -113,11 +160,24 @@ PLUGIN = {
     "brief": "WhatsApp: send a message (confirmed first).",
 }
 
+PLUGIN_SETTINGS = {
+    "namespace": "whatsapp",
+    "title": "WHATSAPP",
+    "fields": [
+        {"key": "country_code", "label": "Country code for numbers saved without one (e.g. 44, 91)",
+         "type": "text", "placeholder": "44"},
+    ],
+}
+
 
 def run(parameters: dict, player=None, session_memory=None) -> str:
     who = str(parameters.get("who") or "").strip()
     message = str(parameters.get("message") or "").strip()
     number = str(parameters.get("number") or "").strip()
+    cc = re.sub(r"\D", "", str(parameters.get("country_code") or ""))
+    if cc:
+        from memory.config_manager import save_plugin_config
+        save_plugin_config("whatsapp", {"country_code": cc})
     device = "phone" if str(parameters.get("device") or "").lower() == "phone" else "pc"
     if not who:
         return outcome.ask("whatsapp", "Who should I message?")
@@ -131,10 +191,14 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                 return outcome.ask("whatsapp", "Which one? Say the full name.") + "\n" + \
                     outcome.untrusted("contacts", names)
             return outcome.ask("whatsapp", f"I don't have a number for {who}. What is it, with the country code?")
-        digits = _digits(n)
+        digits = international(n)
+        if not digits:
+            return outcome.ask("whatsapp", f"{who}'s number has no country code. Which country code should I use "
+                               "for your contacts (for example 44 for the UK, 91 for India)? I'll remember it.",
+                               note="when they answer, call again with country_code")
         if len(digits) < 8:
             return outcome.ask("whatsapp", f"That number looks too short for WhatsApp; I need the country code. What is {who}'s number?")
-        if number:
+        if number and not _DIGITS_ONLY.match(who):
             _remember(who, digits)
         box = {"message": message}
 

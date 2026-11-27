@@ -978,7 +978,7 @@ class WhatsNewOverlay(_HudOverlay):
         bl.setContentsMargins(0, 4, 6, 4)
         bl.setSpacing(4)
         for i, entry in enumerate(edition.CHANGELOG):
-            head = QLabel(f"{edition.entry_tag(entry['version'])}  —  {entry['date']}" + ("   (this version)" if i == 0 else ""))
+            head = QLabel(f"{edition.entry_tag(entry['version'])}  —  {entry['date']}" + ("   (this Mark)" if i == 0 else ""))
             head.setFont(hud_font(9, QFont.Weight.Bold))
             head.setStyleSheet(f"color: {C.PRI if i == 0 else C.TEXT_MED}; background: transparent;"
                                "margin-top: 6px;")
@@ -1037,6 +1037,8 @@ class NoticeStack(QWidget):
         self.hide()
 
     def add(self, title: str, text: str, kind: str = "info") -> None:
+        # The same notice again replaces the old one (moved to the top), so a repeating failure is one card.
+        self._items = [i for i in self._items if not (i["title"] == title and i["kind"] == kind)]
         self._items.insert(0, {"title": title, "text": text, "kind": kind,
                                "at": time.strftime("%H:%M")})
         del self._items[30:]

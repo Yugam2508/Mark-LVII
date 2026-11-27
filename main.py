@@ -1100,6 +1100,7 @@ class JarvisLive:
         loop = getattr(self, "_loop", None)
         if not loop or not self.session:
             return
+        self._last_app_prompt = time.time()          # the next reply answers the app, not the user
 
         async def _say():
             try:
@@ -1694,14 +1695,30 @@ class JarvisLive:
             category = args.get("category", "notes")
             key      = args.get("key", "")
             value    = args.get("value", "")
-            if key and value:
-                update_memory({category: {key: {"value": value}}})
-                print(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
+            # Report what really happened: "ok" only if the value is now in the store.
+            # It used to answer "ok" even when nothing was written, which is how
+            # "I've saved that" was said about things that were never saved.
+            _mem_result = {"result": "ok", "silent": True}
+            if not (key and value):
+                _mem_result = {"result": "NOT SAVED: a key and a value are both needed", "silent": False}
+            else:
+                try:
+                    update_memory({category: {key: {"value": value}}})
+                    _stored = (load_memory().get(category, {}) or {}).get(key)
+                    _stored_v = _stored.get("value") if isinstance(_stored, dict) else _stored
+                    if not _stored_v:
+                        _mem_result = {"result": "NOT SAVED: the memory store did not keep it", "silent": False}
+                    elif len(str(value)) > len(str(_stored_v)):
+                        _mem_result = {"result": "saved, but shortened; for long text use the notes or dictation tool",
+                                       "silent": False}
+                    print(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
+                except Exception as _e:
+                    _mem_result = {"result": f"NOT SAVED: {str(_e)[:120]}", "silent": False}
             if not self.ui.muted:
                 self.ui.set_state("LISTENING")
             return types.FunctionResponse(
                 id=fc.id, name=name,
-                response={"result": "ok", "silent": True}
+                response=_mem_result
             )
 
         loop   = asyncio.get_event_loop()
@@ -2132,8 +2149,13 @@ class JarvisLive:
                             self._resume_handle = _sru.new_handle
 
                     if response.data:
-                        if self._interrupted:
-                            pass  # discard: interrupted
+                        try:
+                            from core import dictation as _dict
+                            _dictating = _dict.active()
+                        except Exception:
+                            _dictating = False
+                        if self._interrupted or _dictating:
+                            pass  # discard: interrupted, or taking dictation (stay silent)
                         else:
                             if self._turn_done_event and self._turn_done_event.is_set():
                                 self._turn_done_event.clear()
@@ -2173,6 +2195,11 @@ class JarvisLive:
                             if txt:
                                 in_buf.append(txt)
                                 self._last_user_speech = time.monotonic()
+                                try:
+                                    from core import dictation as _dict
+                                    _dict.feed(txt)          # on disk the moment it is heard
+                                except Exception as _e:
+                                    print(f"[Dictation] {_e}")
                                 try:
                                     self.ui.caption("you", txt)
                                 except Exception:
@@ -2219,9 +2246,19 @@ class JarvisLive:
 
                             full_in = " ".join(in_buf).strip()
                             if full_in:
+                                try:
+                                    from core import dictation as _dict
+                                    _dict.paragraph()
+                                except Exception:
+                                    pass
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
+                                try:
+                                    from core import transcript as _tr
+                                    _tr.append("You", full_in)
+                                except Exception:
+                                    pass
                                 self._log_last_at = time.time()
                                 self._publish_handoff()
                                 if self._dashboard:
@@ -2243,6 +2280,16 @@ class JarvisLive:
                                     _presence.note_not_addressed()
                                 except Exception:
                                     pass
+                            # "I've saved that" with no tool behind it: have Jarvis fix it now.
+                            try:
+                                from core import claims as _claims
+                                if _claims.unbacked_save_claim(
+                                        full_out, full_in, bool(getattr(self, "_turn_tool", False)),
+                                        time.time() - getattr(self, "_last_app_prompt", 0.0)):
+                                    print("[Claims] save claimed without a tool — asking for a correction")
+                                    self.plugin_say(_claims.CORRECTION)
+                            except Exception as _e:
+                                print(f"[Claims] {_e}")
                             self._turn_tool = False
                             # Second line of defence: even if a repeat slips
                             # into a *fresh* buffer after a flush, never log the
@@ -2254,6 +2301,11 @@ class JarvisLive:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
+                                try:
+                                    from core import transcript as _tr
+                                    _tr.append(self._asst_name, full_out)
+                                except Exception:
+                                    pass
                                 self._log_last_at = time.time()
                                 self._publish_handoff()
                                 if self._dashboard:
@@ -2643,8 +2695,10 @@ class JarvisLive:
 
         convo = "\n".join(log[-40:])   # cap at last 40 turns to stay within token budget
         prompt = (
-            f"Summarize this conversation in 1-2 sentences in {lang}. "
-            "Focus on what the user accomplished or discussed. "
+            f"Summarize this conversation in 1-3 sentences in {lang}. "
+            "Focus on what the user accomplished or discussed. If the user gave a list, plan, "
+            "decisions or things to remember, name every item briefly (the full words are in the "
+            "conversation log). "
             "Output ONLY the summary text, nothing else:\n\n" + convo
         )
         try:
@@ -2756,30 +2810,131 @@ class JarvisLive:
     # ── Phone audio relay ────────────────────────────────────────────────────────
 
     async def _relay_phone_audio(self) -> None:
-        """Forward phone mic PCM chunks from dashboard queue into the Gemini Live session."""
+        """Forward phone mic PCM chunks from dashboard queue into the Gemini Live session.
+
+        Runs inside the session's task group: an exception escaping here would take the whole
+        conversation down, so each step is guarded and only logged."""
         q = self._dashboard._phone_audio_queue
         while True:
             try:
                 chunk = await asyncio.wait_for(q.get(), timeout=1.0)
             except asyncio.TimeoutError:
-                # No audio for 1 s → phone mic inactive, give PC mic back
-                self._phone_active = False
-                continue
-            self._phone_active = True   # phone is streaming — silence PC mic
-            with self._speaking_lock:
-                speaking = self._is_speaking
-            # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
-            # over it exactly as on the PC (Gemini ends its own turn when it hears you).
-            duplex = False
-            try:
-                duplex = self._dashboard.phone_duplex()
-            except Exception:
-                pass
-            if (not speaking or duplex) and not self.ui.muted:
                 try:
-                    self.out_queue.put_nowait(chunk)
-                except asyncio.QueueFull:
-                    pass
+                    self._relay_idle()
+                except Exception as e:
+                    print(f"[PhoneRelay] {e}")
+                continue
+            try:
+                self._relay_chunk(chunk)
+            except Exception as e:
+                print(f"[PhoneRelay] {e}")
+
+    def _relay_idle(self) -> None:
+        # No audio for 1 s. The phone sends sound only while someone talks (it saves data), so
+        # quiet doesn't mean it's gone: while it is still the speaker, the PC mic stays off;
+        # only when its audio link closes does the PC listen again.
+        self._phone_active = self._phone_audio_routed()
+        pw = getattr(self, "_phone_wake", None)
+        if pw is not None:
+            with self._speaking_lock:
+                if self._is_speaking:
+                    pw.keep_awake()
+            pw.tick()
+            for held in pw.check_detected():
+                self._forward_phone_audio(held)
+
+    def _relay_chunk(self, chunk: dict) -> None:
+        if "control" in chunk:                       # the phone's orb was tapped
+            ctl = chunk["control"]
+            if ctl == "interrupt":                   # tapped while Jarvis was talking: stop now
+                with self._speaking_lock:
+                    talking = self._is_speaking
+                if talking:
+                    self.interrupt()
+                pw = getattr(self, "_phone_wake", None)
+                if pw is not None:
+                    pw.wake_now()                    # and listen for what they say next
+                return
+            pw = self._get_phone_wake()
+            pw.wake_now() if ctl == "wake_now" else pw.sleep_now()
+            return
+        self._phone_active = True   # phone is streaming — silence PC mic
+        with self._speaking_lock:
+            speaking = self._is_speaking
+        pieces = [chunk["data"]]
+        try:
+            wake_wanted = self._dashboard.phone_wake_wanted()
+        except Exception:
+            wake_wanted = False
+        if wake_wanted:
+            pw = self._get_phone_wake()
+            if speaking:
+                pw.keep_awake()
+            pieces = pw.check_detected() + pw.process(chunk["data"])
+            # Tell the phone once when the PC can't do the wake word (yet), so it doesn't
+            # say "Hey Jarvis" while in fact everything is going through.
+            if pw.available is False and not getattr(self, "_phone_wake_na_said", False):
+                self._phone_wake_na_said = True
+                asyncio.create_task(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": False, "available": False}))
+            elif pw.available and getattr(self, "_phone_wake_na_said", False):
+                self._phone_wake_na_said = False
+                asyncio.create_task(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": pw.awake, "available": True}))
+        # A phone that cleans its own mic of echo is heard while Jarvis speaks, so you can talk
+        # over it exactly as on the PC (Gemini ends its own turn when it hears you).
+        duplex = False
+        try:
+            duplex = self._dashboard.phone_duplex()
+        except Exception:
+            pass
+        if (not speaking or duplex) and not self.ui.muted:
+            for piece in pieces:
+                self._forward_phone_audio(piece)
+
+    def _forward_phone_audio(self, data: bytes) -> None:
+        try:
+            self.out_queue.put_nowait({"data": data, "mime_type": "audio/pcm"})
+        except (asyncio.QueueFull, AttributeError):
+            pass
+
+    def _get_phone_wake(self):
+        """The phone's "Hey Jarvis" gate (core/phone_wake.py), made on first use."""
+        pw = getattr(self, "_phone_wake", None)
+        if pw is not None:
+            return pw
+        from core.phone_wake import PhoneWake
+        from core import wake_word as _ww
+
+        def factory(on_detect):
+            if not _ww.is_ready():
+                if not getattr(self, "_phone_wake_setup", False):
+                    self._phone_wake_setup = True
+                    self.ui.write_log("SYS: Setting up \"Hey Jarvis\" for your phone (one-time download)…")
+                    threading.Thread(target=lambda: _ww.install_and_download(
+                        lambda m: print(f"[PhoneWake] {m}")), daemon=True, name="phone_wake_setup").start()
+                raise RuntimeError("the wake word isn't set up on this PC yet")
+            d = _ww.WakeWordDetector(on_detect=on_detect, logger=lambda m: print(f"[PhoneWake] {m}"))
+            if not d.start():
+                raise RuntimeError("the wake word detector didn't start")
+            return d
+
+        loop = self._loop
+
+        def on_state(awake: bool) -> None:
+            self.ui.write_log("SYS: Phone: " + ("awake — listening." if awake else "waiting for \"Hey Jarvis\"."))
+            if self._dashboard is not None and loop is not None:
+                asyncio.run_coroutine_threadsafe(self._dashboard.broadcast(
+                    {"type": "phone_wake", "awake": awake, "available": True}), loop)
+
+        try:
+            from memory.config_manager import get_plugin_setting
+            follow = float(get_plugin_setting("conversation", "followup_seconds", 45) or 45)
+        except Exception:
+            follow = 45.0
+        pw = PhoneWake(factory, on_state, follow_up=follow)
+        self._phone_wake = pw
+        return pw
 
     def _on_phone_connected(self) -> None:
         self.ui.write_log("SYS: Phone connected via Remote Dashboard.")
@@ -2810,6 +2965,12 @@ class JarvisLive:
                         turn_complete=True,
                     )
                     self.ui.write_log(f"[Web]: {text}")
+                    self._session_log.append(f"User: {text}")
+                    try:
+                        from core import transcript as _tr
+                        _tr.append("You (typed)", text)
+                    except Exception:
+                        pass
                 else:
                     print(f"[Dashboard] Dropped command (no session): {text}")
             except asyncio.TimeoutError:

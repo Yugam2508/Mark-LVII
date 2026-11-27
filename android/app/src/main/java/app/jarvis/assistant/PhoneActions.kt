@@ -28,7 +28,8 @@ import org.json.JSONObject
 object PhoneActions {
     val abilities = listOf("status", "contacts", "call", "text", "find_phone", "open_app", "open_url",
         "settings", "volume", "flashlight", "timer", "media", "navigate", "whatsapp",
-        "notifications", "reply_notification", "dismiss_notification", "recent_calls")
+        "notifications", "reply_notification", "dismiss_notification", "recent_calls",
+        "send_to_phone", "location", "dnd", "texts", "alarm", "screenshot", "lock", "answer_call", "decline_call")
 
     class Result(val ok: Boolean, val text: String, val data: JSONObject? = null)
 
@@ -55,7 +56,16 @@ object PhoneActions {
             "notifications" -> notifications(context, args.optString("app"), args.optInt("limit", 8))
             "reply_notification" -> replyNotification(context, args)
             "dismiss_notification" -> dismissNotification(args)
+            "send_to_phone" -> sendToPhone(context, args.optString("text"), args.optString("title"))
+            "location" -> location(context)
+            "dnd" -> dnd(context, args.optBoolean("on", true))
             "recent_calls" -> recentCalls(context, args.optInt("limit", 8))
+            "texts" -> texts(context, args.optString("from"), args.optInt("limit", 8))
+            "alarm" -> alarm(context, args.optInt("hour", -1), args.optInt("minute", 0), args.optString("label"))
+            "screenshot" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT, "Screenshot taken (it's in the phone's gallery)")
+            "answer_call" -> callButton(true)
+            "decline_call" -> callButton(false)
+            "lock" -> globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Phone locked")
             "whatsapp" -> whatsapp(context, args.optString("number"), args.optString("message"))
             "navigate" -> navigate(context, args.optString("where"))
             else -> Result(false, "This phone doesn't know how to $action yet")
@@ -109,7 +119,9 @@ object PhoneActions {
 
     private fun text(context: Context, number: String, message: String): Result {
         if (number.isBlank() || message.isBlank()) return Result(false, "I need a number and a message")
-        val sms = service(context, SmsManager::class.java)
+        // SmsManager is a system service only from Android 12; before that it is SmsManager.getDefault().
+        val sms = if (android.os.Build.VERSION.SDK_INT >= 31) service(context, SmsManager::class.java)
+            else @Suppress("DEPRECATION") SmsManager.getDefault()
         sms.sendMultipartTextMessage(number, null, sms.divideMessage(message), null, null)
         return Result(true, "Text sent to $number")
     }
@@ -136,12 +148,22 @@ object PhoneActions {
         return Result(true, "Opened")
     }
 
-    private val overlayHint = "Allow \"Let Jarvis open apps and sites\" in the app's menu first"
+    private val overlayHint = "On the phone, open Jarvis → ⋮ → Permissions & setup and switch on \"Open apps and sites when asked\""
 
-    private fun guarded(context: Context, intent: Intent): Result =
-        try { launch(context, intent) } catch (e: Exception) {
-            Result(false, "The phone wouldn't open it. $overlayHint")
+    /**
+     * Android quietly ignores an app that opens something while it is in the background (no error comes
+     * back), so "opened" would be a lie. It is allowed while Jarvis is on screen, or with "Display over
+     * other apps" switched on; otherwise say what to switch on instead of pretending.
+     */
+    private fun guarded(context: Context, intent: Intent): Result {
+        if (!android.provider.Settings.canDrawOverlays(context) && !MainActivity.visible)
+            return Result(false, "Android won't let Jarvis open things from the background yet. $overlayHint")
+        return try { launch(context, intent) } catch (e: android.content.ActivityNotFoundException) {
+            Result(false, "No app on the phone can open that")
+        } catch (e: Exception) {
+            Result(false, "The phone wouldn't open it (${e.message})")
         }
+    }
 
     private fun openApp(context: Context, name: String): Result {
         if (name.isBlank()) return Result(false, "Which app?")
@@ -230,12 +252,14 @@ object PhoneActions {
         val digits = number.filter { it.isDigit() }
         if (digits.length < 6 || message.isBlank()) return Result(false, "I need a number and a message")
         val url = "https://wa.me/$digits?text=" + Uri.encode(message)
-        if (SendTapService.enabled) SendTapService.arm()
+        // Switched on in Settings counts even if Android hasn't bound the service in this process yet.
+        val autoSend = SendTapService.enabled || SetupPanel.sendTapEnabled(context)
+        if (autoSend) SendTapService.arm()
         val r = guarded(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         if (!r.ok) return r
-        return Result(true, if (SendTapService.enabled) "WhatsApp opened and Send pressed"
+        return Result(true, if (autoSend) "WhatsApp opened; Send will be pressed when the chat appears"
             else "WhatsApp is open with the message typed in; it still needs a tap on Send",
-            JSONObject().put("auto_send", SendTapService.enabled))
+            JSONObject().put("auto_send", autoSend))
     }
 
     private fun notifications(context: Context, app: String, limit: Int): Result {
@@ -259,6 +283,77 @@ object PhoneActions {
         return if (NotifyService.dismiss(e)) Result(true, "Cleared") else Result(false, "Notification access is off")
     }
 
+    /** Text or a link from the PC: copied to the clipboard and shown as a notification (tap to open a link). */
+    private fun sendToPhone(context: Context, text: String, title: String): Result {
+        if (text.isBlank()) return Result(false, "Nothing to send")
+        val cm = service(context, android.content.ClipboardManager::class.java)
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("From Jarvis", text))
+        val nm = service(context, android.app.NotificationManager::class.java)
+        nm.createNotificationChannel(android.app.NotificationChannel("from_pc", "From your PC",
+            android.app.NotificationManager.IMPORTANCE_HIGH))
+        val link = Regex("https?://\\S+").find(text)?.value
+        val tap = if (link != null) Intent(Intent.ACTION_VIEW, Uri.parse(link)) else
+            Intent(context, MainActivity::class.java)
+        val pi = android.app.PendingIntent.getActivity(context, 7, tap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = android.app.Notification.Builder(context, "from_pc")
+            .setSmallIcon(android.R.drawable.ic_menu_send)
+            .setContentTitle(title.ifBlank { "From Jarvis" })
+            .setContentText(text.take(200))
+            .setStyle(android.app.Notification.BigTextStyle().bigText(text.take(2000)))
+            .setContentIntent(pi).setAutoCancel(true).build()
+        nm.notify(text.hashCode(), n)
+        return Result(true, "On the phone (copied, and in the notifications)")
+    }
+
+    private fun location(context: Context): Result {
+        val lm = service(context, android.location.LocationManager::class.java)
+        val best = lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }
+            ?: return Result(false, "The phone has no recent location (location off, or permission not given)")
+        val ageMin = (System.currentTimeMillis() - best.time) / 60000
+        val link = "https://maps.google.com/?q=${best.latitude},${best.longitude}"
+        return Result(true, "Within ${best.accuracy.toInt()} m, $ageMin min ago: $link",
+            JSONObject().put("lat", best.latitude).put("lon", best.longitude).put("accuracy_m", best.accuracy.toDouble())
+                .put("age_min", ageMin).put("map", link))
+    }
+
+    private fun dnd(context: Context, on: Boolean): Result {
+        val svc = NotifyService.instance
+            ?: return Result(false, "Turn on \"Let Jarvis read notifications\" in the app menu first")
+        svc.requestInterruptionFilter(if (on) android.service.notification.NotificationListenerService.INTERRUPTION_FILTER_PRIORITY
+            else android.service.notification.NotificationListenerService.INTERRUPTION_FILTER_ALL)
+        return Result(true, if (on) "Do Not Disturb on" else "Do Not Disturb off")
+    }
+
+    /** The latest texts in the inbox, optionally only from one person (a name or part of a number). */
+    private fun texts(context: Context, from: String, limit: Int): Result {
+        val out = JSONArray()
+        val uri = android.provider.Telephony.Sms.Inbox.CONTENT_URI
+        val cols = arrayOf(android.provider.Telephony.Sms.ADDRESS, android.provider.Telephony.Sms.BODY,
+            android.provider.Telephony.Sms.DATE)
+        val want = from.trim().lowercase()
+        val names = HashMap<String, String>()
+        context.contentResolver.query(uri, cols, null, null, "${android.provider.Telephony.Sms.DATE} DESC")?.use { c ->
+            var scanned = 0
+            while (c.moveToNext() && out.length() < limit.coerceIn(1, 30) && scanned < 500) {
+                scanned++
+                val addr = c.getString(0) ?: continue
+                val name = names.getOrPut(addr) { contactName(context, addr) ?: addr }
+                if (want.isNotEmpty() && !name.lowercase().contains(want) && !addr.filter { it.isDigit() }.contains(want.filter { it.isDigit() }.ifEmpty { "\u0000" })) continue
+                out.put(JSONObject().put("from", name).put("text", (c.getString(1) ?: "").take(500))
+                    .put("age_min", (System.currentTimeMillis() - c.getLong(2)) / 60000))
+            }
+        }
+        return Result(true, "${out.length()} text(s)", JSONObject().put("texts", out))
+    }
+
+    private fun contactName(context: Context, number: String): String? = try {
+        val u = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+        context.contentResolver.query(u, arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)?.use {
+            if (it.moveToFirst()) it.getString(0) else null
+        }
+    } catch (e: Exception) { null }
+
     private fun recentCalls(context: Context, limit: Int): Result {
         val out = JSONArray()
         context.contentResolver.query(android.provider.CallLog.Calls.CONTENT_URI,
@@ -278,6 +373,28 @@ object PhoneActions {
         }
         return Result(true, "${out.length()} call(s)", JSONObject().put("calls", out))
     }
+
+    private fun alarm(context: Context, hour: Int, minute: Int, label: String): Result {
+        if (hour !in 0..23 || minute !in 0..59) return Result(false, "What time? (hour 0-23)")
+        val i = Intent(android.provider.AlarmClock.ACTION_SET_ALARM)
+            .putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour)
+            .putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute)
+            .putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label.ifBlank { "Jarvis" })
+            .putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
+        return guarded(context, i).let { if (it.ok) Result(true, "Alarm set for %02d:%02d".format(hour, minute)) else it }
+    }
+
+    private fun callButton(answer: Boolean): Result {
+        val a = NotifyService.callButton(answer)
+            ?: return Result(false, "No call is ringing (or notification access is off)")
+        a.actionIntent.send()
+        return Result(true, if (answer) "Answered" else "Declined")
+    }
+
+    private fun globalAction(action: Int, done: String): Result =
+        if (SendTapService.global(action)) Result(true, done)
+        else Result(false, "That needs Jarvis switched on in Accessibility: open Jarvis → ⋮ → Permissions & setup → " +
+            "\"Press Send in WhatsApp for you\" (the same switch allows screenshots and locking)")
 
     private fun navigate(context: Context, where: String): Result {
         if (where.isBlank()) return Result(false, "Where to?")

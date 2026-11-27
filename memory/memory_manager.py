@@ -467,7 +467,7 @@ def save_session_summary(summary: str, language: str = "") -> None:
         sessions = []
     entry: dict = {
         "date":    datetime.now().strftime("%Y-%m-%d"),
-        "summary": summary[:280],
+        "summary": summary[:700],
     }
     if language:
         entry["language"] = language

@@ -11,6 +11,7 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import okhttp3.Request
@@ -43,6 +44,13 @@ object LiveAudio {
     @Volatile var state = State.OFF
         private set
     @Volatile var muted = false
+    /** With the wake word on: true after "Hey Jarvis" until it goes back to waiting. */
+    @Volatile var awake = false
+        private set
+    /** False when the PC has no wake word set up (then everything heard goes through). */
+    @Volatile var wakeAvailable = true
+        private set
+    val wakeMode: Boolean get() = ctx?.let { Prefs(it).wakeWord } == true
 
     private var socket: WebSocket? = null
     private var record: AudioRecord? = null
@@ -78,16 +86,31 @@ object LiveAudio {
         audio?.let {
             savedMode = it.mode
             it.mode = AudioManager.MODE_IN_COMMUNICATION          // enables the phone's echo cancellation path
-            @Suppress("DEPRECATION")
-            it.isSpeakerphoneOn = true                               // the loudspeaker, not the earpiece
+            route(it)
         }
         connect()
     }
 
+    /** Headphones or a Bluetooth headset when one is connected, else the loudspeaker (never the earpiece). */
+    private fun route(am: AudioManager) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            val prefer = listOf(android.media.AudioDeviceInfo.TYPE_BLE_HEADSET, android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                android.media.AudioDeviceInfo.TYPE_WIRED_HEADSET, android.media.AudioDeviceInfo.TYPE_USB_HEADSET,
+                android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER)
+            val devices = am.availableCommunicationDevices
+            val pick = prefer.firstNotNullOfOrNull { t -> devices.firstOrNull { it.type == t } }
+            if (pick != null && am.setCommunicationDevice(pick)) return
+        }
+        @Suppress("DEPRECATION")
+        am.isSpeakerphoneOn = !(am.isWiredHeadsetOn || am.isBluetoothScoOn || am.isBluetoothA2dpOn)
+    }
+
     fun stop() {
         wanted = false
+        awake = false
         teardown()
         audio?.let {
+            if (Build.VERSION.SDK_INT >= 31) it.clearCommunicationDevice()
             @Suppress("DEPRECATION")
             it.isSpeakerphoneOn = false
             it.mode = savedMode
@@ -95,32 +118,40 @@ object LiveAudio {
         emit(State.OFF)
     }
 
+    @Volatile private var connecting = false
+
     private fun connect() {
         val c = ctx ?: return
+        if (connecting) return
+        connecting = true
         emit(State.CONNECTING)
         Hub.freshToken(c) { token ->
-            if (!wanted) return@freshToken
-            if (token == null) { schedule(); return@freshToken }
-            val url = Protocol.audioUrl(Prefs(c).baseUrl, token, Prefs(c).duplex)
+            if (!wanted) { connecting = false; return@freshToken }
+            if (token == null) { connecting = false; schedule(); return@freshToken }
+            val url = Protocol.audioUrl(Prefs(c).baseUrl, token, Prefs(c).duplex, Prefs(c).wakeWord)
             socket = Hub.client.newWebSocket(Request.Builder().url(url).build(), object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
+                    if (socket != null && socket !== webSocket) { webSocket.close(1000, "replaced"); return }
                     retry = 2000L
                     startPlayback()
                     startCapture(webSocket)
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                    if (socket !== webSocket) return
                     lastVoiceAt = System.currentTimeMillis()
                     playQueue.offer(bytes.toByteArray())
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    if (text.contains("\"flush\"")) flush()
+                    if (socket === webSocket && text.contains("\"flush\"")) flush()
                 }
 
-                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { dropped() }
-                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { dropped() }
+                // Only the current socket's end matters: an old one closing late must not stop the new one.
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { if (socket == null || socket === webSocket) dropped() }
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) { if (socket == null || socket === webSocket) dropped() }
             })
+            connecting = false
         }
     }
 
@@ -160,13 +191,20 @@ object LiveAudio {
         record = rec
         rec.startRecording()
         emit(State.LISTENING)
+        val gate = if (ctx?.let { Prefs(it).saveData } != false) SpeechGate() else null
         captureThread = Thread {
             val buf = ByteArray(IN_RATE / 1000 * 2 * 40)                // 40 ms frames
             while (wanted && !Thread.currentThread().isInterrupted) {
                 val n = rec.read(buf, 0, buf.size)
                 if (n <= 0) break
                 val level = Protocol.rms(buf, n)
-                if (!muted && socket === ws) ws.send(ByteString.of(*buf.copyOf(n)))
+                if (!muted && socket === ws) {
+                    val frame = buf.copyOf(n)
+                    // While Jarvis is talking, keep the line open so you can interrupt it.
+                    if (gate != null && System.currentTimeMillis() - lastVoiceAt < 400) gate.hold()
+                    val out = gate?.feed(frame, level) ?: listOf(frame)
+                    for (f in out) ws.send(ByteString.of(*f))
+                }
                 val speaking = System.currentTimeMillis() - lastVoiceAt < 400
                 emit(if (speaking) State.SPEAKING else State.LISTENING, if (speaking) 0.6f else (level * 4f).coerceAtMost(1f))
             }
@@ -193,6 +231,41 @@ object LiveAudio {
                 t.write(chunk, 0, chunk.size)
             }
         }.apply { name = "jarvis-play"; isDaemon = true; start() }
+    }
+
+    /** The PC heard "Hey Jarvis" (or went back to waiting): chime, buzz, and show it. */
+    fun onWake(nowAwake: Boolean, available: Boolean) {
+        val was = awake
+        awake = nowAwake
+        wakeAvailable = available
+        if (nowAwake && !was) cue()
+        emit(state)
+    }
+
+    /** Tap on the orb: wake Jarvis without saying the phrase. */
+    fun wakeNow() { socket?.send("""{"type":"wake_now"}""") }
+    fun sleepNow() { socket?.send("""{"type":"sleep_now"}""") }
+
+    /** Tap while Jarvis is talking: silence the speaker here at once and tell the PC to stop. */
+    fun interruptNow() {
+        flush()
+        lastVoiceAt = 0L
+        socket?.send("""{"type":"interrupt"}""")
+        emit(State.LISTENING)
+    }
+
+    private fun cue() {
+        val c = ctx ?: return
+        if (!Prefs(c).chime) return
+        try {
+            android.media.ToneGenerator(AudioManager.STREAM_VOICE_CALL, 60)
+                .startTone(android.media.ToneGenerator.TONE_PROP_ACK, 120)
+        } catch (e: Exception) { }
+        try {
+            val v = if (Build.VERSION.SDK_INT >= 31) c.getSystemService(android.os.VibratorManager::class.java)?.defaultVibrator
+                else @Suppress("DEPRECATION") c.getSystemService(android.os.Vibrator::class.java)
+            v?.vibrate(android.os.VibrationEffect.createOneShot(35, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        } catch (e: Exception) { }
     }
 
     /** Jarvis was interrupted: drop everything queued and whatever the speaker still holds. */

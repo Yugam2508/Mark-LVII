@@ -67,7 +67,10 @@ PLUGIN = {
         "open a website (open_url), open the Bluetooth/Wi-Fi/sound/display settings page "
         "(settings; Android won't let apps flip Bluetooth or Wi-Fi themselves, so say it is one tap "
         "on the page), phone volume, flashlight, set a timer, play/pause/next on whatever the phone "
-        "is playing (media), start navigation (navigate). For a person pass the name or number. "
+        "is playing (media), start navigation (navigate); send text or a link (or the PC clipboard) to the "
+        "phone (send_to_phone: copied there and shown as a notification); where the phone is (location, "
+        "gives a map link); Do Not Disturb on/off (dnd, with on); set an alarm (alarm: hour, minute, label); "
+        "take a screenshot on the phone (screenshot) or lock it (lock). For a person pass the name or number. "
         "Calls and texts need the user's confirmation, which this tool asks for. Not for messages on "
         "WhatsApp or email — use those tools. For music by name use spotify_control with the phone as the device."
     ),
@@ -75,7 +78,13 @@ PLUGIN = {
         "type": "OBJECT",
         "properties": {
             "action": {"type": "STRING", "enum": ["call", "text", "find_phone", "status", "contacts", "open_app", "open_url",
-                                                    "settings", "volume", "flashlight", "timer", "media", "navigate"]},
+                                                    "settings", "volume", "flashlight", "timer", "media", "navigate",
+                                                    "send_to_phone", "location", "dnd", "alarm", "screenshot", "lock"]},
+            "label": {"type": "STRING", "description": "For timer/alarm: what it's for, e.g. 'swim'"},
+            "title": {"type": "STRING", "description": "For send_to_phone: a short heading"},
+            "hour": {"type": "INTEGER", "description": "For alarm: hour 0-23"},
+            "minute": {"type": "INTEGER", "description": "For alarm: minute 0-59"},
+            "text": {"type": "STRING", "description": "For send_to_phone: the text or link; empty = what's on the PC clipboard"},
             "name": {"type": "STRING", "description": "For open_app: the app's name, e.g. 'Spotify'"},
             "url": {"type": "STRING", "description": "For open_url: a full https:// address"},
             "page": {"type": "STRING", "description": "For settings: bluetooth, wifi, sound, display, location, battery"},
@@ -113,9 +122,19 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
                 if r.get("ok") else outcome.failed("phone_status", r.get("text") or "no answer")
         simple = {"open_app": ("name",), "open_url": ("url",), "settings": ("page",),
                   "volume": ("level", "direction"), "flashlight": ("on",), "timer": ("seconds", "label"),
-                  "media": ("key",), "navigate": ("where",)}
+                  "media": ("key",), "navigate": ("where",), "send_to_phone": ("text", "title"),
+                  "location": (), "dnd": ("on",), "alarm": ("hour", "minute", "label"),
+                  "screenshot": (), "lock": ()}
         if action in simple:
             args = {k: parameters[k] for k in simple[action] if parameters.get(k) is not None}
+            if action == "send_to_phone" and not str(args.get("text") or "").strip():
+                try:
+                    import pyperclip
+                    args["text"] = pyperclip.paste()
+                except Exception:
+                    args["text"] = ""
+                if not str(args["text"]).strip():
+                    return outcome.ask("phone_send_to_phone", "What should I send? The clipboard is empty.")
             if action == "open_url":
                 u = str(args.get("url", ""))
                 if not re.match(r"^https?://", u, re.I) and re.match(r"^[\w-]+(\.[\w-]+)+", u):

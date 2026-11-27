@@ -1054,6 +1054,18 @@ def computer_settings(
             run=lambda f=func, a=action: (f(), f"{a} done.")[1],
         )
 
+    if action == "screenshot":
+        # Win+Shift+S only opens the snipping overlay and waits for a drag — nothing is saved, which is
+        # how "take a screenshot" kept failing. Save the whole screen as a file; "snip" still opens the tool.
+        wants_snip = any(w in f"{value or ''} {description}".lower() for w in ("snip", "region", "select", "area"))
+        if wants_snip:
+            take_screenshot()
+            return outcome.done("computer_settings", wanted=action,
+                                note="the snipping tool is open for the user to drag a box; nothing is saved until they do")
+        from plugins import system_tools
+        return system_tools._screenshot({"screen": str(params.get("screen") or "main"),
+                                         "open": bool(params.get("open"))})
+
     if action in ("volume_set", "set_volume"):
         # No level means no guess: the old default of 50 turned "set the volume"
         # with a lost value into a volume change nobody asked for.

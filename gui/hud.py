@@ -92,6 +92,8 @@ class HudCanvas(QWidget):
         # The holographic centrepiece and its satellites (gui/holo.py). Kept
         # alive in every style so satellites pushed meanwhile are there on switch.
         self._holo = HoloCore()
+        # The hologram leans a little toward the mouse (depth by parallax); no click is taken.
+        self.setMouseTracking(True)
 
         self._tick       = 0
         self._scale      = 1.0
@@ -605,6 +607,17 @@ class HudCanvas(QWidget):
             p.setPen(QPen(blend(qcol(C.WHITE), 0.6 + 0.4 * min(1.0, amp * 2)), 1))
             p.drawText(QRectF(cx - r, cy - fsz, r * 2, fsz * 2),
                        Qt.AlignmentFlag.AlignCenter, name)
+
+    def mouseMoveEvent(self, e):
+        W, H = max(1, self.width()), max(1, self.height())
+        pos = e.position()
+        self._holo.tilt = (max(-1.0, min(1.0, (pos.x() - W / 2) / (W / 2))),
+                           max(-1.0, min(1.0, (pos.y() - H / 2) / (H / 2))))
+        super().mouseMoveEvent(e)
+
+    def leaveEvent(self, e):
+        self._holo.tilt = (0.0, 0.0)
+        super().leaveEvent(e)
 
     def paintEvent(self, _):
         p = QPainter(self)

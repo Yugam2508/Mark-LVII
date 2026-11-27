@@ -504,56 +504,60 @@ def _ensure_network_access(*ports: int) -> None:
         return
 
     # ── Linux ─────────────────────────────────────────────────────────────────
-    def _privileged(cmd: list[str]) -> bool:
-        for prefix in (["pkexec"], ["sudo", "-n"]):
-            try:
-                r = subprocess.run(prefix + cmd, capture_output=True, timeout=30)
-                if r.returncode == 0:
-                    return True
-            except Exception:
-                pass
-        return False
+    def _linux_open(port: int) -> None:
+        def _privileged(cmd: list[str]) -> bool:
+            for prefix in (["pkexec"], ["sudo", "-n"]):
+                try:
+                    r = subprocess.run(prefix + cmd, capture_output=True, timeout=30)
+                    if r.returncode == 0:
+                        return True
+                except Exception:
+                    pass
+            return False
 
-    try:  # ufw
-        r = subprocess.run(["ufw", "status"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
-        if "active" in r.stdout.lower():
-            if _privileged(["ufw", "allow", f"{port}/tcp"]):
-                print(f"[Dashboard] ufw: port {port} allowed.")
-            else:
-                print(f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp")
-            return
-    except FileNotFoundError:
-        pass
+        try:  # ufw
+            r = subprocess.run(["ufw", "status"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
+            if "active" in r.stdout.lower():
+                if _privileged(["ufw", "allow", f"{port}/tcp"]):
+                    print(f"[Dashboard] ufw: port {port} allowed.")
+                else:
+                    print(f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp")
+                return
+        except FileNotFoundError:
+            pass
 
-    try:  # firewalld
-        r = subprocess.run(
-            ["firewall-cmd", "--state"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
-        )
-        if "running" in r.stdout.lower():
-            ok = (_privileged(["firewall-cmd", "--add-port", f"{port}/tcp", "--permanent"])
-                  and _privileged(["firewall-cmd", "--reload"]))
-            if ok:
-                print(f"[Dashboard] firewalld: port {port} allowed.")
-            else:
-                print(f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload")
-            return
-    except FileNotFoundError:
-        pass
+        try:  # firewalld
+            r = subprocess.run(
+                ["firewall-cmd", "--state"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+            )
+            if "running" in r.stdout.lower():
+                ok = (_privileged(["firewall-cmd", "--add-port", f"{port}/tcp", "--permanent"])
+                      and _privileged(["firewall-cmd", "--reload"]))
+                if ok:
+                    print(f"[Dashboard] firewalld: port {port} allowed.")
+                else:
+                    print(f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload")
+                return
+        except FileNotFoundError:
+            pass
 
-    try:  # iptables (not persistent but works until reboot)
-        r = subprocess.run(["iptables", "-L", "INPUT", "-n"], capture_output=True, timeout=5)
-        if r.returncode == 0:
-            if _privileged(["iptables", "-A", "INPUT", "-p", "tcp", "--dport", str(port), "-j", "ACCEPT"]):
-                print(f"[Dashboard] iptables: port {port} opened.")
-            else:
-                print(f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT")
-    except FileNotFoundError:
-        pass  # no iptables means firewall is probably off — nothing to do
-
-
+        try:  # iptables (not persistent but works until reboot)
+            r = subprocess.run(["iptables", "-L", "INPUT", "-n"], capture_output=True, timeout=5)
+            if r.returncode == 0:
+                if _privileged(["iptables", "-A", "INPUT", "-p", "tcp", "--dport", str(port), "-j", "ACCEPT"]):
+                    print(f"[Dashboard] iptables: port {port} opened.")
+                else:
+                    print(f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT")
+        except FileNotFoundError:
+            pass  # no iptables means firewall is probably off — nothing to do
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+
+
+    # ── helpers ───────────────────────────────────────────────────────────────────
+
+    for port in ports:
+        _linux_open(port)
 
 def _local_ip() -> str:
     """Return the best LAN-facing IPv4 address, no internet required."""
@@ -863,6 +867,10 @@ class DashboardServer:
         """True while a phone is receiving Jarvis's voice (the PC then stays quiet)."""
         return bool(self._audio_out)
 
+    def phone_wake_wanted(self) -> bool:
+        """A phone asked for "Hey Jarvis" before anything it hears reaches the assistant."""
+        return any(v.get("wake") for v in self._audio_out.values())
+
     def phone_duplex(self) -> bool:
         """True when the phone cleans its own microphone of echo, so it can be heard while Jarvis speaks."""
         return any(v.get("duplex") for v in self._audio_out.values())
@@ -1053,7 +1061,10 @@ class DashboardServer:
     # ── broadcast ────────────────────────────────────────────────────────
 
     async def broadcast(self, msg: dict) -> None:
-        self._history.append(msg)
+        live_only = msg.get("type") == "phone_wake" or (msg.get("type") == "card"
+                                                         and msg.get("kind") in ("confirm", "confirm_done"))
+        if not live_only:
+            self._history.append(msg)
         if len(self._history) > 300:
             self._history = self._history[-300:]
         dead: set[WebSocket] = set()
@@ -1318,7 +1329,7 @@ class DashboardServer:
         # ── Phone mic real-time audio → Gemini Live ──────────────────────────
 
         @app.websocket("/ws/phone-audio")
-        async def phone_audio_ws(websocket: WebSocket, token: str = "", out: int = 0, duplex: int = 0):
+        async def phone_audio_ws(websocket: WebSocket, token: str = "", out: int = 0, duplex: int = 0, wake: int = 0):
             tok = token.strip()
             if not _valid(tok):
                 await websocket.close(code=4001)
@@ -1326,20 +1337,37 @@ class DashboardServer:
             await websocket.accept()
             self._loop = asyncio.get_running_loop()
             if out:
-                self._audio_out[websocket] = {"duplex": bool(duplex)}
+                self._audio_out[websocket] = {"duplex": bool(duplex), "wake": bool(wake)}
             asyncio.create_task(self.broadcast(
                 {"type": "sys", "text": "Phone microphone live."}
             ))
             try:
                 while True:
-                    data = await websocket.receive_bytes()
+                    msg = await websocket.receive()
+                    if msg.get("type") == "websocket.disconnect":
+                        break
+                    data = msg.get("bytes")
+                    if data is not None:
+                        try:
+                            self._phone_audio_queue.put_nowait(
+                                {"data": data, "mime_type": "audio/pcm"}
+                            )
+                        except asyncio.QueueFull:
+                            pass  # drop frame rather than block
+                        continue
+                    # A tap on the phone: wake Jarvis without the phrase, or send it back to waiting.
+                    text = msg.get("text") or ""
                     try:
-                        self._phone_audio_queue.put_nowait(
-                            {"data": data, "mime_type": "audio/pcm"}
-                        )
-                    except asyncio.QueueFull:
-                        pass  # drop frame rather than block
-            except WebSocketDisconnect:
+                        import json as _j
+                        ctl = str(_j.loads(text).get("type") or "")
+                    except Exception:
+                        ctl = ""
+                    if ctl in ("wake_now", "sleep_now", "interrupt"):
+                        try:
+                            self._phone_audio_queue.put_nowait({"control": ctl})
+                        except asyncio.QueueFull:
+                            pass
+            except (WebSocketDisconnect, RuntimeError):
                 pass
             finally:
                 self._audio_out.pop(websocket, None)
@@ -1461,11 +1489,28 @@ class DashboardServer:
                         if fut is not None and not fut.done():
                             fut.set_result({"ok": bool(data.get("ok")), "text": str(data.get("text") or "")[:2000],
                                             "data": data.get("data")})
+                    elif data.get("type") == "confirm_answer":
+                        if websocket in self._phones:
+                            try:
+                                from core import confirm as _confirm
+                                # Answer only the confirmation the phone was shown, if it's still the one waiting.
+                                if _confirm.pending_title() and _confirm.pending_title() == str(data.get("title") or ""):
+                                    await asyncio.to_thread(_confirm.resolve, bool(data.get("accepted")))
+                            except Exception as e:
+                                print(f"[Dashboard] confirm from phone: {e}")
+                    elif data.get("type") in ("share", "phone_event"):
+                        if websocket in self._phones:
+                            try:
+                                from core import phone_events
+                                await asyncio.to_thread(phone_events.handle, {k: data.get(k) for k in
+                                                                              ("type", "text", "event", "level")})
+                            except Exception as e:
+                                print(f"[Dashboard] phone event: {e}")
                     elif data.get("type") == "notification":
                         cb = getattr(self, "_notification_cb", None)
                         if cb is not None and websocket in self._phones:
                             try:
-                                cb({k: str(data.get(k) or "")[:600] for k in ("key", "pkg", "app", "title", "text")})
+                                cb({k: str(data.get(k) or "")[:600] for k in ("key", "pkg", "app", "title", "text", "category")})
                             except Exception:
                                 pass
                     elif data.get("type") == "command":

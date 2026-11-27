@@ -39,6 +39,7 @@ object Hub {
     private val listeners = CopyOnWriteArraySet<Listener>()
 
     private var socket: WebSocket? = null
+    @Volatile private var opening = false        // a login + socket is on its way: don't start a second one
     private var wantConnected = false
     private var retry = 2000L
     private var prefs: Prefs? = null
@@ -60,11 +61,13 @@ object Hub {
     }
 
     private fun emit(e: Protocol.Event) {
-        if (e is Protocol.Event.Said) {
-            history.addLast(e)
-            while (history.size > 60) history.removeFirst()
+        main.post {
+            if (e is Protocol.Event.Said) {
+                history.addLast(e)
+                while (history.size > 60) history.removeFirst()
+            }
+            listeners.forEach { it.onEvent(e) }
         }
-        main.post { listeners.forEach { it.onEvent(e) } }
     }
 
     /** The shared HTTP client (the audio socket uses it too). */
@@ -129,13 +132,16 @@ object Hub {
 
     private fun openSocket() {
         val p = prefs ?: return
+        if (opening) return
+        opening = true
         val login = Request.Builder().url("${p.baseUrl}/api/device-login")
             .post("""{"device_token":"${p.deviceToken}"}""".toRequestBody(JSON)).build()
         http.newCall(login).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) = scheduleRetry("Can't reach the PC")
+            override fun onFailure(call: Call, e: IOException) { opening = false; scheduleRetry("Can't reach the PC") }
 
             override fun onResponse(call: Call, response: Response) {
                 val body = response.body?.string().orEmpty()
+                opening = false
                 if (response.code == 401) {
                     // The PC says it doesn't know this phone (revoked, or an older Jarvis that
                     // forgot paired phones when it restarted): pair again with a new key.
@@ -152,20 +158,29 @@ object Hub {
                         override fun onOpen(webSocket: WebSocket, response: Response) {
                             retry = 2000L
                             emitConnection(true, "Connected")
-                            // Tell the PC this phone is here and what it can do.
+                            // Tell the PC this phone is here and what it can do, then send anything that waited.
                             webSocket.send(Protocol.helloBody(Build.MODEL, PhoneActions.abilities))
+                            flushOutbox(webSocket)
                         }
 
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             val e = Protocol.parseEvent(text) ?: return
-                            if (e is Protocol.Event.PhoneAction) handle(webSocket, e) else emit(e)
+                            when (e) {
+                                is Protocol.Event.PhoneAction -> handle(webSocket, e)
+                                is Protocol.Event.Card -> { if (e.kind == "confirm" || e.kind == "confirm_done") ConfirmNote.update(appContext, e); emit(e) }
+                                is Protocol.Event.Wake -> { LiveAudio.onWake(e.awake, e.available); emit(e) }
+                                else -> emit(e)
+                            }
                         }
 
+                        // A late "closed" from a socket that was already replaced must not take down the new one.
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                            if (socket != null && socket !== webSocket) return
                             socket = null; scheduleRetry("Connection closed")
                         }
 
                         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                            if (socket != null && socket !== webSocket) return
                             socket = null; scheduleRetry("Connection lost")
                         }
                     })
@@ -191,10 +206,27 @@ object Hub {
 
     // ── sending ──────────────────────────────────────────────────────────────
 
-    /** A raw JSON message for the PC (a notification that just arrived). False when not connected. */
-    fun sendRaw(json: String): Boolean {
-        val s = socket ?: return false
-        return connected && s.send(json)
+    private val outbox = java.util.concurrent.ConcurrentLinkedQueue<String>()
+
+    /**
+     * A raw JSON message for the PC (a notification that just arrived, something shared). False when not
+     * connected; with `queue`, it is kept and sent as soon as the link is back (the last 20 are kept).
+     */
+    fun sendRaw(json: String, queue: Boolean = false): Boolean {
+        val s = socket
+        if (s != null && connected && s.send(json)) return true
+        if (queue) {
+            outbox.add(json)
+            while (outbox.size > 20) outbox.poll()
+        }
+        return false
+    }
+
+    private fun flushOutbox(ws: WebSocket) {
+        while (true) {
+            val m = outbox.poll() ?: break
+            if (!ws.send(m)) { outbox.add(m); break }
+        }
     }
 
     /** Say something to Jarvis as text. Returns false when there is no connection. */
