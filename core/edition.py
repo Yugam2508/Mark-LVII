@@ -40,6 +40,11 @@ CHANGELOG = [
         "\"maximise this\", \"minimise everything\", \"close Notepad\" (politely — it can still ask to save)",
         "Clipboard history: \"what did I copy earlier?\", \"copy that link again\", \"paste the address I copied\" — the "
         "last 40 things you copied, kept in memory only and never written to disk",
+        "Real weather: \"what's the weather?\" now answers from a forecast service (it used to open a Google search) — "
+        "now, when the rain comes, today / tomorrow / the week — for your home city unless you name one (set it in "
+        "CONVERSATION & PRESENCE → Home city, or just tell Jarvis where you live)",
+        "\"Show me my day\": one TODAY panel with your calendar, to-dos, weather and rain, study so far, what Jarvis is "
+        "working on and your phone's battery, and a two-sentence summary",
         "Releases are named by Mark only, everywhere — the What's new panel, \"which Mark are you?\", the phone app "
         "in Android's settings — never \"version\"",
     ]},
